@@ -136,10 +136,12 @@ Look for the shield in the menu bar and click it:
 The icon shows the state: a shield with a check (running), plain shield
 (starting), slashed shield (stopped), shield with `!` (needs attention: no
 config, `cui-proxy` not found, or it crashed; the menu says which). A crashed
-proxy is restarted automatically, up to three times a minute. If something
-else already serves on the configured ports (for example a terminal running
-`cui-proxy serve`), the menu says "Running (started elsewhere)": the app does
-not start a second one and leaves yours alone when you quit.
+proxy is restarted automatically, up to three restarts inside any one minute,
+so a crash loop stops. If something else already serves on the configured
+ports (for example a terminal running `cui-proxy serve`), the menu says
+"Running (started elsewhere)": the app does not start a second one and leaves
+yours alone when you quit. If the port is taken by something that is not
+cui-proxy, or by another user, the icon shows `!` and the menu says so.
 
 Things to know:
 
@@ -150,8 +152,11 @@ Things to know:
   not fall back to talking to the model directly).
 - The app starts the proxy with the app's environment, not your shell's. If
   your network needs `HTTPS_PROXY` for the upstream, run
-  `launchctl setenv HTTPS_PROXY http://your-proxy:port` and restart the app,
-  or run `cui-proxy serve` from a terminal instead.
+  `launchctl setenv HTTPS_PROXY http://your-proxy:port` and restart the app
+  (this lasts until you reboot; repeat it after a reboot), or run
+  `cui-proxy serve` from a terminal instead.
+- The app only supports loopback addresses (`listen` and `ui.listen` on
+  `127.0.0.1`, `localhost` or `::1`) and needs cui-proxy v0.1.1 or newer.
 - After `brew upgrade cui-proxy`, choose Quit and reopen the app
   (`open ~/Applications/CuiProxy.app`) so it runs the new binary; re-run
   `cui-proxy menubar install` to pick up a newer menu-bar app too.
@@ -162,11 +167,11 @@ Things to know:
 ## Uninstall
 
 ```sh
+cui-proxy menubar uninstall                               # FIRST, if you installed the macOS menu-bar app
 brew uninstall cui-proxy                                  # Homebrew
 brew untrust --formula rozdolsky33/tap/cui-proxy          # optional: drop the trust entry
 brew untap rozdolsky33/tap                                # optional: drop the tap
 rm "$(command -v cui-proxy)"                              # curl install
-cui-proxy menubar uninstall                               # the macOS menu-bar app, if you installed it (do this first)
 rm -r ~/.config/cui-proxy                                 # config and dictionary, if you want them gone
 ```
 
