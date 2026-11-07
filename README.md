@@ -405,6 +405,8 @@ blocked: it is masked as a `REDACTED-<8hex>` token instead and counted as
   issue or log excerpt;** use made-up values of the same shape.
 - Security problems (a way around the protections, a leak): report privately,
   see [SECURITY.md](SECURITY.md).
+- Design decisions and the plan for policy enforcement (block-by-default,
+  approval checks, an audit trail) are tracked in [docs/adr](docs/adr/).
 - This is best-effort, community-style software released under the
   [MIT license](LICENSE), with no warranty. It is not an approved compliance
   control.
