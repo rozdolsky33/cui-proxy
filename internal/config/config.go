@@ -84,6 +84,18 @@ type Audit struct {
 	OnError       string `yaml:"on_error"`
 	MaxSizeMB     *int   `yaml:"max_size_mb"`    // rotate before a record would pass this size; default 50
 	RetentionDays *int   `yaml:"retention_days"` // delete rotated files older than this; default 90, 0 keeps them forever
+
+	onErrorDefaulted bool // OnError came from the profile default, not the file
+}
+
+// ExplicitOnError is on_error as written in the file ("" when it was left
+// to the profile default), so a reload that only changes the profile is not
+// reported as an audit.on_error change.
+func (a Audit) ExplicitOnError() string {
+	if a.onErrorDefaulted {
+		return ""
+	}
+	return a.OnError
 }
 
 // Audit defaults and the on_error values.
@@ -205,6 +217,7 @@ func (c *Config) applyDefaults() {
 		c.Audit.File = DefaultAuditFile()
 	}
 	if c.Audit.OnError == "" {
+		c.Audit.onErrorDefaulted = true
 		c.Audit.OnError = AuditWarn
 		if c.Policy.Profile == ProfileStrict {
 			c.Audit.OnError = AuditBlock

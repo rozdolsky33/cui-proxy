@@ -490,14 +490,17 @@ func (a *App) Reload() error {
 		return err
 	}
 	old := a.cur.Load()
+	// The audit settings are pinned and a reload cannot open a log that is
+	// off, so a reload to strict without a running decision log is refused:
+	// strict never runs unrecorded. (With a log, a failed write blocks under
+	// strict whatever on_error says: see config.AuditBlocks.)
+	if profileOf(cfg) == config.ProfileStrict && a.decisions == nil {
+		err := errors.New(`reload refused: policy.profile "strict" needs the decision log, which was disabled at startup (audit.enabled: false); restart to apply`)
+		a.logf("reload failed; keeping the current rules: %v", err)
+		return err
+	}
 	if changed := pinRestartOnly(cfg, old.cfg); len(changed) > 0 {
 		a.logf("WARN restart required for: %s", strings.Join(changed, ", "))
-	}
-	// The audit settings are pinned; a reload to strict cannot open a log
-	// that is off. (A failed write blocks under strict whatever on_error
-	// says: see config.AuditBlocks.)
-	if profileOf(cfg) == config.ProfileStrict && a.decisions == nil {
-		a.logf("WARN policy.profile strict without a decision log until restart (audit was disabled at startup)")
 	}
 	a.cur.Store(a.newRuleset(cfg, ds))
 	a.logf("reload ok: %d rules (%d detectors)", len(cfg.Rules), len(ds))
@@ -596,7 +599,7 @@ func pinRestartOnly(next, cur *config.Config) []string {
 	if na.File != ca.File {
 		changed = append(changed, "audit.file")
 	}
-	if na.OnError != ca.OnError {
+	if na.ExplicitOnError() != ca.ExplicitOnError() {
 		changed = append(changed, "audit.on_error")
 	}
 	if na.MaxBytes() != ca.MaxBytes() {

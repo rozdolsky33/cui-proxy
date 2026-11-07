@@ -314,3 +314,106 @@ func TestExampleAuditBlockValid(t *testing.T) {
 		t.Errorf("uncommented example audit = %+v", a)
 	}
 }
+
+// Review item 3: strict never runs without the decision log; the reload is
+// refused and the running config is unchanged.
+func TestReloadToStrictWithAuditOffIsRefused(t *testing.T) {
+	up := newUpstream(t, nil)
+	spec := cfgSpec{Upstream: up.url(), Audit: "{ enabled: false }"}
+	_, cfg := testDir(t, spec)
+	logs := &logBuf{}
+	a := startApp(t, cfg, logs, nil)
+	spec.Audit = "{ file: decisions.jsonl }"
+	spec.Profile = "strict"
+	spec.Rules = "  - name: builtin\n    type: builtin\n"
+	writeFile(t, cfg, spec.render())
+	err := a.Reload()
+	if err == nil || !strings.Contains(err.Error(), "needs the decision log") {
+		t.Fatalf("Reload = %v", err)
+	}
+	if p := a.cur.Load().cfg.Policy.Profile; p != "sanitize" {
+		t.Errorf("profile after a refused reload: %q", p)
+	}
+	if !strings.Contains(logs.String(), "reload failed; keeping the current rules: reload refused") {
+		t.Errorf("logs:\n%s", logs.String())
+	}
+}
+
+// Review item 11: a reload that changes only the profile does not report
+// audit.on_error (whose default follows the profile) as restart-required.
+func TestReloadProfileChangeIsNotAnOnErrorChange(t *testing.T) {
+	up := newUpstream(t, nil)
+	spec := cfgSpec{Upstream: up.url(), Rules: "  - name: builtin\n    type: builtin\n"}
+	_, cfg := testDir(t, spec)
+	logs := &logBuf{}
+	a := startApp(t, cfg, logs, nil)
+	spec.Profile = "strict"
+	writeFile(t, cfg, spec.render())
+	if err := a.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(logs.String(), "restart required") {
+		t.Errorf("spurious restart-required:\n%s", logs.String())
+	}
+	if c := a.cur.Load().cfg; c.Policy.Profile != "strict" || !c.AuditBlocks() {
+		t.Errorf("after reload: profile %s blocks %v", c.Policy.Profile, c.AuditBlocks())
+	}
+}
+
+// Review item 10: explain does not present an edited record as fact.
+func TestExplainWarnsWhenTheRecordDoesNotVerify(t *testing.T) {
+	up := newUpstream(t, nil)
+	dir, cfg := testDir(t, cfgSpec{Upstream: up.url()})
+	a := startApp(t, cfg, &logBuf{}, nil)
+	px, _ := a.Addrs()
+	_, id := post(t, px, "hi", "X-Note", "on "+hostA)
+	a.Close()
+	path := filepath.Join(dir, "decisions.jsonl")
+	writeFile(t, path, strings.Replace(readFile(t, path), `"reason":"header"`, `"reason":"route"`, 1))
+	code, out, _ := runCLI("", "explain", "-config", cfg, id)
+	if code != 1 || !strings.Contains(out, "WARNING: this record does NOT verify (hash_mismatch") {
+		t.Fatalf("code %d\n%s", code, out)
+	}
+	// An emptied log verifies with no records (the tail-deletion limit, documented).
+	writeFile(t, path, "")
+	if code, out, _ := runCLI("", "audit", "verify", "-file", path); code != 0 || !strings.Contains(out, "Records checked  0") {
+		t.Errorf("empty log: %d\n%s", code, out)
+	}
+}
+
+func TestVerifyReportsAHeadCut(t *testing.T) {
+	up := newUpstream(t, nil)
+	dir, cfg := testDir(t, cfgSpec{Upstream: up.url()})
+	a := startApp(t, cfg, &logBuf{}, nil)
+	px, _ := a.Addrs()
+	for range 3 {
+		post(t, px, "hi", "", "")
+		up.next(t)
+	}
+	a.Close()
+	path := filepath.Join(dir, "decisions.jsonl")
+	writeFile(t, path, strings.Join(strings.SplitAfter(readFile(t, path), "\n")[1:], ""))
+	code, out, _ := runCLI("", "audit", "verify", "-config", cfg)
+	if code != 1 || !strings.Contains(out, "FIRST BREAK: "+path+" line 1: head_cut") || !strings.Contains(out, "no retention note explains it") {
+		t.Fatalf("code %d\n%s", code, out)
+	}
+}
+
+// Review item 9 end to end: a shared directory is refused by serve and by
+// policy check.
+func TestSharedAuditDirectoryIsRefused(t *testing.T) {
+	shared := filepath.Join(t.TempDir(), "shared")
+	if err := os.Mkdir(shared, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(shared, 0o777); err != nil {
+		t.Fatal(err)
+	}
+	_, cfg := testDir(t, cfgSpec{Audit: "{ file: " + filepath.Join(shared, "d.jsonl") + " }"})
+	if _, err := NewApp(AppOptions{ConfigPath: cfg, Logf: (&logBuf{}).logf}); err == nil || !strings.Contains(err.Error(), "writable by group or others") {
+		t.Errorf("NewApp = %v", err)
+	}
+	if code, _, errOut := runCLI("", "policy", "check", "-config", cfg); code != 1 || !strings.Contains(errOut, "writable by group or others") {
+		t.Errorf("policy check: %d %q", code, errOut)
+	}
+}

@@ -30,12 +30,14 @@ policy:
 #   enabled: true               # false is refused under the strict profile
 #   file: /Users/you/.local/state/cui-proxy/decisions.jsonl
 #                               # default: $XDG_STATE_HOME/cui-proxy/decisions.jsonl,
-#                               # else ~/.local/state/cui-proxy/decisions.jsonl (0600, dir 0700)
+#                               # else ~/.local/state/cui-proxy/decisions.jsonl (0600; the
+#                               # directory must be yours and not group/other-writable)
 #   on_error: warn              # block | warn: what a failed write does. Default: block under
 #                               # strict (warn is refused there), warn under sanitize (UNSAFE:
 #                               # the request still goes, with a WARN)
-#   max_size_mb: 50             # rotate to <file>.<UTC timestamp> before passing this size
-#   retention_days: 90          # delete rotated files older than this; 0 keeps them forever
+#   max_size_mb: 50             # rotate to <file>.<seq>.<UTC timestamp> before passing this size
+#   retention_days: 90          # delete old rotated files (oldest first, never the newest;
+#                               # each deletion noted in <file>.retention); 0 keeps them forever
 
 vault:
   mode: memory                  # memory | file

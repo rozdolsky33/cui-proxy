@@ -11,6 +11,7 @@ import (
 	"text/tabwriter"
 
 	"cui-proxy/internal/config"
+	"cui-proxy/internal/decisionlog"
 )
 
 const policyUsage = `usage: cui-proxy policy <init|check> [flags]
@@ -63,6 +64,11 @@ func describeAudit(cfg *config.Config) (string, error) {
 	}
 	if a.File == "" {
 		return "", errors.New("audit.file is not set and no home directory was found")
+	}
+	if _, err := os.Lstat(filepath.Dir(a.File)); err == nil {
+		if err := decisionlog.CheckDir(filepath.Dir(a.File)); err != nil {
+			return "", fmt.Errorf("audit.file: %w; serve refuses it", err)
+		}
 	}
 	state := "exists"
 	switch fi, err := os.Lstat(a.File); {

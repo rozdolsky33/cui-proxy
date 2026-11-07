@@ -91,6 +91,7 @@ var breakMeaning = map[string]string{
 	decisionlog.BreakHash:      "the record does not match its hash: it was edited",
 	decisionlog.BreakPrev:      "does not continue the previous record: a line before it was removed, inserted or reordered",
 	decisionlog.BreakTruncated: "the last line is cut off",
+	decisionlog.BreakHeadCut:   "the first record does not start the chain and no retention note explains it: records or files were removed from the start of the log",
 }
 
 func runAuditVerify(args []string, stdout, stderr io.Writer) int {
@@ -124,8 +125,10 @@ func runAuditVerify(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stdout, "Trusted start    (no record)")
 	case rep.Start == decisionlog.Genesis:
 		fmt.Fprintln(stdout, "Trusted start    genesis (the chain is complete from its first record)")
+	case rep.StartNote != nil:
+		fmt.Fprintf(stdout, "Trusted start    %s\n                 (the first record of %s continues %s, which retention deleted at %s; the chain is verified from here)\n", rep.Start, rep.StartFile, rep.StartNote.File, rep.StartNote.TS)
 	default:
-		fmt.Fprintf(stdout, "Trusted start    %s\n                 (the first record of %s continues a file that no longer exists, e.g. deleted by retention; the chain is verified from here)\n", rep.Start, rep.StartFile)
+		fmt.Fprintf(stdout, "Start            %s (not genesis, and no retention note explains it)\n", rep.Start)
 	}
 	if rep.Head != "" {
 		fmt.Fprintf(stdout, "Head hash        %s (%s line %d)\n", rep.Head, rep.HeadFile, rep.HeadLine)
@@ -142,6 +145,9 @@ func runAuditVerify(args []string, stdout, stderr io.Writer) int {
 	}
 	if n := rep.Unverified; n > 0 {
 		fmt.Fprintf(stdout, "Unverified lines %d\n", n)
+	}
+	if rep.InFlight {
+		fmt.Fprintln(stdout, "Note: the active file ends in a partial line while serve is running: a record being written, not counted. Run verify again to check it.")
 	}
 	fmt.Fprintf(stdout, "\n%s\n", tamperNote)
 	if err != nil {
@@ -177,7 +183,7 @@ func runExplain(args []string, stdout, stderr io.Writer) int {
 		return fail(stderr, fmt.Errorf("explain: %w", err))
 	}
 	found, err := decisionlog.Find(path, id)
-	if err != nil {
+	if err != nil && len(found) == 0 {
 		return fail(stderr, fmt.Errorf("explain: %w", err))
 	}
 	if len(found) == 0 {
@@ -185,6 +191,9 @@ func runExplain(args []string, stdout, stderr io.Writer) int {
 	}
 	f := found[len(found)-1]
 	r := f.Record
+	if f.Problem != "" {
+		fmt.Fprintf(stdout, "WARNING: this record does NOT verify (%s: %s). The log was changed or damaged; do not rely on what follows. Run: cui-proxy audit verify\n\n", f.Problem, breakMeaning[f.Problem])
+	}
 	fmt.Fprintf(stdout, "Request %s\n  time      %s\n  adapter   %s\n  profile   %s\n  decision  %s\n", r.RequestID, r.TS, r.Adapter, r.Profile, r.Decision)
 	if r.Reason != "" {
 		fmt.Fprintf(stdout, "  reason    %s\n", r.Reason)
@@ -228,5 +237,9 @@ func runExplain(args []string, stdout, stderr io.Writer) int {
 	if len(found) > 1 {
 		fmt.Fprintf(stdout, "Note: %d records carry this request id; the last is shown. Run cui-proxy audit verify.\n", len(found))
 	}
+	if f.Problem != "" {
+		return exitFailure
+	}
+	fmt.Fprintln(stdout, "The record verified in place (its hash and its link to the record before it).")
 	return exitOK
 }
