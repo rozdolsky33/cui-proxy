@@ -155,6 +155,8 @@ func validateRule(r Rule, known func(string) bool) error {
 			return fmt.Errorf("%q: dictionary rule needs file", r.Name)
 		}
 	case "builtin":
+		// Expands to the v1 detector set; each detector carries its own class.
+		return nil
 	default:
 		return fmt.Errorf("%q: unknown type %q", r.Name, r.Type)
 	}

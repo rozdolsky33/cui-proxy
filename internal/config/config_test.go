@@ -149,3 +149,15 @@ func TestValidateRejectsFileModeWithoutKeyFile(t *testing.T) {
 		t.Error("file mode without file should fail")
 	}
 }
+
+func TestBuiltinRuleNeedsNoSynth(t *testing.T) {
+	c := &Config{Listen: "127.0.0.1:1", Policy: Policy{OnError: "block"}, Vault: VaultConfig{Mode: "memory"},
+		Rules: []Rule{{Name: "builtin", Type: "builtin"}}}
+	if err := c.Validate(); err != nil {
+		t.Errorf("builtin without synth: %v", err)
+	}
+	c.Rules = []Rule{{Name: "r", Type: "regex", Pattern: "x"}}
+	if err := c.Validate(); err == nil {
+		t.Error("regex without synth must still fail")
+	}
+}
