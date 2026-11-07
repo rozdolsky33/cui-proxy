@@ -1,7 +1,7 @@
 # Codex CLI redirect spike — findings
 
 Date: 2026-11-06. Codex CLI 0.166.0, macOS arm64, signed in with ChatGPT (not an API key).
-Method: throwaway Go capture server on 127.0.0.1:8799 that logged requests and replied with a minimal Responses-API SSE stream. Codex was run with command-line `-c` overrides only; `~/.codex/config.toml` was not changed. Prompts were synthetic ("say hi", "run the command"). Nothing was sent to the real upstream.
+Method: throwaway Go capture server on 127.0.0.1:8799 that logged requests and replied with a minimal Responses-API SSE stream. Codex was run with command-line `-c` overrides only; `~/.codex/config.toml` was not changed. Prompts were synthetic ("say hi", "run the command"). This initial capture-server experiment was followed by the live backend smoke on 2026-11-07, recorded in [verification.md](../verification.md).
 
 ## Result: redirect works with ChatGPT login
 
@@ -35,8 +35,8 @@ Implications:
 2. The next request resends everything, including the restored real value in `function_call.arguments` and in `function_call_output.output`; it must be re-sanitized every turn. Tool output is a major leak path (paths, hostnames, IPs in logs).
 3. The system prompt and environment context also travel in every request and can contain local paths and the username; they need scanning too.
 
-## Not yet verified
+## Follow-up verification and remaining scope
 
-- The real upstream for ChatGPT auth appears to be `https://chatgpt.com/backend-api/codex` (string found in the Codex binary; not exercised). The proxy must map `/v1/responses` to the upstream path Codex would normally use; confirm with a harmless synthetic prompt when the proxy exists.
+- Confirmed on 2026-11-07: the ChatGPT-authenticated live base is `https://chatgpt.com/backend-api/codex`. `GET /v1/models` and `POST /v1/responses` succeeded with Codex CLI 0.167.0 and `gpt-6-astra`, including IP/OCID restoration and a shell tool round trip. The live stream omitted `Content-Type`; the proxy now recognizes unlabelled SSE before restoring it. See [verification.md](../verification.md).
 - Reasoning items (`reasoning.encrypted_content`) are opaque and must pass through untouched; their stream events were not observed.
 - Image inputs, compaction requests (`remote_compaction_v2`), and websocket mode were not observed.

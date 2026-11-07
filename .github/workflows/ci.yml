@@ -33,6 +33,9 @@ jobs:
       - name: go test -race
         run: go test -race -count=1 ./...
 
+      - name: reachable vulnerability scan
+        run: make vuln
+
       # Fuzz smoke: 20 s per target. A failure writes the input under
       # testdata/fuzz/; keep it as a seed once the bug is fixed.
       - name: fuzz FuzzSanitizeRequest

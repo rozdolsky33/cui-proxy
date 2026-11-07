@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"io"
 	"log"
@@ -24,6 +25,10 @@ func runServe(args []string, stderr io.Writer) int {
 	logf := log.New(stderr, "", log.LstdFlags).Printf
 	app, err := NewApp(AppOptions{ConfigPath: *cfgPath, Adapter: *adapterName, Version: version, Logf: logf})
 	if err != nil {
+		var loadErr *ruleLoadError
+		if errors.As(err, &loadErr) {
+			err = errLoadRules
+		}
 		return fail(stderr, err)
 	}
 	sigs := make(chan os.Signal, 4)

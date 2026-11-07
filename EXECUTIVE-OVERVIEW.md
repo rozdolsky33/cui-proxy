@@ -1,9 +1,9 @@
 # cui-proxy: Executive Overview
 
 *A high-level explanation of the idea, the key technologies, and the data flow.
-Implementation detail is deliberately left out. Status: working software, not
-yet validated against the real production model service (see
-[Honest status](#honest-status)).*
+Implementation detail is deliberately left out. Status: live backend smoke
+passed with Codex CLI 0.167.0 and `gpt-6-astra` on 2026-11-07 (see
+[verification results](docs/verification.md) and [Honest status](#honest-status)).*
 
 ---
 
@@ -278,9 +278,10 @@ documentation says so.
 - **Detection is not perfect.** Pattern and dictionary matching will miss
   things; a missed value is sent as is. Strict mode and a good dictionary
   reduce, not remove, that risk.
-- **Not yet validated against the real production model service.** The routing
-  to the live ChatGPT-backed Codex endpoint has not been tested end to end; a
-  manual smoke test is documented for that.
+- **Live backend smoke passed on 2026-11-07.** ChatGPT-authenticated Codex CLI
+  0.167.0 with `gpt-6-astra` completed greetings, IP/OCID restoration, a shell
+  tool round trip. See
+  [verification results](docs/verification.md) for the tested scope.
 - **Some content cannot be inspected** (for example encrypted fields the
   assistant passes along); those are shape-checked, not scanned.
 - **Approval workflow is not built yet.** Verifying that an organization has

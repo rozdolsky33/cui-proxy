@@ -45,7 +45,7 @@ func (d Decision) valid() bool { return d == Forwarded || d == Sanitized || d ==
 var reasons = map[string]bool{
 	"route": true, "body_too_large": true, "compressed": true, "sanitize": true,
 	"unrestorable": true, "bad_request": true, "internal": true, "policy": true,
-	"header": true, "audit": true,
+	"header": true, "audit": true, "client": true,
 }
 
 // KnownReason reports whether r is a block reason a record may carry.

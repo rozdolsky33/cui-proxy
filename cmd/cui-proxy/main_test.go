@@ -5,9 +5,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
+
+	"cui-proxy/internal/adapter"
 )
 
 func runCLI(stdin string, args ...string) (code int, stdout, stderr string) {
@@ -79,6 +82,64 @@ func TestCheckConfigExitCodes(t *testing.T) {
 	code, _, errOut = runCLI("", "check-config", "-config", filepath.Join(dir, "absent.yaml"))
 	if code != 1 || !strings.HasPrefix(errOut, "cui-proxy: ") {
 		t.Fatalf("absent file: code %d, err %q", code, errOut)
+	}
+}
+
+type checkConfigAdapter struct{ adapter.Adapter }
+
+func (checkConfigAdapter) Name() string { return "check-config-test" }
+
+var registerCheckConfigAdapter sync.Once
+
+func TestCheckConfigSelectedAdapter(t *testing.T) {
+	registerCheckConfigAdapter.Do(func() {
+		codex, _ := adapter.Get("codex")
+		adapter.Register(checkConfigAdapter{codex})
+	})
+	for _, tc := range []struct {
+		name, upstreams string
+		args            []string
+		wantCode        int
+	}{
+		{"missing default", "{other: 'https://other.example'}", nil, 1},
+		{"empty default", "{codex: ''}", nil, 1},
+		{"unknown adapter", "{codex: 'https://upstream.example'}", []string{"-adapter", "missing-adapter"}, 1},
+		{"explicit default", "{codex: 'https://upstream.example'}", []string{"-adapter", "codex"}, 0},
+		{"registered adapter", "{check-config-test: 'https://upstream.example'}", []string{"-adapter", "check-config-test"}, 0},
+		{"missing selected", "{codex: 'https://upstream.example'}", []string{"-adapter", "check-config-test"}, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, cfg := testDir(t, cfgSpec{})
+			writeFile(t, cfg, strings.Replace(cfgSpec{}.render(), "upstreams:\n  codex: http://127.0.0.1:1/codex", "upstreams: "+tc.upstreams, 1))
+			args := append([]string{"check-config", "-config", cfg}, tc.args...)
+			code, out, errOut := runCLI("", args...)
+			if code != tc.wantCode {
+				t.Fatalf("exit %d, want %d; stdout %q; stderr %q", code, tc.wantCode, out, errOut)
+			}
+			if tc.wantCode != 0 && (out != "" || errOut == "") {
+				t.Fatalf("invalid config reported success: stdout %q; stderr %q", out, errOut)
+			}
+		})
+	}
+}
+
+func TestServeStartupDoesNotExposeConfigValues(t *testing.T) {
+	const sensitive = "FAKE8127"
+	for _, content := range []string{
+		"rules: [{name: secret, type: regex, pattern: '(" + sensitive + "', synth: hostname}]\n",
+		"policy: {max_body_bytes: " + sensitive + "}\n",
+	} {
+		_, cfg := testDir(t, cfgSpec{})
+		writeFile(t, cfg, content)
+		code, out, errOut := runCLI("", "serve", "-config", cfg)
+		if code != 1 || out != "" || !strings.Contains(errOut, "check-config") {
+			t.Errorf("serve: exit %d, stdout %q, stderr %q", code, out, errOut)
+		}
+		assertNoValues(t, "serve startup logs", errOut, sensitive)
+		code, _, errOut = runCLI("", "check-config", "-config", cfg)
+		if code != 1 || !strings.Contains(errOut, sensitive) {
+			t.Errorf("explicit check-config lost diagnostic detail: exit %d, stderr %q", code, errOut)
+		}
 	}
 }
 

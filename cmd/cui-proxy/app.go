@@ -38,6 +38,16 @@ var defaultSaveInterval = 30 * time.Second
 
 const auditCapacity = 500
 
+// Config parsers may quote sensitive literals. Daemon errors stay value-free;
+// an operator can explicitly request detailed diagnostics with check-config.
+var errLoadRules = errors.New("configuration or rule files could not be loaded; run cui-proxy check-config locally for details")
+
+// ruleLoadError preserves diagnostics for callers while letting serve suppress
+// parser text before writing its daemon log.
+type ruleLoadError struct{ error }
+
+func (e *ruleLoadError) Unwrap() error { return e.error }
+
 // AppOptions configure NewApp.
 type AppOptions struct {
 	ConfigPath string
@@ -62,16 +72,17 @@ type ruleset struct {
 
 // App wires config, rules, vault, proxy and dashboard together.
 type App struct {
-	opts     AppOptions
-	logf     func(string, ...any)
-	cfgPath  string // absolute
-	baseDir  string // relative dictionary and vault paths resolve here
-	adapter  adapter.Adapter
-	upstream *url.URL
-	vault    *vault.Vault
-	vaultAt  string // file-mode vault path; "" in memory mode
-	metrics  *metrics.Registry
-	audit    *audit.Log
+	opts      AppOptions
+	logf      func(string, ...any)
+	cfgPath   string // absolute
+	baseDir   string // relative dictionary and vault paths resolve here
+	adapter   adapter.Adapter
+	upstream  *url.URL
+	vault     *vault.Vault
+	vaultAt   string   // file-mode vault path; "" in memory mode
+	vaultLock *os.File // held from before opening the vault through the final save
+	metrics   *metrics.Registry
+	audit     *audit.Log
 	// decisions is the persisted decision log, nil when audit is disabled
 	// (the proxy then gets decisionlog.Discard).
 	decisions *decisionlog.Log
@@ -115,25 +126,21 @@ func NewApp(opts AppOptions) (*App, error) {
 		metrics: metrics.New(), audit: audit.New(auditCapacity),
 		listen: net.Listen, errs: make(chan error, 2),
 	}
+	ready := false
+	defer func() {
+		if !ready && a.vaultLock != nil {
+			a.vaultLock.Close()
+		}
+	}()
 	cfg, ds, err := loadRules(abs)
 	if err != nil {
-		return nil, err
+		return nil, &ruleLoadError{err}
 	}
-	ad, ok := adapter.Get(opts.Adapter)
-	if !ok {
-		return nil, fmt.Errorf("unknown adapter %q", opts.Adapter)
-	}
-	a.adapter = ad
-	// Every upstream is checked, not only the selected adapter's: a bad
-	// unused entry must not be loaded (and shown) just because it is unused.
-	if cfg.Upstreams[ad.Name()] == "" {
-		return nil, fmt.Errorf("no upstream configured for adapter %q", ad.Name())
-	}
-	ups, err := parseUpstreams(cfg.Upstreams)
+	ad, upstream, err := adapterUpstream(opts.Adapter, cfg.Upstreams)
 	if err != nil {
 		return nil, err
 	}
-	a.upstream = ups[ad.Name()]
+	a.adapter, a.upstream = ad, upstream
 	if err := a.openVault(cfg.Vault); err != nil {
 		return nil, err
 	}
@@ -142,6 +149,7 @@ func NewApp(opts AppOptions) (*App, error) {
 		return nil, err
 	}
 	a.cur.Store(a.newRuleset(cfg, ds))
+	ready = true
 	return a, nil
 }
 
@@ -212,8 +220,27 @@ func (a *App) newRuleset(cfg *config.Config, ds []detect.Detector) *ruleset {
 	}
 }
 
-// parseUpstreams checks every configured upstream, in name order; serve and
-// check-config share it.
+// adapterUpstream selects a registered adapter and validates its upstream,
+// including every unused entry. Startup and check-config share these checks.
+func adapterUpstream(name string, raw map[string]string) (adapter.Adapter, *url.URL, error) {
+	if name == "" {
+		name = "codex"
+	}
+	ad, ok := adapter.Get(name)
+	if !ok {
+		return nil, nil, fmt.Errorf("unknown adapter %q", name)
+	}
+	if raw[ad.Name()] == "" {
+		return nil, nil, fmt.Errorf("no upstream configured for adapter %q", ad.Name())
+	}
+	ups, err := parseUpstreams(raw)
+	if err != nil {
+		return nil, nil, err
+	}
+	return ad, ups[ad.Name()], nil
+}
+
+// parseUpstreams checks every configured upstream, in name order.
 func parseUpstreams(raw map[string]string) (map[string]*url.URL, error) {
 	out := make(map[string]*url.URL, len(raw))
 	for _, name := range slices.Sorted(maps.Keys(raw)) {
@@ -281,7 +308,12 @@ func (a *App) openVault(vc config.VaultConfig) error {
 		return nil
 	}
 	keyPath, path := a.resolve(vc.KeyFile), a.resolve(vc.File)
-	_, err := os.Stat(path)
+	lock, err := vault.LockFile(path)
+	if err != nil {
+		return err
+	}
+	a.vaultLock = lock
+	_, err = os.Stat(path)
 	exists := err == nil
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("vault: %w", err)
@@ -486,6 +518,10 @@ func (a *App) Reload() error {
 	defer a.reloadMu.Unlock()
 	cfg, ds, err := loadRules(a.cfgPath)
 	if err != nil {
+		// YAML and regexp errors can quote sensitive configuration values.
+		// Keep those details in the operator's explicit check-config command,
+		// never in persistent server logs or the dashboard reload response.
+		err = errLoadRules
 		a.logf("reload failed; keeping the current rules: %v", err)
 		return err
 	}
@@ -667,6 +703,11 @@ func (a *App) stop(ctx context.Context) error {
 	if a.decisions != nil {
 		if cerr := a.decisions.Close(); cerr != nil && err == nil {
 			err = errors.New("shutdown: decision log close failed")
+		}
+	}
+	if a.vaultLock != nil {
+		if cerr := a.vaultLock.Close(); cerr != nil && err == nil {
+			err = errors.New("shutdown: vault lock close failed")
 		}
 	}
 	return err

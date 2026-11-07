@@ -88,9 +88,9 @@ Click the shield:
 That is the whole setup. Everything else on this page is optional detail.
 Not on a Mac, or prefer a terminal? See the next section.
 
-> **Before you rely on it:** the upstream mapping has not been tested against
-> the real ChatGPT backend yet. Run the manual smoke in
-> [docs/verification.md](docs/verification.md), and read
+> **Live backend smoke passed:** Codex CLI 0.167.0 with `gpt-6-astra` was
+> verified on 2026-11-07 for routing, streamed value restoration, and a tool-call
+> round trip. See [verification results](docs/verification.md) and
 > [Known limitations](#known-limitations--behavior).
 
 If the icon shows `!`, or Codex gets an error, see
@@ -126,7 +126,7 @@ Look at the dashboard's *Blocked* column and the `cui-proxy` terminal (or
 | You see | Likely cause |
 |---|---|
 | Nothing in the dashboard | Codex is not reaching the proxy: is it running, and did you pass the `-c` flags? |
-| `403 route` or a 404 | The upstream path guess is wrong (it has not been tested against the real ChatGPT backend). See the symptom table in [docs/verification.md](docs/verification.md#5-what-to-look-for-first-prompt). |
+| `403 route` or a 404 | Check that the configured upstream base and requested route match the supported Codex endpoints. See the symptom table in [docs/verification.md](docs/verification.md#5-what-to-look-for-first-prompt). |
 | `422 request blocked ...` | A safety check refused the request; the message names the rule and kind, never the value. See [Block diagnostics](#block-diagnostics). |
 
 
@@ -326,11 +326,11 @@ codex -c 'model_provider="cui-proxy"' \
 `requires_openai_auth = true` makes Codex send its ChatGPT login headers to
 the proxy, which forwards them unchanged to the upstream.
 
-**Unverified:** the upstream mapping (`/v1/responses` ->
-`https://chatgpt.com/backend-api/codex/responses`) has not been tested
-against the real service yet. Run the manual smoke in
-[docs/verification.md](docs/verification.md) first. It also says what to
-change if the mapping is wrong.
+The upstream mapping (`/v1/responses` ->
+`https://chatgpt.com/backend-api/codex/responses`) passed a live smoke test
+on 2026-11-07 with Codex CLI 0.167.0 and `gpt-6-astra`, including streamed
+restoration and a shell tool round trip. See [docs/verification.md](docs/verification.md)
+for evidence, scope, and repeatable checks.
 
 
 ## Commands
@@ -342,7 +342,7 @@ change if the mapping is wrong.
 | `menubar install\|uninstall\|status` | macOS only: build and manage the menu-bar app that runs the proxy in the background. |
 | `info -config PATH` | Print the proxy and dashboard URLs for a config (used by the menu-bar app). |
 | `serve -config PATH [-adapter codex]` | Run the proxy (default `127.0.0.1:8787`) and the dashboard (default `127.0.0.1:8788`). |
-| `check-config -config PATH` | Validate the config, rule files and upstream URLs; prints `ok: <N> rules`, exits 1 on error. |
+| `check-config -config PATH [-adapter NAME]` | Validate the config, rule files and selected adapter/upstream; prints `ok: <N> rules`, exits 1 on error. |
 | `audit verify [-file PATH \| -config PATH]` | Check the decision log's hash chain across the active and rotated files; exit 1 on a break. |
 | `explain [-config PATH] REQUEST-ID` | Say in plain words why a request was forwarded, sanitized or blocked, from the decision log. |
 | `test-rules -config PATH` | Read stdin (max 8 MiB), print the sanitized text to stdout and a rule/class/count table to stderr. Uses a throwaway vault. |
@@ -376,7 +376,7 @@ rm -r ~/.config/cui-proxy                                 # config and dictionar
 
 ## Build
 
-Requires Go 1.26.
+Requires Go 1.26.10 or newer.
 
 ```sh
 make build            # -> bin/cui-proxy
@@ -421,7 +421,9 @@ a second signal closes at once.
   vault is saved every 30 s when it changed and on shutdown. A vault file that
   cannot be read (wrong key, missing key file, older format, corruption) stops
   startup; it is never silently replaced. To start over, remove the vault
-  file yourself.
+  file yourself. Only one process may own a file vault: a lifetime lock
+  prevents stale writers from overwriting mappings. Keep its parent directory
+  private. A crash can still lose changes since the last periodic save.
 
 ### Synthetic address pool
 
@@ -594,8 +596,14 @@ Settings, limits and details: [docs/decision-log.md](docs/decision-log.md).
   from a directory whose path holds no dictionary term. (Sanitizing that
   header like the body may follow once a real session confirms its shape;
   today it is only scanned.)
-- Only streamed (SSE) responses are restored. A non-streaming
-  (`stream: false`) response is relayed as is, with synthetics in it.
+- Only streamed (SSE) model responses are supported. Successful non-SSE or
+  encoded responses are refused with HTTP 502 (`stream_rewrite`) rather than
+  delivering unrestored tool arguments. Ordinary upstream error responses
+  and model listings retain their status and body. Unlabelled SSE is recognized
+  from a bounded framing probe; unrecognized successful bodies fail closed.
+- Numeric literals honor custom rules regardless of length. Detected decimal
+  or exponent spellings are refused rather than risking a lossy rewrite;
+  exponents outside ±400 are refused. Unmatched numbers keep their spelling.
 - Unseparated card-like digit runs and long numeric ids become `REDACTED`
   tokens rather than format-preserving synthetics. So do tcpdump-style
   `addr.port` tokens (`10.20.30.15.443`, `2001:db8::1.443`, port included)
@@ -629,9 +637,16 @@ Settings, limits and details: [docs/decision-log.md](docs/decision-log.md).
   refused in the config next to any blocking rule, and it is logged as UNSAFE
   at startup (and by `check-config`).
 - Listeners are loopback-only unless `allow_non_loopback: true`; the bound
-  address is checked after binding.
+  address is checked after binding. The proxy API accepts native clients:
+  browser Origin/Fetch Metadata headers are refused, and loopback mode rejects
+  non-loopback Host names to prevent DNS rebinding. Restored streams are marked
+  `Cache-Control: no-store`. Other native processes under the same OS user are
+  inside the trust boundary.
 - The dashboard is localhost-only and never shows real values: only rule
   names, counts, paths and block reasons.
+
+See [assurance and operations](docs/assurance.md) for the reviewed threat
+model, verification evidence, operating requirements, and remaining limits.
 
 ## Support
 

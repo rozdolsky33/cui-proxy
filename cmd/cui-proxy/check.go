@@ -13,6 +13,7 @@ import (
 func runCheck(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("check-config", flag.ContinueOnError)
 	cfgPath := fs.String("config", "", "path to the YAML config")
+	adapterName := fs.String("adapter", "codex", "adapter name")
 	if code, ok := parseFlags(fs, args, stderr, cfgPath); !ok {
 		return code
 	}
@@ -24,7 +25,7 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return fail(stderr, err)
 	}
-	if _, err := parseUpstreams(cfg.Upstreams); err != nil {
+	if _, _, err := adapterUpstream(*adapterName, cfg.Upstreams); err != nil {
 		return fail(stderr, err)
 	}
 	if cfg.Policy.OnError == "passthrough" {

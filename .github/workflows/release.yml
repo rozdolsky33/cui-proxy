@@ -29,6 +29,9 @@ jobs:
           go vet ./...
           go test -race -count=1 ./...
 
+      - name: reachable vulnerability scan
+        run: make vuln
+
       - name: build archives
         run: scripts/package.sh "$GITHUB_REF_NAME"
 

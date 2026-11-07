@@ -31,7 +31,7 @@ audit:
   file: /Users/you/.local/state/cui-proxy/decisions.jsonl
   on_error: block        # block | warn (default: block under strict, warn under sanitize)
   max_size_mb: 50        # rotate before a record would pass this size (1 or more)
-  retention_days: 90     # delete old rotated files; 0 keeps them forever
+  retention_days: 90     # 0..106751 days; 0 keeps rotated files forever
 ```
 
 - `file` defaults to `$XDG_STATE_HOME/cui-proxy/decisions.jsonl` (only when

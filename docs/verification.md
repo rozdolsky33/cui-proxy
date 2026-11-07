@@ -1,12 +1,41 @@
 # Manual verification against the real Codex CLI
 
-**Status: NOT executed.** These steps were written during the build but were
-not run. The build never contacted chatgpt.com or openai.com and never used
-real credentials. All automated tests run against `httptest` fake upstreams
-(`cmd/cui-proxy/e2e_test.go`, `internal/proxy`). So **the upstream mapping
-`/v1/responses` -> `https://chatgpt.com/backend-api/codex/responses` is
-unverified.** It is the open item left by
-[the redirect spike](spikes/2026-11-06-codex-redirect-spike.md).
+**Status: live backend smoke passed on 2026-11-07.** Built from this checkout
+on macOS arm64 with Go 1.26.10; exercised Codex CLI 0.167.0, ChatGPT login,
+model `gpt-6-astra`, and reasoning effort `low`. Only fabricated prompts were
+used, from an empty scratch directory, with command-line provider overrides;
+the global Codex configuration was unchanged.
+
+## Recorded results
+
+[Recorded run summary](verification-results/2026-11-07-live-smoke.json)
+contains versions, case outcomes, metrics, and scope without session credentials.
+
+| Check | Observed result |
+|---|---|
+| Live routing and authentication | `GET /v1/models` and `POST /v1/responses` returned HTTP 200 |
+| Greeting | Exact reply `CUI_PROXY_LIVE_OK` |
+| IP and OCID restoration | Exact fabricated originals returned: `10.20.30.15` and `ocid1.instance.oc1.phx.anyhqljrabcdefghijklmnop` |
+| Shell tool round trip | Codex executed `printf "host=10.20.30.15 done\n"`; shell output and final reply contained the original fabricated IP |
+| Resent history | The second tool-turn request recorded three IPv4 replacements, covering the restored history/tool output |
+| Decision log | The baseline live-run chain passed `audit verify`; logs contained no fabricated prompt values |
+
+The baseline run recorded 8 requests, 6 replacements and 16 rewritten events.
+It reported zero errors, zero passthroughs, and zero audit-write failures.
+`restores` counts rewritten events, including buffered delta re-chunking; it is
+not the number of distinct restored values.
+
+Live testing found that the Responses endpoint can omit `Content-Type` on
+its SSE response. Header-only classification skipped restoration. The proxy
+now probes an unlabelled, unencoded response on a sanitizing route and applies
+SSE restoration when its framing matches. Regression tests cover the missing
+header, comments, BOM, leading blank lines, and unchanged JSON error bodies.
+
+This smoke covers text and a function tool call over HTTP/SSE. Long-session
+compaction, websocket transport, image input, and custom `apply_patch` events
+are outside this run's coverage. Existing content restrictions still apply.
+
+## Repeat the smoke
 
 You run this by hand, once, on your own machine, with your own Codex login.
 Use only synthetic prompts. The values in step 6 are made up on purpose; do
@@ -91,7 +120,7 @@ If something fails, check these in order:
 | 401 / 403 from the upstream | The auth headers did not arrive. Check that `requires_openai_auth=true` is in the `-c` flag. The proxy forwards `Authorization` and `Chatgpt-Account-Id` untouched. |
 | 422 `header` block | A non-credential request header (e.g. `X-Codex-Turn-Metadata`, which carries the cwd) matched a rule. Headers are never rewritten, so this always blocks. A dictionary entry that matches part of the working directory's path blocks every request from that directory. Run from a directory whose path holds nothing sensitive. (Once this smoke confirms the header's shape, sanitizing it like the body can be considered; the behavior is unchanged for now.) |
 | 422 `sanitize` / `unrestorable` block | The body could not be sanitized. The error message and the log line name a kind and the rule, e.g. `reason=sanitize kind=pool_exhausted rule=builtin.ipv4`; see the README's "Block diagnostics". No value is ever printed. |
-| 403 `route` on an unexpected POST path, typically after a long session | Codex called an endpoint the adapter does not know, most likely remote compaction (it advertises `X-Codex-Beta-Features: remote_compaction_v2`; the path may be e.g. `/v1/responses/compact`). The feed shows the path as `(unmatched)`; find the real path with the debug log as in the 404 row. Add it as a `KindSanitize` route in `Match` in `internal/adapter/codex/codex.go` (its body is the same kind of history, so the request sanitizer applies). Note that a non-SSE JSON response on that route is relayed as is, unrestored: safe (only synthetics leave the machine), but the compacted history Codex keeps would then hold synthetics, so review it. |
+| 403 `route` on an unexpected POST path, typically after a long session | Codex called an endpoint the adapter does not know, most likely remote compaction (it advertises `X-Codex-Beta-Features: remote_compaction_v2`; the path may be e.g. `/v1/responses/compact`). The feed shows the path as `(unmatched)`; find the real path with the debug log as in the 404 row. Add it as a `KindSanitize` route in `Match` in `internal/adapter/codex/codex.go` (its body is the same kind of history, so the request sanitizer applies). Note that a successful non-SSE response is refused until the adapter supports safe restoration for that format. |
 | 502 `upstream_redirect` | The upstream answered with a 3xx. The proxy never relays redirects, so the base URL is probably wrong (see the 404 row). |
 | 502 `stream_rewrite` or a stream cut mid-answer | An SSE event the rewriter could not handle. Note the event names from the open items below and report them. |
 
@@ -188,16 +217,17 @@ Write down, for this repo:
 3. Answers to the open items below, including the compaction path (6b) and
    the `X-Codex-Turn-Metadata` shape.
 
-## Open items to confirm against a real session
+## Coverage notes and follow-up checks
 
-These are assumptions in the adapter that only a real session can confirm:
+The live smoke established the core route and restoration path; broader
+sessions can exercise the additional cases below:
 
-- **Upstream mapping**: `/v1/responses` -> `/backend-api/codex/responses` and
-  `/v1/models` -> `/backend-api/codex/models` (query string kept).
+- **Confirmed routing**: `/v1/responses` -> `/backend-api/codex/responses` and
+  `/v1/models` -> `/backend-api/codex/models` returned HTTP 200 in the live smoke.
 - **Trailing-delta fields**: real delta events carry `sequence_number` and
   `obfuscation`. When the restorer re-chunks a held-back delta, it reuses the
-  last delta event's fields. Check that Codex accepts this (no error about
-  sequence numbers).
+  last delta event's fields. Codex accepted the text and function-tool streams
+  in the live smoke; continue watching sequence handling in longer sessions.
 - **Event names**: reasoning-summary events
   (`response.reasoning_summary_text.delta`,
   `response.reasoning_summary_part.done`) and the custom-tool input event
@@ -209,8 +239,8 @@ These are assumptions in the adapter that only a real session can confirm:
 - **Header shapes**: the exact names and contents of `Session-Id`,
   `Thread-Id`, `X-Codex-Turn-Metadata` and `X-Codex-Beta-Features`. These are
   scanned and can cause a `header` block.
-- **Non-streaming / websocket / compaction / image requests**: not observed in
-  the spike. Image parts are blocked by design. Remote compaction
+- **Additional transports and content**: non-streaming, websocket, compaction
+  and image requests are outside the recorded smoke coverage. Image parts are blocked by design. Remote compaction
   (`remote_compaction_v2`) probably uses its own endpoint, which today
   returns 403 `route` (step 6b); a route is added only once the real path
   is confirmed.
