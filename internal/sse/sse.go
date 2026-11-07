@@ -29,8 +29,12 @@ type Event struct {
 // Reader parses SSE events. The id: and retry: fields and comment lines are
 // accepted and ignored.
 type Reader struct {
-	br *bufio.Reader
+	br     *bufio.Reader
+	skipLF bool // previous line ended in \r; drop a leading \n
+	n      int  // bytes consumed, saturating at 4 (for BOM detection)
 }
+
+var bom = []byte{0xEF, 0xBB, 0xBF}
 
 // NewReader returns a Reader reading from r.
 func NewReader(r io.Reader) *Reader { return &Reader{br: bufio.NewReader(r)} }
@@ -48,6 +52,15 @@ func (r *Reader) readLine(budget *int) (line []byte, err error) {
 			}
 			return nil, e
 		}
+		if r.skipLF {
+			r.skipLF = false
+			if c == '\n' {
+				continue
+			}
+		}
+		if r.n < 4 {
+			r.n++
+		}
 		*budget--
 		if *budget < 0 {
 			return nil, ErrEventTooLarge
@@ -56,12 +69,13 @@ func (r *Reader) readLine(budget *int) (line []byte, err error) {
 		case '\n':
 			return buf, nil
 		case '\r':
-			if p, e := r.br.Peek(1); e == nil && p[0] == '\n' {
-				_, _ = r.br.ReadByte()
-			}
+			r.skipLF = true
 			return buf, nil
 		}
 		buf = append(buf, c)
+		if r.n == 3 && bytes.Equal(buf, bom) {
+			buf = buf[:0] // strip a leading UTF-8 BOM, once
+		}
 	}
 }
 
