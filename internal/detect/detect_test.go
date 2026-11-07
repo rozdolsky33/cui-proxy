@@ -62,6 +62,7 @@ func TestBuiltinDetectors(t *testing.T) {
 		{"card luhn bad", "4111 1111 1111 1112", nil},
 		{"bearer", "Authorization: Bearer abcdef0123456789xyz", []got{{"secret", "abcdef0123456789xyz"}}},
 		{"bearer jwt", "Bearer " + jwt, []got{{"secret", jwt}}},
+		{"bearer keyword inside token", "x=Bearer abcdefgh1=0=Bearer abcdefgh12345678=0", []got{{"secret", "abcdefgh1=0=Bearer"}, {"secret", "abcdefgh12345678=0"}}},
 		{"jwt", "token=" + jwt + ";", []got{{"secret", jwt}}},
 		{"private key", "k:\n" + pem + "\nafter", []got{{"secret", pem}}},
 		{"private key unterminated", "-----BEGIN PRIVATE KEY-----\nabc", []got{{"secret", "-----BEGIN PRIVATE KEY-----\nabc"}}},
