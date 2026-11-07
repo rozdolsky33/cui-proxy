@@ -26,6 +26,7 @@ type Vault struct {
 	mu     sync.RWMutex
 	fwd    map[string]string   // class+"\x00"+real -> synthetic
 	rev    map[string]string   // synthetic -> real
+	cls    map[string]string   // synthetic -> class
 	reals  map[string]struct{} // every real held or reserved
 	sorted []string            // synthetics, ascending, for prefix lookup
 }
@@ -37,6 +38,7 @@ func New(key []byte) *Vault {
 		auditKey: subkey(key, "cui-proxy/audit"),
 		fwd:      map[string]string{},
 		rev:      map[string]string{},
+		cls:      map[string]string{},
 		reals:    map[string]struct{}{},
 	}
 }
@@ -110,6 +112,7 @@ func (v *Vault) taken(cand string) bool {
 func (v *Vault) insert(fk, real, syn string) {
 	v.fwd[fk] = syn
 	v.rev[syn] = real
+	v.cls[syn], _ = splitKey(fk)
 	v.reals[real] = struct{}{}
 	i := sort.SearchStrings(v.sorted, syn)
 	v.sorted = append(v.sorted, "")
@@ -123,6 +126,14 @@ func (v *Vault) Real(synthetic string) (string, bool) {
 	defer v.mu.RUnlock()
 	r, ok := v.rev[synthetic]
 	return r, ok
+}
+
+// ClassOf returns the class a synthetic was generated for.
+func (v *Vault) ClassOf(synthetic string) (string, bool) {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	c, ok := v.cls[synthetic]
+	return c, ok
 }
 
 // IsSynthetic reports whether s is a synthetic held by the vault.

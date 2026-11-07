@@ -11,11 +11,19 @@ import (
 // Restorer replaces synthetics held by a vault with their real values. It is
 // safe for concurrent use.
 //
-// Boundary rule. Synthetics are prefixes of one another ("192.0.2.5" vs
-// "192.0.2.50") and model-written text may contain documentation-range values
-// the vault never issued, so a synthetic S found at text[s:e] is restored only
-// when it stands alone as a token. Matching is left to right, longest
-// synthetic first at each position; a candidate is rejected when
+// Matching is left to right, longest synthetic first at each position, and
+// only vault members match.
+//
+// Self-delimiting classes (secret, hostname, email, ocid; see selfDelimiting)
+// restore wherever they occur, even glued to letters, digits, '_', '-' or '.':
+// their fixed constructed form cannot be a proper prefix of another synthetic
+// or plausibly arise in model-written text.
+//
+// Boundary rule (ipv4, ipv6, cidr, ssn, card). These synthetics are prefixes
+// of one another ("192.0.2.5" vs "192.0.2.50") and model-written text may
+// contain documentation-range values the vault never issued, so a synthetic S
+// found at text[s:e] is restored only when it stands alone as a token. A
+// candidate is rejected when
 //
 //  1. the byte before s or the byte at e is an ASCII letter or digit;
 //  2. S starts with a digit and is preceded by "<digit>." , or S ends with a
@@ -23,9 +31,10 @@ import (
 //     "1.192.0.2.5" or "192.0.2.5.1");
 //  3. S contains ':' (ipv6-shaped) and is preceded by ':' that follows a hex
 //     digit or ':', or followed by ':' then a hex digit or ':' (colon-hex run);
-//  4. S starts with a letter (REDACTED-…, h-…, user-…, ocid1.…) and is adjacent
-//     to '_', or to '-' or '.' that is itself adjacent (outward) to an ASCII
-//     letter or digit (word/hostname run such as "x-S", "S-abc", "S.com").
+//  4. S starts with a letter and is adjacent to '_', or to '-' or '.' that is
+//     itself adjacent (outward) to an ASCII letter or digit (word/hostname run
+//     such as "x-S", "S-abc", "S.com"). No bounded class currently generates a
+//     letter-initial synthetic; the rule is kept for classes added later.
 //
 // Anything else adjacent (space, quotes, brackets, '/', '=', '@', ':' after an
 // ipv4, '-' after an ipv4, non-ASCII runes, '.' at a sentence end) restores.
@@ -40,13 +49,23 @@ type Restorer struct {
 // NewRestorer returns a restorer backed by v.
 func NewRestorer(v *vault.Vault) *Restorer { return &Restorer{v: v} }
 
+// selfDelimiting lists the classes whose synthetic has a fixed, constructed
+// form that is never a proper prefix of another synthetic: REDACTED-<8hex>,
+// h-<8hex>.example, user-<8hex>@mail.example, ocid1.<type>.ocsynth..<26hex>.
+// They restore wherever a vault member occurs, without the boundary rule.
+var selfDelimiting = map[string]bool{"secret": true, "hostname": true, "email": true, "ocid": true}
+
 // snapshot is an immutable view of the vault's synthetics.
 type snapshot struct {
-	n      int                 // vault Len when taken
-	set    map[string]struct{} // every synthetic
-	lens   []int               // distinct synthetic lengths, descending
-	sorted []string            // ascending, for prefix queries
-	maxLen int
+	n          int             // vault Len when taken
+	set        map[string]bool // every synthetic -> self-delimiting?
+	lens       []int           // distinct synthetic lengths, descending
+	selfLens   []int           // distinct self-delimiting lengths, descending
+	sorted     []string        // all synthetics, ascending, for prefix queries
+	sortedSelf []string        // self-delimiting synthetics, ascending
+	selfFirst  [256]bool       // first bytes of self-delimiting synthetics
+	maxLen     int
+	selfMax    int
 }
 
 // snapshot returns a view of the current synthetics. The vault only grows, so
@@ -59,28 +78,42 @@ func (r *Restorer) snapshot() *snapshot {
 		return r.snap
 	}
 	syns := r.v.Synthetics()
-	sn := &snapshot{n: n, set: make(map[string]struct{}, len(syns))}
-	seen := map[int]bool{}
-	for _, s := range syns { // longest first, so lens comes out descending
-		sn.set[s] = struct{}{}
+	sn := &snapshot{n: n, set: make(map[string]bool, len(syns))}
+	seen, seenSelf := map[int]bool{}, map[int]bool{}
+	for _, s := range syns { // longest first, so lens come out descending
+		c, _ := r.v.ClassOf(s)
+		self := selfDelimiting[c]
+		sn.set[s] = self
 		if !seen[len(s)] {
 			seen[len(s)] = true
 			sn.lens = append(sn.lens, len(s))
+		}
+		if self {
+			sn.sortedSelf = append(sn.sortedSelf, s)
+			sn.selfFirst[s[0]] = true
+			if !seenSelf[len(s)] {
+				seenSelf[len(s)] = true
+				sn.selfLens = append(sn.selfLens, len(s))
+			}
 		}
 	}
 	if len(sn.lens) > 0 {
 		sn.maxLen = sn.lens[0]
 	}
+	if len(sn.selfLens) > 0 {
+		sn.selfMax = sn.selfLens[0]
+	}
 	sn.sorted = append([]string(nil), syns...)
 	sort.Strings(sn.sorted)
+	sort.Strings(sn.sortedSelf)
 	r.snap = sn
 	return sn
 }
 
-// hasPrefix reports whether some synthetic starts with p (exact match included).
-func (sn *snapshot) hasPrefix(p string) bool {
-	i := sort.SearchStrings(sn.sorted, p)
-	return i < len(sn.sorted) && strings.HasPrefix(sn.sorted[i], p)
+// hasPrefix reports whether some string in sorted starts with p (exact match included).
+func hasPrefix(sorted []string, p string) bool {
+	i := sort.SearchStrings(sorted, p)
+	return i < len(sorted) && strings.HasPrefix(sorted[i], p)
 }
 
 type match struct{ start, end int }
@@ -93,9 +126,13 @@ func isHex(b byte) bool    { return isDigit(b) || b >= 'a' && b <= 'f' || b >= '
 // scan finds restorable synthetics in t starting at from; t[:from] is already
 // decided context used only for the left boundary check. With final=false it
 // stops at the first position whose outcome could change if more text were
-// appended (a tail that is a prefix of some synthetic, or a synthetic whose
-// right boundary is not yet known) and returns that position as stop;
-// otherwise stop is len(t).
+// appended (a tail that is a prefix of a synthetic that could match there, or
+// a bounded synthetic whose right boundary is not yet known) and returns that
+// position as stop; otherwise stop is len(t).
+//
+// Every synthetic starts with an ASCII letter or digit. At a token start (the
+// previous byte is not a letter/digit) any synthetic may match; elsewhere
+// only self-delimiting ones can, since rule 1 rejects the others.
 func (sn *snapshot) scan(t string, from int, final bool) (ms []match, stop int) {
 	if len(sn.set) == 0 {
 		return nil, len(t)
@@ -103,23 +140,34 @@ func (sn *snapshot) scan(t string, from int, final bool) (ms []match, stop int) 
 	i := from
 next:
 	for i < len(t) {
-		// Every synthetic starts with an ASCII letter or digit, and rule 1
-		// forbids a letter/digit before it, so only token starts can match.
-		if !isAlnum(t[i]) || i > 0 && isAlnum(t[i-1]) {
+		if !isAlnum(t[i]) {
 			i++
 			continue
 		}
-		if !final && len(t)-i <= sn.maxLen && sn.hasPrefix(t[i:]) {
+		tokenStart := i == 0 || !isAlnum(t[i-1])
+		lens, sorted, lim := sn.lens, sn.sorted, sn.maxLen
+		if !tokenStart {
+			if !sn.selfFirst[t[i]] {
+				i++
+				continue
+			}
+			lens, sorted, lim = sn.selfLens, sn.sortedSelf, sn.selfMax
+		}
+		if !final && len(t)-i <= lim && hasPrefix(sorted, t[i:]) {
 			return ms, i
 		}
-		for _, l := range sn.lens {
+		for _, l := range lens {
 			if i+l > len(t) {
 				continue
 			}
-			if _, ok := sn.set[t[i:i+l]]; !ok {
+			self, ok := sn.set[t[i:i+l]]
+			if !ok || !tokenStart && !self {
 				continue
 			}
-			ok, more := bounded(t, i, i+l, final)
+			ok, more := true, false
+			if !self {
+				ok, more = bounded(t, i, i+l, final)
+			}
 			if more {
 				return ms, i
 			}

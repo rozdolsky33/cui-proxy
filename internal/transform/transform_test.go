@@ -144,8 +144,10 @@ func TestSinkNeverSeesRealValues(t *testing.T) {
 	}
 }
 
-// F1: numeric IDs of any length (where strict Luhn sub-windows are common)
-// never block and always round-trip. Seeded, deterministic sweep.
+// F1/F2: numeric IDs of any length, alone or glued to letters, '_', '-' and
+// dotted digits, never block, round-trip through Text and Stream, are
+// sanitized idempotently, and never leak a masked Luhn window. Seeded,
+// deterministic sweep.
 func TestNumericIDsNeverBlock(t *testing.T) {
 	ds := builtins(t)
 	rng := rand.New(rand.NewSource(42))
@@ -158,19 +160,30 @@ func TestNumericIDsNeverBlock(t *testing.T) {
 	}
 	var s *Sanitizer
 	var r *Restorer
+	// F2 templates: digit runs glued to letters, '_', '-', and dotted digits.
+	templates := []string{
+		`{"x": 0.%s}`, `{"x": 1.%s e}`, `{"x": -0.%s}`, `"trace_%s"`, `"a%s"`,
+		`1.%se-5`, `%s.5`, `"%s-abcd"`, `order_%s`, `abc %s def`, `abc%sdef`,
+	}
 	for i := 0; i < 6000; i++ {
 		if i%200 == 0 { // fresh vault: keep the per-call snapshot cost small
 			v := vault.New(testKey)
 			s, r = NewSanitizer(ds, v, nil), NewRestorer(v)
 		}
-		var in string
-		switch i % 3 {
+		var in, n string
+		switch i % 4 {
 		case 0:
-			in = fmt.Sprintf(`{"id": %s}`, digits(14+rng.Intn(19)))
+			n = digits(14 + rng.Intn(19))
+			in = fmt.Sprintf(`{"id": %s}`, n)
 		case 1:
-			in = "ts=" + strconv.FormatInt(1_600_000_000_000_000_000+rng.Int63n(400_000_000_000_000_000), 10)
+			n = strconv.FormatInt(1_600_000_000_000_000_000+rng.Int63n(400_000_000_000_000_000), 10)
+			in = "ts=" + n
+		case 2:
+			n = digits(14 + rng.Intn(19))
+			in = fmt.Sprintf(`{"id": %s, "ts": %s}`, n, digits(19))
 		default:
-			in = fmt.Sprintf(`{"id": %s, "ts": %s}`, digits(14+rng.Intn(19)), digits(19))
+			n = digits(13 + rng.Intn(12))
+			in = fmt.Sprintf(templates[rng.Intn(len(templates))], n)
 		}
 		out, err := s.Text(in)
 		if err != nil {
@@ -179,7 +192,59 @@ func TestNumericIDsNeverBlock(t *testing.T) {
 		if got := r.Text(out); got != in {
 			t.Fatalf("round trip %q -> %q -> %q", in, out, got)
 		}
+		if w := luhnHit(n); w != "" && strings.Contains(out, w) {
+			t.Fatalf("Luhn-valid run %q survives in %q", w, out)
+		}
+		again, err := s.Text(out)
+		if err != nil || again != out {
+			t.Fatalf("not idempotent: %q -> %q (%v)", out, again, err)
+		}
+		st := r.NewStream()
+		var sb strings.Builder
+		for rest := out; rest != ""; {
+			k := 1 + rng.Intn(len(rest))
+			sb.WriteString(st.Write(rest[:k]))
+			rest = rest[k:]
+		}
+		sb.WriteString(st.Flush())
+		if sb.String() != in {
+			t.Fatalf("stream %q -> %q, want %q", out, sb.String(), in)
+		}
 	}
+}
+
+// luhnHit returns a Luhn-valid 13-19 digit window of the digit run n that the
+// card rules mask (the whole run if 14-19 digits, else a window starting with
+// 3-6), or "".
+func luhnHit(n string) string {
+	if len(n) >= 14 && len(n) <= 19 && luhn(n) {
+		return n
+	}
+	for st := 0; st+13 <= len(n); st++ {
+		if n[st] < '3' || n[st] > '6' {
+			continue
+		}
+		for l := 13; l <= 19 && st+l <= len(n); l++ {
+			if luhn(n[st : st+l]) {
+				return n[st : st+l]
+			}
+		}
+	}
+	return ""
+}
+
+func luhn(d string) bool {
+	sum := 0
+	for i := len(d) - 1; i >= 0; i-- {
+		x := int(d[i] - '0')
+		if (len(d)-1-i)%2 == 1 {
+			if x *= 2; x > 9 {
+				x -= 9
+			}
+		}
+		sum += x
+	}
+	return sum%10 == 0
 }
 
 func TestSanitizeErrorReturnsNoText(t *testing.T) {
@@ -210,11 +275,12 @@ func TestSanitizeErrorReturnsNoText(t *testing.T) {
 // sanitizer must refuse (fail closed) rather than send text that cannot round-trip.
 func TestSanitizeBlocksUnrestorableContext(t *testing.T) {
 	s := NewSanitizer(builtins(t), vault.New(testKey), nil)
-	out, err := s.Text("mail bob@corp.example.com5 now")
+	// ssn keeps the boundary rule; the detector accepts it between letters.
+	out, err := s.Text("id x123-45-6789y now")
 	if !errors.Is(err, ErrUnrestorable) {
 		t.Fatalf("err = %v, want ErrUnrestorable", err)
 	}
-	if msg := err.Error(); !strings.Contains(msg, "rule=builtin.email") || !strings.Contains(msg, "class=email") || strings.Contains(msg, "bob") {
+	if msg := err.Error(); !strings.Contains(msg, "rule=builtin.ssn") || !strings.Contains(msg, "class=ssn") || strings.Contains(msg, "6789") {
 		t.Errorf("error should name rule and class, never the value: %q", msg)
 	}
 	if out != "" {
@@ -279,6 +345,8 @@ func TestRestorerBoundaries(t *testing.T) {
 	realSec, _ := v.Real(sec)
 	v6 := pseudo(t, v, "ipv6", "fe80::1")
 	em := pseudo(t, v, "email", "bob@corp.example.com")
+	host := pseudo(t, v, "hostname", "db.corp.internal")
+	oc := pseudo(t, v, "ocid", "ocid1.instance.oc2..abc")
 	var notVault string
 	for d := 0; d <= 9; d++ {
 		if c := short + strconv.Itoa(d); !v.IsSynthetic(c) {
@@ -308,16 +376,24 @@ func TestRestorerBoundaries(t *testing.T) {
 		{short + "x", short + "x"},
 		{short + ".1", short + ".1"},
 		{"1." + short, "1." + short},
-		// secrets / word-run continuation
+		// Self-delimiting classes (secret, hostname, email, ocid) restore
+		// even when glued to letters, digits, '_', '-' or '.' (F2 ruling).
 		{"key " + sec + ".", "key " + realSec + "."},
 		{"'" + sec + "'", "'" + realSec + "'"},
-		{sec + "-abc", sec + "-abc"},
-		{sec + "_x", sec + "_x"},
-		{"x-" + sec, "x-" + sec},
-		{"x_" + sec, "x_" + sec},
-		{sec + ".txt", sec + ".txt"},
-		{em + ".com", em + ".com"},
+		{"x" + sec + "y", "x" + realSec + "y"},
+		{"9" + sec + "9", "9" + realSec + "9"},
+		{sec + "-abc", realSec + "-abc"},
+		{sec + "_x", realSec + "_x"},
+		{"x-" + sec, "x-" + realSec},
+		{"x_" + sec, "x_" + realSec},
+		{sec + ".txt", realSec + ".txt"},
+		{"0." + sec + ".5", "0." + realSec + ".5"},
+		{em + ".com", "bob@corp.example.com.com"},
+		{"x" + em + "y", "xbob@corp.example.comy"},
 		{"<" + em + ">", "<bob@corp.example.com>"},
+		{"a" + host + "b", "adb.corp.internalb"},
+		{"opc-" + oc + "9", "opc-ocid1.instance.oc2..abc9"},
+		{"x" + sec[:len(sec)-1], "x" + sec[:len(sec)-1]}, // not a vault member
 		// ipv6
 		{"[" + v6 + "]:443", "[fe80::1]:443"},
 		{v6 + ":1", v6 + ":1"},

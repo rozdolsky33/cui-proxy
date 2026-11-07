@@ -13,7 +13,9 @@ import (
 	"sort"
 )
 
-var fileMagic = []byte("CUIV1")
+// fileMagic is the current format: v2 seals with the derived file subkey.
+// Any other "CUIV" version is rejected with a clear error.
+var fileMagic = []byte("CUIV2")
 
 type entry struct {
 	Class     string `json:"c"`
@@ -119,6 +121,9 @@ func Open(path string, key []byte) (*Vault, error) {
 	blob, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("vault: read: %w", err)
+	}
+	if len(blob) >= len(fileMagic) && string(blob[:4]) == "CUIV" && string(blob[:len(fileMagic)]) != string(fileMagic) {
+		return nil, fmt.Errorf("vault: unsupported vault file version %q (want %q); remove the file to start a new vault", blob[:len(fileMagic)], fileMagic)
 	}
 	hdr := len(fileMagic) + gcm.NonceSize()
 	if len(blob) < hdr+gcm.Overhead() || string(blob[:len(fileMagic)]) != string(fileMagic) {

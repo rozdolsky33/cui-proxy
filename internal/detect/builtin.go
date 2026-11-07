@@ -17,7 +17,7 @@ var builtinDefs = []builtinDef{
 	{class: "email", pattern: `[\p{L}\p{N}._%+-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}`},
 	{class: "ssn", pattern: `\d{3}-\d{2}-\d{4}`, refine: ssnRefine},
 	{class: "card", pattern: `\d(?:[ -]?\d)*`, find: cardFind},
-	// A card window strictly inside a longer digit run masks the whole run.
+	// An unseparated digit run with a Luhn hit is masked whole, as a secret.
 	{class: "secret", pattern: `\d(?:[ -]?\d)*`, find: cardRunFind},
 	// secrets: the span is the token/blob itself, not the "Bearer" keyword.
 	// Bearer tokens need at least 8 token-charset characters after "Bearer ":

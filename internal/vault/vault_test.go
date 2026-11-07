@@ -339,3 +339,53 @@ func TestFileSealedWithSubkey(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 }
+
+// Task 4 F2: the restorer needs each synthetic's class.
+func TestClassOf(t *testing.T) {
+	v := New(testKey)
+	s, err := v.Pseudonym("secret", "tok")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c, ok := v.ClassOf(s); !ok || c != "secret" {
+		t.Errorf("ClassOf = %q, %v", c, ok)
+	}
+	if _, ok := v.ClassOf("tok"); ok {
+		t.Error("ClassOf of a real value")
+	}
+	path := filepath.Join(t.TempDir(), "v.bin")
+	if err := v.Save(path); err != nil {
+		t.Fatal(err)
+	}
+	w, err := Open(path, testKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c, ok := w.ClassOf(s); !ok || c != "secret" {
+		t.Errorf("after Open: ClassOf = %q, %v", c, ok)
+	}
+}
+
+// Task 4 F2: files from the previous format give a clear version error.
+func TestOpenOldVersionClearError(t *testing.T) {
+	v := New(testKey)
+	path := filepath.Join(t.TempDir(), "v.bin")
+	if err := v.Save(path); err != nil {
+		t.Fatal(err)
+	}
+	blob, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.HasPrefix(blob, []byte("CUIV2")) {
+		t.Fatalf("magic %q, want CUIV2", blob[:5])
+	}
+	copy(blob, "CUIV1")
+	if err := os.WriteFile(path, blob, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err = Open(path, testKey)
+	if err == nil || !strings.Contains(err.Error(), "version") || !strings.Contains(err.Error(), "CUIV1") {
+		t.Errorf("err = %v, want a clear version error naming CUIV1", err)
+	}
+}

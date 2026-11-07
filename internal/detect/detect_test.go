@@ -58,7 +58,7 @@ func TestBuiltinDetectors(t *testing.T) {
 		{"ssn serial 0000", "123-45-0000", nil},
 		{"card spaces", "pay 4111 1111 1111 1111 ok", []got{{"card", "4111 1111 1111 1111"}}},
 		{"card dashes", "4111-1111-1111-1111", []got{{"card", "4111-1111-1111-1111"}}},
-		{"card plain", "4111111111111111", []got{{"card", "4111111111111111"}}},
+		{"card plain is an unseparated run: secret", "4111111111111111", []got{{"secret", "4111111111111111"}}},
 		{"card luhn bad", "4111 1111 1111 1112", nil},
 		{"bearer", "Authorization: Bearer abcdef0123456789xyz", []got{{"secret", "abcdef0123456789xyz"}}},
 		{"bearer jwt", "Bearer " + jwt, []got{{"secret", jwt}}},
@@ -256,8 +256,8 @@ func TestFixRound1Regressions(t *testing.T) {
 		{"6 ocid after underscore", "x_ocid1.tenancy.oc2..aaaa", []got{{"ocid", "ocid1.tenancy.oc2..aaaa"}}},
 		{"6 ocid after letter", "myocid1.tenancy.oc2..aaaa", nil},
 		{"7 ssn after underscore", "_123-45-6789", []got{{"ssn", "123-45-6789"}}},
-		{"7 card after letter", "x4111111111111111", []got{{"card", "4111111111111111"}}},
-		{"7 card after underscore", "id_4111111111111111", []got{{"card", "4111111111111111"}}},
+		{"7 card after letter", "x4111111111111111", []got{{"secret", "4111111111111111"}}},
+		{"7 card after underscore", "id_4111111111111111", []got{{"secret", "4111111111111111"}}},
 		{"8 email unicode local", "mail josé@corp.com now", []got{{"email", "josé@corp.com"}}},
 		{"9 pgp block", "-----BEGIN PGP PRIVATE KEY BLOCK-----\nabc\n-----END PGP PRIVATE KEY BLOCK-----", []got{{"secret", "-----BEGIN PGP PRIVATE KEY BLOCK-----\nabc\n-----END PGP PRIVATE KEY BLOCK-----"}}},
 		{"9 pgp unterminated", "-----BEGIN PGP PRIVATE KEY BLOCK-----\nabc", []got{{"secret", "-----BEGIN PGP PRIVATE KEY BLOCK-----\nabc"}}},
@@ -345,11 +345,26 @@ func TestCardSubWindowsInEveryLongGroup(t *testing.T) {
 			t.Errorf("%q: %v", in, g)
 		}
 	}
-	// Whole-group windows are unchanged: still class card.
-	for _, in := range []string{"2223000048400011", "x4111111111111111"} {
-		if g := builtinScan(t, in); len(g) != 1 || g[0].Class != "card" {
+	// Task 4 F2: every unseparated Luhn hit is a whole-group secret; only
+	// separator-containing windows stay card.
+	for in, want := range map[string]string{
+		"2223000048400011":      "2223000048400011",
+		"x4111111111111111":     "4111111111111111",
+		"order_378282246310005": "378282246310005",
+		"4222222222222 x":       "4222222222222",
+	} {
+		if g := builtinScan(t, in); !reflect.DeepEqual(g, []got{{"secret", want}}) {
 			t.Errorf("%q: %v", in, g)
 		}
+	}
+	for _, in := range []string{"4111 1111 1111 1111", "4111-1111-1111-1111"} {
+		if g := builtinScan(t, in); !reflect.DeepEqual(g, []got{{"card", in}}) {
+			t.Errorf("%q: %v", in, g)
+		}
+	}
+	// A lone 13-digit group, even before a separator, keeps the issuer filter.
+	if g := builtinScan(t, "ts=1700000000004 5"); g != nil {
+		t.Errorf("timestamp before separator masked: %v", g)
 	}
 	// A strict window needs an issuer first digit (3-6): 1700000000004 inside
 	// a longer run with no other valid window stays unmasked.

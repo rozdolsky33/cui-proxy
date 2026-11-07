@@ -209,35 +209,18 @@ func cardGroups(text string, s, e int) [][2]int {
 	return gs
 }
 
-// cardFind reports card-shaped windows in a run of digit groups:
-//   - a whole group of 14-19 digits that is Luhn-valid (no prefix filter, so
-//     2-series PANs such as 2223000048400011 are caught), or of 13 digits
-//     with a first digit of 3-6 (a Luhn-valid 13-digit millisecond timestamp
-//     must not be masked);
-//   - with several groups, windows that start and end at group boundaries
-//     (at most 19 digits), without a prefix filter.
-//
-// Card windows strictly inside a longer digit group are not reported here:
-// cardRunFind masks the whole group instead (see there). Windows may overlap;
-// resolve merges them, so a spurious window never hides the rest of a card.
+// cardFind reports card windows that span several digit groups (they contain
+// a single space or dash separator, e.g. "4111 1111 1111 1111"): windows that
+// start and end at group boundaries, at most 19 digits, Luhn-valid, no prefix
+// filter. These keep class card (a synthetic with the same grouping).
+// Unseparated digit runs are cardRunFind's job. Windows may overlap; resolve
+// merges them, so a spurious window never hides the rest of a card.
 func cardFind(text string, s, e int) [][2]int {
 	gs := cardGroups(text, s, e)
 	var out [][2]int
-	for _, g := range gs {
-		n := g[1] - g[0]
-		if n < 13 || n > 19 || n == 13 && !(text[g[0]] >= '3' && text[g[0]] <= '6') {
-			continue
-		}
-		if luhnOK(text[g[0]:g[1]]) {
-			out = append(out, g)
-		}
-	}
-	if len(gs) == 1 {
-		return out
-	}
 	for i := range gs {
-		best, digits := -1, 0
-		for j := i; j < len(gs); j++ {
+		best, digits := -1, gs[i][1]-gs[i][0]
+		for j := i + 1; j < len(gs); j++ {
 			digits += gs[j][1] - gs[j][0]
 			if digits > 19 {
 				break
@@ -253,33 +236,42 @@ func cardFind(text string, s, e int) [][2]int {
 	return out
 }
 
-// cardRunFind reports a whole digit group (class secret, an opaque
-// REDACTED-… token) when some STRICT sub-window of it (13-19 digits, shorter
-// than the group) is Luhn-valid and starts with an issuer digit 3-6. Masking
-// only the sub-window would leave the synthetic glued to real digits, which
-// the restorer refuses to restore, blocking ordinary numeric ids; masking the
-// whole run is the safe direction (over-masking) and restores cleanly.
+// cardRunFind reports a whole unseparated digit group (class secret, an
+// opaque self-delimiting REDACTED-… token) when it contains a Luhn hit:
+//   - the whole group has 14-19 digits and is Luhn-valid (no prefix filter, so
+//     2-series PANs such as 2223000048400011 are caught);
+//   - the whole group has 13 digits, starts with 3-6 and is Luhn-valid (a
+//     Luhn-valid 13-digit millisecond timestamp such as 1700000000004 must
+//     not be masked);
+//   - a strict sub-window (13-19 digits, shorter than the group) starts with
+//     3-6 and is Luhn-valid.
+//
+// Masking the whole run (rather than a card-shaped synthetic) is the safe
+// direction: the token restores even when the run is glued to letters, '_',
+// '-' or dotted digits, where a digit synthetic would be refused by the
+// restorer's boundary rule and block the request.
 func cardRunFind(text string, s, e int) [][2]int {
 	var out [][2]int
 	for _, g := range cardGroups(text, s, e) {
-		if strictCardWindow(text, g[0], g[1]) {
+		if luhnRun(text, g[0], g[1]) {
 			out = append(out, g)
 		}
 	}
 	return out
 }
 
-func strictCardWindow(text string, gs, ge int) bool {
+func luhnRun(text string, gs, ge int) bool {
 	glen := ge - gs
+	issuer := func(i int) bool { return text[i] >= '3' && text[i] <= '6' }
+	if glen >= 13 && glen <= 19 && (glen >= 14 || issuer(gs)) && luhnOK(text[gs:ge]) {
+		return true
+	}
 	for st := gs; st+13 <= ge; st++ {
-		if text[st] < '3' || text[st] > '6' {
+		if !issuer(st) {
 			continue
 		}
 		for n := 13; n <= 19 && st+n <= ge; n++ {
-			if n == glen {
-				continue // the whole group is cardFind's job
-			}
-			if luhnOK(text[st : st+n]) {
+			if n != glen && luhnOK(text[st:st+n]) {
 				return true
 			}
 		}
