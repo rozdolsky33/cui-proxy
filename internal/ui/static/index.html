@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cui-proxy</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>cui-proxy</h1>
+  <span id="version" class="muted"></span>
+  <span id="upstreams" class="muted"></span>
+  <span id="badge" class="badge">loading</span>
+</header>
+<main>
+  <section id="cards" class="cards" aria-label="Metrics"></section>
+
+  <section>
+    <h2>Live requests</h2>
+    <div class="scroll">
+      <table id="feed">
+        <thead><tr><th>Time</th><th>Request</th><th>Status</th><th>Bytes in/out</th><th>Rules hit</th><th>Latency</th><th>Blocked</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Configuration</h2>
+    <button id="reload" type="button">Reload config</button>
+    <span id="reload-msg" class="muted" role="status"></span>
+    <dl id="config" class="kv"></dl>
+    <table id="rules">
+      <thead><tr><th>Rule</th><th>Type</th><th>Synth</th><th>Pattern / file</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Test a string</h2>
+    <p class="muted">Runs in a throwaway vault; nothing is stored or counted.</p>
+    <textarea id="test-input" rows="4" aria-label="Text to test"></textarea>
+    <div><button id="test-run" type="button">Sanitize</button></div>
+    <pre id="test-out"></pre>
+    <ul id="test-matches"></ul>
+  </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
