@@ -381,9 +381,13 @@ func (a *App) logStartup(rs *ruleset) {
 	}
 }
 
+// warnPassthrough is logged by serve and printed by check-config when
+// policy.on_error is passthrough.
+const warnPassthrough = "WARN policy.on_error=passthrough: UNSAFE: failures forward the original request"
+
 func (a *App) policyWarnings(cfg *config.Config) {
 	if cfg.Policy.OnError == "passthrough" {
-		a.logf("WARN policy.on_error=passthrough: UNSAFE: failures forward the original request")
+		a.logf(warnPassthrough)
 	}
 	if len(cfg.Rules) == 0 {
 		a.logf("WARN no rules configured: nothing will be sanitized")

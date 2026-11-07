@@ -82,6 +82,20 @@ func TestCheckConfigExitCodes(t *testing.T) {
 	}
 }
 
+// check-config warns about policy.on_error: passthrough with the same line
+// serve logs; the config is still valid.
+func TestCheckConfigWarnsPassthrough(t *testing.T) {
+	_, cfg := testDir(t, cfgSpec{OnError: "passthrough"})
+	code, out, errOut := runCLI("", "check-config", "-config", cfg)
+	if code != 0 || out != "ok: 2 rules\n" || errOut != "WARN policy.on_error=passthrough: UNSAFE: failures forward the original request\n" {
+		t.Fatalf("code %d, out %q, err %q", code, out, errOut)
+	}
+	_, cfg = testDir(t, cfgSpec{})
+	if code, _, errOut := runCLI("", "check-config", "-config", cfg); code != 0 || errOut != "" {
+		t.Fatalf("block policy: code %d, err %q", code, errOut)
+	}
+}
+
 func TestTestRulesNeverPrintsVault(t *testing.T) {
 	_, cfg := testDir(t, cfgSpec{})
 	in := "ssh " + hostA + " then ping " + realIP + " and " + realIP + "; instance " + realOCID + "\n"
