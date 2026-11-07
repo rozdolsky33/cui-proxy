@@ -387,16 +387,56 @@ func TestDecisionLogHoldsNoValues(t *testing.T) {
 	send(creds(h.req("POST", "/v1/"+sentPath+"/"+sentHost, body)))        // route block
 	send(creds(h.req("GET", "/v1/models?client_version="+sentQuery, ""))) // passthrough route
 	h.upstreamGot()
-	h.cur.Store(build("strict"))
-	h.cfg.Policy.Profile = "strict"
-	send(creds(h.req("POST", "/v1/responses", body))) // policy block
-
-	raw, err := os.ReadFile(h.decPath)
-	if err != nil {
-		t.Fatal(err)
+	// A separate harness for strict, set up before it serves anything (the
+	// server reads h.cfg per request).
+	hs := newHarness(t, nil)
+	hs.cur.Store(build("strict"))
+	hs.cfg.Policy.Profile = "strict"
+	hs.do(creds(hs.req("POST", "/v1/responses", body))) // policy block
+	hs.nextAudit()
+	// on_error: passthrough forwarding a sanitizer failure, and a sanitize
+	// block with a diagnosis (blockDiag), both carrying the values.
+	fails := &fakeAdapter{Adapter: codex.New(), sanitize: func([]byte, *transform.Sanitizer) ([]byte, error) {
+		return nil, spanErr(transform.ErrPseudonym, "hosts", "hostname", fmt.Errorf("vault: %s %s", sentHost, sentIP))
+	}}
+	hp := newHarness(t, nil, withAdapter(fails))
+	hp.cur.Store(build("sanitize"))
+	hp.cfg.Policy.OnError = "passthrough"
+	hp.do(creds(hp.req("POST", "/v1/responses?x="+sentQuery, body)))
+	hp.upstreamGot()
+	hp.nextAudit()
+	hd := newHarness(t, nil, withAdapter(fails))
+	hd.cur.Store(build("sanitize"))
+	if res, b := hd.do(creds(hd.req("POST", "/v1/responses", body))); res.StatusCode != http.StatusUnprocessableEntity || strings.Contains(string(b), "sentinel") {
+		t.Errorf("blockDiag: %d %s", res.StatusCode, b)
 	}
-	if n := strings.Count(string(raw), "\n"); n != 6 {
-		t.Fatalf("%d records, want 6", n)
+	hd.nextAudit()
+	// The audit-failure block: its 503 body and log line hold no value either.
+	ha := newHarness(t, nil, withDecisions(&failRecorder{err: syscall.ENOSPC}))
+	ha.cur.Store(build("sanitize"))
+	if res, b := ha.do(creds(ha.req("POST", "/v1/"+"responses?x="+sentQuery, body))); res.StatusCode != http.StatusServiceUnavailable || strings.Contains(string(b), "sentinel") {
+		t.Errorf("audit block: %d %s", res.StatusCode, b)
+	}
+	ha.nextAudit()
+	for _, l := range []*logBuf{h.logs, hs.logs, hp.logs, hd.logs, ha.logs} {
+		if strings.Contains(l.String(), "sentinel") {
+			t.Errorf("a log line carries a sentinel: %s", l.String())
+		}
+	}
+
+	var raw []byte
+	for _, x := range []*harness{h, hs, hp, hd} {
+		b, err := os.ReadFile(x.decPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw = append(raw, b...)
+	}
+	if n := strings.Count(string(raw), "\n"); n != 8 {
+		t.Fatalf("%d records, want 8", n)
+	}
+	if !strings.Contains(string(raw), `"passthrough:sanitize":1`) || !strings.Contains(string(raw), `"reason":"sanitize","rule_ids":["hosts"]`) {
+		t.Errorf("the failure paths were not recorded as expected:\n%s", raw)
 	}
 	for _, s := range []string{sentHost, sentIP, sentToken, "sentinel", sentAcct, sentCookie, sentPath, sentQuery, sentHeader, sentPrompt, "/v1/", "http"} {
 		if strings.Contains(string(raw), s) {
@@ -427,5 +467,54 @@ func TestEveryBlockReasonIsExplained(t *testing.T) {
 	}
 	if _, _, ok := Explain("nope"); ok {
 		t.Error("an unknown reason is explained")
+	}
+}
+
+// Review item 1 through the proxy: a rule named like a passthrough marker
+// is recorded as that (cleaned) rule, never as a passthrough.
+func TestRuleNamedLikeAPassthroughMarker(t *testing.T) {
+	dir := t.TempDir()
+	dict := filepath.Join(dir, "hosts.txt")
+	if err := os.WriteFile(dict, []byte("zeus.agency.internal\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ds, err := detect.BuildForProfile([]config.Rule{
+		{Name: "passthrough:sanitize", Type: "dictionary", File: dict, Synth: "hostname"},
+	}, dir, "sanitize")
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := newHarness(t, nil)
+	v := vault.New(testKey)
+	h.cur.Store(&set{v: v, s: transform.NewSanitizer(ds, v, nil), r: transform.NewRestorer(v)})
+	res, _ := h.post(userBody("host zeus.agency.internal"))
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", res.StatusCode)
+	}
+	r := h.recordFor(res)
+	if r.Decision != decisionlog.Sanitized || strings.Join(r.RuleIDs, ",") != "passthrough_sanitize" || r.Counts["passthrough:sanitize"] != 0 {
+		t.Errorf("record: decision=%s rule_ids=%v counts=%v", r.Decision, r.RuleIDs, r.Counts)
+	}
+}
+
+type panicTransport struct{}
+
+func (panicTransport) RoundTrip(*http.Request) (*http.Response, error) { panic("boom") }
+
+// Review item 6: a panic after the forwarded record still blocks (500, not
+// forwarded by the proxy) and is logged against the request id.
+func TestPanicAfterTheRecordIsLoggedByID(t *testing.T) {
+	h := newHarness(t, nil, func(_ *harness, d *Deps) { d.Transport = panicTransport{} })
+	res, _ := h.post(userBody("hi"))
+	if res.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status %d", res.StatusCode)
+	}
+	h.noUpstreamCall()
+	id := res.Header.Get(requestIDHeader)
+	if r := h.recordFor(res); r.Decision != decisionlog.Forwarded {
+		t.Errorf("record %+v", r)
+	}
+	if !strings.Contains(h.logs.String(), "request "+id+" failed internally after its decision was recorded as forwarded") {
+		t.Errorf("logs %q", h.logs.String())
 	}
 }

@@ -241,7 +241,8 @@ type exchange struct {
 	// recorded: the decision record was attempted. There is at most one
 	// attempt per request; later failures (a stream cut, a redirect) do not
 	// rewrite it.
-	recorded bool
+	recorded   bool
+	recordedAs decisionlog.Decision // what the record says (when recorded)
 	// decision and counts are what forward records for a forwarded request.
 	decision    decisionlog.Decision
 	counts      map[string]int
@@ -297,6 +298,12 @@ func (h *handler) serveSafe(x *exchange, w http.ResponseWriter, r *http.Request)
 			return
 		}
 		h.d.Logf("cui-proxy: panic (%T) while serving a request; request blocked", p)
+		if x.recorded && x.recordedAs != decisionlog.Blocked {
+			// The record (one per request, written at the moment of
+			// forwarding) says forwarded or sanitized; the request may or
+			// may not have reached the upstream. Say so, by id only.
+			h.d.Logf("cui-proxy: request %s failed internally after its decision was recorded as %s; the client got an error", x.id, x.recordedAs)
+		}
 		if x.w.status != 0 {
 			x.entry.Blocked = reasonInternal
 			h.d.Metrics.IncBlocked(reasonInternal)
@@ -362,7 +369,6 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 			// Counted and logged by forward, once the decision is recorded.
 			x.passthrough = &passthroughFwd{reason, d}
 			x.entry.Rules = map[string]int{"passthrough:" + reason: 1}
-			x.counts = map[string]int{decisionlog.PassthroughKey(reason): 1}
 			out = body
 		} else if len(x.entry.Rules) > 0 {
 			x.decision, x.counts = decisionlog.Sanitized, x.entry.Rules
@@ -608,10 +614,15 @@ func (h *handler) record(x *exchange, dec decisionlog.Decision, reason string, c
 			profile = config.ProfileSanitize
 		}
 	}
-	err := h.d.Decisions.Record(decisionlog.Entry{
+	e := decisionlog.Entry{
 		RequestID: x.id, Adapter: h.d.Adapter.Name(), Profile: profile,
 		Decision: dec, Reason: reason, Counts: counts,
-	})
+	}
+	if x.passthrough != nil && dec == decisionlog.Forwarded {
+		e.Passthrough = x.passthrough.reason
+	}
+	x.recordedAs = dec
+	err := h.d.Decisions.Record(e)
 	if err == nil {
 		return nil
 	}

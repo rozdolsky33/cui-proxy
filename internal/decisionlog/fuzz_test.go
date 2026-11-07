@@ -25,7 +25,7 @@ func FuzzVerify(f *testing.F) {
 	f.Add([]byte(goldenCanon1 + "\n"))
 	f.Add([]byte(""))
 	f.Add([]byte("\n\n{}\n"))
-	f.Add(bytes.Repeat([]byte("x"), maxLine+10))
+	f.Add(bytes.Repeat([]byte("x"), MaxLine+10))
 	f.Add(valid.Bytes()[:valid.Len()-7])
 	f.Fuzz(func(t *testing.T, data []byte) {
 		rep, err := VerifyReader("fuzz", bytes.NewReader(data))

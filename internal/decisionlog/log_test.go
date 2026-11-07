@@ -354,7 +354,7 @@ func TestRetentionDeletesOldRotatedFiles(t *testing.T) {
 	}
 	// What survives verifies from a trusted start that is not genesis.
 	rep, err := Verify(path)
-	if err != nil || !rep.OK() || rep.Start == Genesis || rep.StartFile != after[0] {
+	if err != nil || !rep.OK() || rep.Start == Genesis || rep.StartFile != after[0] || rep.StartNote == nil {
 		t.Fatalf("after retention: %+v %v", rep, err)
 	}
 

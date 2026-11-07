@@ -52,9 +52,25 @@ var reasons = map[string]bool{
 func KnownReason(r string) bool { return reasons[r] }
 
 // passthroughPrefix marks the counts key of a request forwarded unsanitized
-// because policy.on_error is passthrough: "passthrough:<reason>". ':' is not a
-// SafeName byte, so the key can never collide with a rule name.
+// because policy.on_error is passthrough: "passthrough:<reason>". The key is
+// built only by newRecord, from Entry.Passthrough. Every key that comes from
+// Entry.Counts goes through SafeName, which maps ':' to '_', so a rule name
+// can never produce it (nor the truncation key below).
 const passthroughPrefix = "passthrough:"
+
+// TruncatedKey is the counts key, with the number of rules left out, of a
+// record that matched more than MaxRules distinct rules. A record keeps the
+// MaxRules rules with the highest counts (ties by name), so the line stays
+// far below the verifier's line limit and the decision is still recorded.
+const TruncatedKey = "truncated:rules"
+
+// MaxRules caps the rules in one record (see TruncatedKey).
+const MaxRules = 64
+
+// MaxLine is the longest line the writer emits and the verifier accepts
+// (without its newline). With MaxRules the longest possible record is about
+// 10 KiB; a record over MaxLine is refused, never written.
+const MaxLine = 64 << 10
 
 // PassthroughKey is the counts key recorded for a request forwarded
 // unsanitized under policy.on_error: passthrough after a failure with reason.
@@ -124,7 +140,11 @@ type Entry struct {
 	Profile   string         // cleaned with SafeName
 	Decision  Decision       // closed set
 	Reason    string         // a KnownReason when Decision is Blocked, else ""
-	Counts    map[string]int // rule name (cleaned) -> count; or PassthroughKey(reason) -> 1
+	Counts    map[string]int // rule name (cleaned with SafeName) -> count
+	// Passthrough is set (to the failure's reason) for a request forwarded
+	// unsanitized because policy.on_error is passthrough. Decision must be
+	// Forwarded. It is the only way to record a passthrough marker.
+	Passthrough string
 }
 
 // Record is one line of the log. Field order here is the canonical order.
@@ -164,10 +184,14 @@ func newRecord(e Entry, now time.Time) (Record, error) {
 		if n <= 0 {
 			return Record{}, fmt.Errorf("%w: a count must be positive", errInvalid)
 		}
-		if !isPassthroughKey(k) {
-			k = SafeName(k)
+		r.Counts[SafeName(k)] += n
+	}
+	capRules(r.Counts)
+	if e.Passthrough != "" {
+		if !reasons[e.Passthrough] || e.Decision != Forwarded {
+			return Record{}, fmt.Errorf("%w: passthrough", errInvalid)
 		}
-		r.Counts[k] += n
+		r.Counts[PassthroughKey(e.Passthrough)] = 1
 	}
 	r.RuleIDs = ruleIDs(r.Counts)
 	if err := r.check(); err != nil {
@@ -176,16 +200,43 @@ func newRecord(e Entry, now time.Time) (Record, error) {
 	return r, nil
 }
 
+// capRules keeps at most MaxRules rule keys in counts: the highest counts,
+// ties by name, plus TruncatedKey with the number left out.
+func capRules(counts map[string]int) {
+	if len(counts) <= MaxRules {
+		return
+	}
+	keys := make([]string, 0, len(counts))
+	for k := range counts {
+		keys = append(keys, k)
+	}
+	slices.SortFunc(keys, func(a, b string) int {
+		if counts[a] != counts[b] {
+			return counts[b] - counts[a]
+		}
+		return strings.Compare(a, b)
+	})
+	for _, k := range keys[MaxRules:] {
+		delete(counts, k)
+	}
+	counts[TruncatedKey] = len(keys) - MaxRules
+}
+
+// isPassthroughKey reports whether k is a marker newRecord built from
+// Entry.Passthrough (never a cleaned rule name, which has no ':').
 func isPassthroughKey(k string) bool {
 	rest, ok := strings.CutPrefix(k, passthroughPrefix)
 	return ok && reasons[rest]
 }
 
-// ruleIDs is the sorted rule names of counts (passthrough keys are not rules).
+// isRuleKey reports whether a counts key is a rule name (not a marker).
+func isRuleKey(k string) bool { return !strings.Contains(k, ":") }
+
+// ruleIDs is the sorted rule names of counts (markers are not rules).
 func ruleIDs(counts map[string]int) []string {
 	ids := []string{}
 	for k := range counts {
-		if !isPassthroughKey(k) {
+		if isRuleKey(k) {
 			ids = append(ids, k)
 		}
 	}
@@ -216,9 +267,19 @@ func (r Record) check() error {
 		return bad("reason")
 	}
 	for k, n := range r.Counts {
-		if n <= 0 || !(isSafeName(k) || isPassthroughKey(k)) {
+		switch {
+		case n <= 0:
+			return bad("counts")
+		case isSafeName(k):
+		case k == TruncatedKey:
+		case isPassthroughKey(k) && n == 1 && r.Decision == Forwarded:
+		default:
 			return bad("counts")
 		}
+	}
+	// A truncation marker only on a record holding exactly MaxRules rules.
+	if n := len(ruleIDs(r.Counts)); n > MaxRules || (r.Counts[TruncatedKey] > 0 && n != MaxRules) {
+		return bad("counts")
 	}
 	if !slices.Equal(r.RuleIDs, ruleIDs(r.Counts)) {
 		return bad("rule_ids")
