@@ -1,0 +1,57 @@
+name: release
+
+# Pushing a tag like v0.1.0 builds the archives for macOS and Linux (amd64 and
+# arm64), publishes them with checksums.txt as a GitHub release, and, when the
+# TAP_GITHUB_TOKEN secret exists, updates the Homebrew tap.
+#
+# To cut a release:   git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Optional. A fine-grained token with contents:write on the tap repo.
+      # Without it the release is still published; update the tap by running
+      # scripts/update-tap.sh <version> yourself.
+      TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: vet and test
+        run: |
+          go vet ./...
+          go test -race -count=1 ./...
+
+      - name: build archives
+        run: scripts/package.sh "$GITHUB_REF_NAME"
+
+      - name: publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=""
+          case "$GITHUB_REF_NAME" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/checksums.txt \
+            --title "$GITHUB_REF_NAME" --generate-notes --verify-tag $prerelease
+
+      - name: update Homebrew tap
+        if: ${{ env.TAP_GITHUB_TOKEN != '' }}
+        env:
+          GH_TOKEN: ${{ env.TAP_GITHUB_TOKEN }}
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: scripts/update-tap.sh "$GITHUB_REF_NAME"

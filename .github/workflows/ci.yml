@@ -49,3 +49,28 @@ jobs:
           name: fuzz-failures-${{ matrix.os }}
           path: '**/testdata/fuzz/**'
           if-no-files-found: ignore
+
+  packaging:
+    # Catches a broken installer or release build before a tag does.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: shellcheck
+        run: shellcheck install.sh scripts/*.sh
+
+      - name: build all release archives
+        run: scripts/package.sh v0.0.0
+
+      - name: the linux archive runs and passes its own checks
+        run: |
+          tmp=$(mktemp -d)
+          tar -xzf dist/cui-proxy_0.0.0_linux_amd64.tar.gz -C "$tmp"
+          "$tmp/cui-proxy" version
+          "$tmp/cui-proxy" check-config -config "$tmp/examples/config.yaml"
+          scripts/make-formula.sh v0.0.0 dist/checksums.txt | ruby -c
