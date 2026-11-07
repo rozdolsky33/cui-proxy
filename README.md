@@ -92,7 +92,8 @@ codex -c 'model_provider="cui-proxy"' \
 - See what the rules do to some text without running Codex:
   `echo 'ssh admin@10.20.30.15' | cui-proxy test-rules -config ~/.config/cui-proxy/config.yaml`
 - Stop the proxy with Ctrl-C. `serve` runs in the foreground, so keep it in
-  its own terminal.
+  its own terminal, or use the [menu-bar app](#run-in-the-background-macos-menu-bar)
+  to run it in the background on macOS.
 
 **If the first Codex run fails**, look at the dashboard's *Blocked* column and
 the `cui-proxy` terminal:
@@ -108,6 +109,56 @@ real ChatGPT backend yet. Run the manual smoke in
 [docs/verification.md](docs/verification.md), and read
 [Known limitations](#known-limitations--behavior).
 
+## Run in the background (macOS menu bar)
+
+If you would rather not keep a terminal open, install the menu-bar app. It
+runs `cui-proxy serve` for you in the background and puts a shield icon in the
+menu bar; one click opens the dashboard.
+
+```sh
+cui-proxy init                 # once, if you have not made a config yet
+cui-proxy menubar install      # compiles the app on your Mac and starts it
+```
+
+Look for the shield in the menu bar and click it:
+
+| Menu item | What it does |
+|---|---|
+| **Open Dashboard** | Opens the dashboard in your browser (greyed out while the proxy is not running). |
+| **Copy Codex command** | Puts the `codex -c ...` command for this proxy on the clipboard. |
+| **Start / Stop proxy** | Starts or stops the proxy the app runs. |
+| **Reload rules** | Re-reads the config and dictionary without a restart. |
+| **Open Config Folder / Open Log** | Opens `~/.config/cui-proxy` or `~/Library/Logs/cui-proxy/proxy.log`. |
+| **Start at Login** | Starts the app (and so the proxy) when you log in. Tick it once; untick to remove. |
+| **Create starter config...** | Shown only when there is no config yet. |
+| **Quit** | Stops the proxy the app started, then exits the app. |
+
+The icon shows the state: a shield with a check (running), plain shield
+(starting), slashed shield (stopped), shield with `!` (needs attention: no
+config, `cui-proxy` not found, or it crashed; the menu says which). A crashed
+proxy is restarted automatically, up to three times a minute. If something
+else already serves on the configured ports (for example a terminal running
+`cui-proxy serve`), the menu says "Running (started elsewhere)": the app does
+not start a second one and leaves yours alone when you quit.
+
+Things to know:
+
+- It needs Apple's Command Line Tools for the Swift compiler
+  (`xcode-select --install`). The app is built on your own Mac and signed
+  ad hoc, so macOS does not show a "downloaded from the internet" warning.
+- While the proxy is stopped, a Codex configured to use it fails (it does
+  not fall back to talking to the model directly).
+- The app starts the proxy with the app's environment, not your shell's. If
+  your network needs `HTTPS_PROXY` for the upstream, run
+  `launchctl setenv HTTPS_PROXY http://your-proxy:port` and restart the app,
+  or run `cui-proxy serve` from a terminal instead.
+- After `brew upgrade cui-proxy`, choose Quit and reopen the app
+  (`open ~/Applications/CuiProxy.app`) so it runs the new binary; re-run
+  `cui-proxy menubar install` to pick up a newer menu-bar app too.
+- `cui-proxy menubar status` shows what the app sees;
+  `cui-proxy menubar uninstall` removes the app (your config, dictionary and
+  logs stay).
+
 ## Uninstall
 
 ```sh
@@ -115,6 +166,7 @@ brew uninstall cui-proxy                                  # Homebrew
 brew untrust --formula rozdolsky33/tap/cui-proxy          # optional: drop the trust entry
 brew untap rozdolsky33/tap                                # optional: drop the tap
 rm "$(command -v cui-proxy)"                              # curl install
+cui-proxy menubar uninstall                               # the macOS menu-bar app, if you installed it (do this first)
 rm -r ~/.config/cui-proxy                                 # config and dictionary, if you want them gone
 ```
 
@@ -142,6 +194,8 @@ Commands:
 | Command | Purpose |
 |---|---|
 | `init [-dir PATH] [-force]` | Write a starter `config.yaml` and `hosts.txt` (mode 0600) into `$XDG_CONFIG_HOME/cui-proxy`, else `~/.config/cui-proxy`. Never overwrites without `-force`. |
+| `menubar install\|uninstall\|status` | macOS only: build and manage the menu-bar app that runs the proxy in the background. |
+| `info -config PATH` | Print the proxy and dashboard URLs for a config (used by the menu-bar app). |
 | `serve -config PATH [-adapter codex]` | Run the proxy (default `127.0.0.1:8787`) and the dashboard (default `127.0.0.1:8788`). |
 | `check-config -config PATH` | Validate the config, rule files and upstream URLs; prints `ok: <N> rules`, exits 1 on error. |
 | `test-rules -config PATH` | Read stdin (max 8 MiB), print the sanitized text to stdout and a rule/class/count table to stderr. Uses a throwaway vault. |

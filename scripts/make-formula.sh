@@ -67,6 +67,9 @@ class CuiProxy < Formula
         cui-proxy init
         cui-proxy serve -config ~/.config/cui-proxy/config.yaml
 
+      On macOS, to run it in the background with a menu-bar icon:
+        cui-proxy menubar install
+
       cui-proxy reduces risk; it is not a compliance control. Read
       https://github.com/${repo}#readme before use.
     EOS
