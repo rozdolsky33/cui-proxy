@@ -23,6 +23,7 @@ import (
 	_ "cui-proxy/internal/adapter/codex" // registers the "codex" adapter
 	"cui-proxy/internal/audit"
 	"cui-proxy/internal/config"
+	"cui-proxy/internal/decisionlog"
 	"cui-proxy/internal/detect"
 	"cui-proxy/internal/metrics"
 	"cui-proxy/internal/proxy"
@@ -71,6 +72,9 @@ type App struct {
 	vaultAt  string // file-mode vault path; "" in memory mode
 	metrics  *metrics.Registry
 	audit    *audit.Log
+	// decisions is the persisted decision log, nil when audit is disabled
+	// (the proxy then gets decisionlog.Discard).
+	decisions *decisionlog.Log
 
 	cur      atomic.Pointer[ruleset]
 	reloadMu sync.Mutex
@@ -133,8 +137,44 @@ func NewApp(opts AppOptions) (*App, error) {
 	if err := a.openVault(cfg.Vault); err != nil {
 		return nil, err
 	}
+	// Last, so no later step can fail with the log open.
+	if err := a.openDecisions(cfg); err != nil {
+		return nil, err
+	}
 	a.cur.Store(a.newRuleset(cfg, ds))
 	return a, nil
+}
+
+// openDecisions opens the decision log (audit.file). A damaged log refuses
+// to start when a failed record would block (audit.on_error: block, always
+// under strict); under warn it starts a new segment and logs a WARN.
+func (a *App) openDecisions(cfg *config.Config) error {
+	if !cfg.Audit.IsEnabled() {
+		return nil
+	}
+	if cfg.Audit.File == "" {
+		return errors.New("audit: audit.file is not set and no home directory was found to put the decision log in")
+	}
+	l, err := decisionlog.Open(decisionlog.Options{
+		Path:               cfg.Audit.File,
+		MaxBytes:           cfg.Audit.MaxBytes(),
+		RetentionDays:      cfg.Audit.Retention(),
+		NewSegmentOnDamage: !cfg.AuditBlocks(),
+		Logf:               a.logf,
+	})
+	if err != nil {
+		return fmt.Errorf("audit: %w", err)
+	}
+	a.decisions = l
+	return nil
+}
+
+// recorder is what the proxy records decisions with.
+func (a *App) recorder() decisionlog.Recorder {
+	if a.decisions == nil {
+		return decisionlog.Discard
+	}
+	return a.decisions
 }
 
 // loadRules reads, validates (including synth classes) and builds the rules
@@ -151,7 +191,16 @@ func loadRules(path string) (*config.Config, []detect.Detector, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	resolveAuditFile(cfg, path)
 	return cfg, ds, nil
+}
+
+// resolveAuditFile makes a relative audit.file absolute against the config
+// file's directory, like the vault and dictionary paths. "~" is not expanded.
+func resolveAuditFile(cfg *config.Config, cfgPath string) {
+	if f := cfg.Audit.File; f != "" && !filepath.IsAbs(f) {
+		cfg.Audit.File = filepath.Join(filepath.Dir(cfgPath), f)
+	}
 }
 
 func (a *App) newRuleset(cfg *config.Config, ds []detect.Detector) *ruleset {
@@ -289,10 +338,11 @@ func (a *App) Start() error {
 				rs := a.cur.Load() // one load: policy and rules from the same reload
 				return proxy.Snapshot{Cfg: rs.cfg, Sanitizer: rs.sanitizer, Restorer: rs.restorer}
 			},
-			VaultLen: a.vault.Len,
-			Metrics:  a.metrics,
-			Audit:    a.audit,
-			Logf:     a.logf,
+			VaultLen:  a.vault.Len,
+			Metrics:   a.metrics,
+			Audit:     a.audit,
+			Decisions: a.recorder(),
+			Logf:      a.logf,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       120 * time.Second,
@@ -376,9 +426,36 @@ func (a *App) logStartup(rs *ruleset) {
 		a.logf("vault: memory (mappings are lost on restart)")
 	}
 	a.logPolicy(cfg)
+	a.logAudit(cfg)
 	a.policyWarnings(cfg)
 	if cfg.AllowNonLoopback {
 		a.logf("WARN allow_non_loopback=true: listeners may bind non-loopback addresses")
+	}
+}
+
+// Audit warnings, logged at startup.
+const (
+	warnAuditOff  = "WARN audit.enabled=false: no decision log is kept"
+	warnAuditWarn = "WARN audit.on_error=warn: UNSAFE: a request is forwarded even when its decision cannot be recorded"
+)
+
+// logAudit states where decisions are recorded and what a failed write does.
+func (a *App) logAudit(cfg *config.Config) {
+	if a.decisions == nil {
+		a.logf(warnAuditOff)
+		return
+	}
+	retention := "kept forever"
+	if d := cfg.Audit.Retention(); d > 0 {
+		retention = fmt.Sprintf("kept %d days", d)
+	}
+	onError := config.AuditWarn
+	if cfg.AuditBlocks() {
+		onError = config.AuditBlock
+	}
+	a.logf("audit: decision log %s (on_error=%s, rotated at %d MB, rotated files %s)", cfg.Audit.File, onError, cfg.Audit.MaxBytes()>>20, retention)
+	if onError == config.AuditWarn {
+		a.logf(warnAuditWarn)
 	}
 }
 
@@ -415,6 +492,12 @@ func (a *App) Reload() error {
 	old := a.cur.Load()
 	if changed := pinRestartOnly(cfg, old.cfg); len(changed) > 0 {
 		a.logf("WARN restart required for: %s", strings.Join(changed, ", "))
+	}
+	// The audit settings are pinned; a reload to strict cannot open a log
+	// that is off. (A failed write blocks under strict whatever on_error
+	// says: see config.AuditBlocks.)
+	if profileOf(cfg) == config.ProfileStrict && a.decisions == nil {
+		a.logf("WARN policy.profile strict without a decision log until restart (audit was disabled at startup)")
 	}
 	a.cur.Store(a.newRuleset(cfg, ds))
 	a.logf("reload ok: %d rules (%d detectors)", len(cfg.Rules), len(ds))
@@ -506,10 +589,27 @@ func pinRestartOnly(next, cur *config.Config) []string {
 	if next.AllowNonLoopback != cur.AllowNonLoopback {
 		changed = append(changed, "allow_non_loopback")
 	}
+	na, ca := next.Audit, cur.Audit
+	if na.IsEnabled() != ca.IsEnabled() {
+		changed = append(changed, "audit.enabled")
+	}
+	if na.File != ca.File {
+		changed = append(changed, "audit.file")
+	}
+	if na.OnError != ca.OnError {
+		changed = append(changed, "audit.on_error")
+	}
+	if na.MaxBytes() != ca.MaxBytes() {
+		changed = append(changed, "audit.max_size_mb")
+	}
+	if na.Retention() != ca.Retention() {
+		changed = append(changed, "audit.retention_days")
+	}
 	next.Listen, next.UI.Listen = cur.Listen, cur.UI.Listen
 	next.Upstreams = maps.Clone(cur.Upstreams)
 	next.Vault = cur.Vault
 	next.AllowNonLoopback = cur.AllowNonLoopback
+	next.Audit = cur.Audit
 	return changed
 }
 
@@ -559,6 +659,11 @@ func (a *App) stop(ctx context.Context) error {
 	if a.vaultAt != "" {
 		if serr := a.saveIfChanged(); serr != nil && err == nil {
 			err = errors.New("shutdown: vault save failed")
+		}
+	}
+	if a.decisions != nil {
+		if cerr := a.decisions.Close(); cerr != nil && err == nil {
+			err = errors.New("shutdown: decision log close failed")
 		}
 	}
 	return err

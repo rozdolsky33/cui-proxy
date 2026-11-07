@@ -14,6 +14,7 @@ const subBuffer = 64 // per-subscriber channel buffer
 // Entry describes one proxied request.
 type Entry struct {
 	Time              time.Time
+	RequestID         string // the decision log's request_id (16 hex digits)
 	Adapter, Method   string
 	Path              string
 	Status            int

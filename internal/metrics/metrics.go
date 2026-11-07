@@ -19,7 +19,7 @@ const (
 // Snapshot is the JSON view served by the dashboard. Field names are stable
 // snake_case: requests, blocked, blocked_by_reason, errors, restores,
 // passthrough, replacements, replacements_by_rule, downgraded, requests_per_minute,
-// overhead_ms{p50,p95,samples}, vault_size, uptime_seconds.
+// overhead_ms{p50,p95,samples}, vault_size, uptime_seconds, audit_write_failed.
 type Snapshot struct {
 	Requests           int64            `json:"requests"`
 	Blocked            int64            `json:"blocked"`
@@ -37,6 +37,9 @@ type Snapshot struct {
 	OverheadMS        Overhead `json:"overhead_ms"`
 	VaultSize         int64    `json:"vault_size"`
 	UptimeSeconds     int64    `json:"uptime_seconds"`
+	// AuditWriteFailed counts decision records that could not be written
+	// (each such request was blocked, or forwarded under audit.on_error warn).
+	AuditWriteFailed int64 `json:"audit_write_failed"`
 }
 
 // Overhead is proxy-added latency in milliseconds over the last <=4096 samples.
@@ -56,7 +59,7 @@ type Registry struct {
 	now   func() time.Time // injectable clock; see newWithClock
 	start time.Time
 
-	requests, blocked, passthrough, errs, restores, replacements, downgraded, vaultSize atomic.Int64
+	requests, blocked, passthrough, errs, restores, replacements, downgraded, vaultSize, auditFailed atomic.Int64
 
 	mu       sync.Mutex
 	byRule   map[string]int64
@@ -116,6 +119,9 @@ func (r *Registry) IncBlocked(reason string) {
 // policy.on_error is "passthrough". It does not count as blocked.
 func (r *Registry) IncPassthrough() { r.passthrough.Add(1) }
 
+// IncAuditFailed counts one decision record that could not be written.
+func (r *Registry) IncAuditFailed() { r.auditFailed.Add(1) }
+
 // IncError counts one internal error.
 func (r *Registry) IncError() { r.errs.Add(1) }
 
@@ -150,6 +156,8 @@ func (r *Registry) Snapshot() Snapshot {
 		Replacements: r.replacements.Load(),
 		Downgraded:   r.downgraded.Load(),
 		VaultSize:    r.vaultSize.Load(),
+
+		AuditWriteFailed: r.auditFailed.Load(),
 	}
 	if up := now.Sub(r.start); up > 0 {
 		s.UptimeSeconds = int64(up / time.Second)

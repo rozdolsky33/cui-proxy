@@ -194,6 +194,13 @@ type configView struct {
 		KeyFile string `json:"key_file,omitempty"` // path only; key bytes are never read
 		File    string `json:"file,omitempty"`
 	} `json:"vault"`
+	Audit struct {
+		Enabled       bool   `json:"enabled"`
+		File          string `json:"file"` // path only; the log is never read here
+		OnError       string `json:"on_error"`
+		MaxSizeMB     int64  `json:"max_size_mb"`
+		RetentionDays int    `json:"retention_days"` // 0: kept forever
+	} `json:"audit"`
 	Rules []ruleView `json:"rules"`
 }
 
@@ -213,6 +220,12 @@ func (s *server) config(w http.ResponseWriter, r *http.Request) {
 			v.Policy.Unsupported = "block"
 		}
 		v.Vault.Mode, v.Vault.KeyFile, v.Vault.File = c.Vault.Mode, c.Vault.KeyFile, c.Vault.File
+		v.Audit.Enabled, v.Audit.File = c.Audit.IsEnabled(), c.Audit.File
+		v.Audit.OnError = config.AuditWarn
+		if c.AuditBlocks() {
+			v.Audit.OnError = config.AuditBlock
+		}
+		v.Audit.MaxSizeMB, v.Audit.RetentionDays = c.Audit.MaxBytes()>>20, c.Audit.Retention()
 		for _, ru := range c.Rules {
 			v.Rules = append(v.Rules, ruleView{ru.Name, ru.Type, ru.Pattern, ru.Validate, ru.Synth, ru.File,
 				config.EffectiveAction(c.Policy.Profile, ru)})
@@ -230,6 +243,7 @@ func (s *server) metrics(w http.ResponseWriter, r *http.Request) {
 
 type eventView struct {
 	Time      string         `json:"time"`
+	RequestID string         `json:"request_id"`
 	Adapter   string         `json:"adapter"`
 	Method    string         `json:"method"`
 	Path      string         `json:"path"`
@@ -250,7 +264,7 @@ func toView(e audit.Entry) eventView {
 	if !e.Time.IsZero() {
 		ts = e.Time.UTC().Format(time.RFC3339Nano)
 	}
-	return eventView{ts, e.Adapter, e.Method, e.Path, e.Status, e.BytesIn, e.BytesOut, rules, e.Blocked, e.LatencyMS}
+	return eventView{ts, e.RequestID, e.Adapter, e.Method, e.Path, e.Status, e.BytesIn, e.BytesOut, rules, e.Blocked, e.LatencyMS}
 }
 
 func (s *server) events(w http.ResponseWriter, r *http.Request) {

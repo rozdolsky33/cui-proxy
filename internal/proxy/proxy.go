@@ -12,6 +12,10 @@
 //
 // Nothing here logs or audits request or response bodies, headers, tokens or
 // query strings; log lines carry only fixed text, reason codes and type names.
+//
+// Every request's decision is written to the decision log (Deps.Decisions)
+// before anything is sent upstream: forward records first and is the only
+// place a request leaves the proxy.
 package proxy
 
 import (
@@ -29,6 +33,7 @@ import (
 	"cui-proxy/internal/adapter"
 	"cui-proxy/internal/audit"
 	"cui-proxy/internal/config"
+	"cui-proxy/internal/decisionlog"
 	"cui-proxy/internal/metrics"
 	"cui-proxy/internal/sse"
 	"cui-proxy/internal/synth"
@@ -44,17 +49,22 @@ type Snapshot struct {
 	Restorer  *transform.Restorer
 }
 
-// Deps are the proxy's collaborators. Adapter, Upstream, Snapshot, Metrics
-// and Audit are required.
+// Deps are the proxy's collaborators. Adapter, Upstream, Snapshot, Metrics,
+// Audit and Decisions are required.
 type Deps struct {
 	Adapter  adapter.Adapter
 	Upstream *url.URL // base, e.g. https://chatgpt.com/backend-api/codex
 	// Snapshot is evaluated exactly once per request, so a reload never
 	// changes an in-flight request's policy or rules.
-	Snapshot  func() Snapshot
-	VaultLen  func() int // reported via Metrics.SetVaultSize after each request; nil ok
-	Metrics   *metrics.Registry
-	Audit     *audit.Log
+	Snapshot func() Snapshot
+	VaultLen func() int // reported via Metrics.SetVaultSize after each request; nil ok
+	Metrics  *metrics.Registry
+	Audit    *audit.Log
+	// Decisions is the persisted decision log (decisionlog.Discard when
+	// audit.enabled is false). One record per request, written before the
+	// request is forwarded; Snapshot().Cfg.AuditBlocks says whether a failed
+	// write blocks the request.
+	Decisions decisionlog.Recorder
 	Transport http.RoundTripper                // nil: newTransport()
 	Logf      func(format string, args ...any) // nil: log.Printf; never given values, headers or bodies
 }
@@ -85,7 +95,15 @@ const (
 	// 304). Relaying it would let a redirect-following client re-send the
 	// original, unsanitized request elsewhere. Counted with IncError.
 	reasonUpstreamRedirect = "upstream_redirect"
+	// reasonAudit: the decision record could not be written and audit blocks
+	// (audit.on_error: block, always under strict). The request is never
+	// forwarded. It is never itself recorded: the write is what failed.
+	reasonAudit = "audit"
 )
+
+// requestIDHeader carries the request id (the decision log's request_id) on
+// every response, for `cui-proxy explain`.
+const requestIDHeader = "X-Cui-Proxy-Request-Id"
 
 var blockStatus = map[string]int{
 	reasonRoute:         http.StatusForbidden,
@@ -98,6 +116,7 @@ var blockStatus = map[string]int{
 	reasonInternal:      http.StatusInternalServerError,
 	reasonHeader:        http.StatusUnprocessableEntity,
 	reasonStreamRewrite: http.StatusBadGateway,
+	reasonAudit:         http.StatusServiceUnavailable,
 }
 
 var blockMessage = map[string]string{
@@ -111,6 +130,7 @@ var blockMessage = map[string]string{
 	reasonInternal:      "internal error",
 	reasonHeader:        "a request header or the query string contains a sensitive value",
 	reasonStreamRewrite: "response could not be restored",
+	reasonAudit:         "the decision could not be recorded",
 }
 
 // Block kinds: a closed set naming why a body could not be sanitized. They
@@ -161,24 +181,11 @@ func diagnose(err error) diag {
 	return d
 }
 
-// maxNameLen caps a rule or class name in diagnostics.
-const maxNameLen = 64
-
 // safeName keeps a config-supplied name printable in a log line, an audit
 // key and a JSON string without escaping: bytes outside [A-Za-z0-9._-]
-// become '_', and the result is cut to maxNameLen.
-func safeName(s string) string {
-	if len(s) > maxNameLen {
-		s = s[:maxNameLen]
-	}
-	b := []byte(s)
-	for i, c := range b {
-		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '.' || c == '_' || c == '-') {
-			b[i] = '_'
-		}
-	}
-	return string(b)
-}
+// become '_', and the result is cut to 64 bytes. The decision log applies
+// the same rule (one implementation).
+func safeName(s string) string { return decisionlog.SafeName(s) }
 
 func orDash(s string) string {
 	if s == "" {
@@ -192,8 +199,8 @@ const defaultMaxBody = 20 << 20
 
 // New returns the proxy handler. It panics if a required dependency is nil.
 func New(d Deps) http.Handler {
-	if d.Adapter == nil || d.Upstream == nil || d.Snapshot == nil || d.Metrics == nil || d.Audit == nil {
-		panic("proxy: Adapter, Upstream, Snapshot, Metrics and Audit are required")
+	if d.Adapter == nil || d.Upstream == nil || d.Snapshot == nil || d.Metrics == nil || d.Audit == nil || d.Decisions == nil {
+		panic("proxy: Adapter, Upstream, Snapshot, Metrics, Audit and Decisions are required")
 	}
 	if d.Transport == nil {
 		d.Transport = newTransport()
@@ -220,12 +227,25 @@ func newTransport() *http.Transport {
 	}
 }
 
-type handler struct{ d Deps }
+type handler struct {
+	d         Deps
+	auditWarn rateLimit
+}
 
 // exchange is the state of one request.
 type exchange struct {
 	w     *countingWriter
+	id    decisionlog.ID
+	cfg   *config.Config // the request's snapshot config; nil until loaded
 	entry audit.Entry
+	// recorded: the decision record was attempted. There is at most one
+	// attempt per request; later failures (a stream cut, a redirect) do not
+	// rewrite it.
+	recorded bool
+	// decision and counts are what forward records for a forwarded request.
+	decision    decisionlog.Decision
+	counts      map[string]int
+	passthrough *passthroughFwd // set when policy.on_error: passthrough forwards the original
 	// overhead is the time the proxy itself added: sanitizing the request
 	// plus all rewriter.Event and rewriter.Flush calls on the response. It
 	// excludes reading the body and waiting on upstream or client I/O. It is
@@ -236,10 +256,14 @@ type exchange struct {
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
+	id := decisionlog.NewID()
 	x := &exchange{
-		w:     &countingWriter{rw: w},
-		entry: audit.Entry{Time: start, Adapter: h.d.Adapter.Name(), Method: auditMethod(r.Method), Path: r.URL.Path},
+		w:  &countingWriter{rw: w},
+		id: id,
+		entry: audit.Entry{Time: start, RequestID: id.String(), Adapter: h.d.Adapter.Name(),
+			Method: auditMethod(r.Method), Path: r.URL.Path},
 	}
+	w.Header().Set(requestIDHeader, id.String())
 	h.d.Metrics.IncRequest()
 	abort := h.serveSafe(x, w, r)
 
@@ -291,6 +315,7 @@ func (h *handler) serveSafe(x *exchange, w http.ResponseWriter, r *http.Request)
 func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) bool {
 	snap := h.d.Snapshot()
 	cfg, san, rest := snap.Cfg, snap.Sanitizer, snap.Restorer
+	x.cfg = cfg
 	if cfg == nil || san == nil || rest == nil {
 		return h.block(x, reasonInternal)
 	}
@@ -322,6 +347,7 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 	}
 	x.entry.BytesIn = len(body)
 
+	x.decision = decisionlog.Forwarded
 	switch route.Kind {
 	case adapter.KindPassthrough:
 		if len(body) > 0 {
@@ -333,17 +359,26 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 			if !passthroughEligible(cfg, san, reason, d) {
 				return h.blockDiag(x, reason, d)
 			}
-			h.d.Metrics.IncPassthrough()
+			// Counted and logged by forward, once the decision is recorded.
+			x.passthrough = &passthroughFwd{reason, d}
 			x.entry.Rules = map[string]int{"passthrough:" + reason: 1}
-			h.d.Logf("cui-proxy: forwarding an unsanitized request (policy.on_error=passthrough, reason=%s kind=%s rule=%s class=%s)",
-				reason, d.kind, orDash(d.rule), orDash(d.class))
+			x.counts = map[string]int{decisionlog.PassthroughKey(reason): 1}
 			out = body
+		} else if len(x.entry.Rules) > 0 {
+			x.decision, x.counts = decisionlog.Sanitized, x.entry.Rules
 		}
 		body = out
 	default:
 		return h.block(x, reasonInternal)
 	}
 	return h.forward(x, r, route, body, rest)
+}
+
+// passthroughFwd is a failed sanitize that policy.on_error: passthrough
+// forwards unsanitized.
+type passthroughFwd struct {
+	reason string
+	d      diag
 }
 
 // collector gathers one request's sanitizer events.
@@ -422,6 +457,16 @@ func (h *handler) forward(x *exchange, r *http.Request, route adapter.Route, bod
 	}
 	out.Header = upstreamHeader(r.Header)
 
+	// The decision is recorded before the request leaves; a failed write
+	// blocks it when audit blocks. Nothing below this line runs otherwise.
+	if err := h.record(x, x.decision, "", x.counts); err != nil && x.cfg.AuditBlocks() {
+		return h.blockAudit(x, err)
+	}
+	if p := x.passthrough; p != nil {
+		h.d.Metrics.IncPassthrough()
+		h.d.Logf("cui-proxy: forwarding an unsanitized request (policy.on_error=passthrough, reason=%s kind=%s rule=%s class=%s)",
+			p.reason, p.d.kind, orDash(p.d.rule), orDash(p.d.class))
+	}
 	res, err := h.d.Transport.RoundTrip(out)
 	if err != nil {
 		if r.Context().Err() != nil {
@@ -430,7 +475,7 @@ func (h *handler) forward(x *exchange, r *http.Request, route adapter.Route, bod
 		// err carries the URL and query string: log only its kind.
 		h.d.Metrics.IncError()
 		h.d.Logf("cui-proxy: upstream request failed (%s)", errKind(err))
-		writeError(x.w, http.StatusBadGateway, "upstream", "cui_proxy_error", "upstream unavailable")
+		writeError(x, http.StatusBadGateway, "upstream", "cui_proxy_error", "upstream unavailable")
 		return false
 	}
 	defer res.Body.Close()
@@ -440,11 +485,12 @@ func (h *handler) forward(x *exchange, r *http.Request, route adapter.Route, bod
 		h.d.Metrics.IncError()
 		x.entry.Blocked = reasonUpstreamRedirect
 		h.d.Logf("cui-proxy: upstream answered with a redirect (%d); response blocked", res.StatusCode)
-		writeError(x.w, http.StatusBadGateway, reasonUpstreamRedirect, "cui_proxy_error", "upstream redirected the request")
+		writeError(x, http.StatusBadGateway, reasonUpstreamRedirect, "cui_proxy_error", "upstream redirected the request")
 		return false
 	}
 	if !isSSE(res.Header) {
 		copyResponseHeader(x.w.Header(), res.Header)
+		x.w.Header().Set(requestIDHeader, x.id.String())
 		x.w.WriteHeader(res.StatusCode)
 		if _, err := io.Copy(x.w, res.Body); err != nil && r.Context().Err() == nil {
 			h.d.Metrics.IncError()
@@ -458,10 +504,11 @@ func (h *handler) forward(x *exchange, r *http.Request, route adapter.Route, bod
 		h.d.Metrics.IncError()
 		x.entry.Blocked = reasonStreamRewrite
 		h.d.Logf("cui-proxy: upstream sent an encoded event stream; response blocked")
-		writeError(x.w, blockStatus[reasonStreamRewrite], reasonStreamRewrite, "cui_proxy_blocked", blockMessage[reasonStreamRewrite])
+		writeError(x, blockStatus[reasonStreamRewrite], reasonStreamRewrite, "cui_proxy_blocked", blockMessage[reasonStreamRewrite])
 		return false
 	}
 	copyResponseHeader(x.w.Header(), res.Header)
+	x.w.Header().Set(requestIDHeader, x.id.String())
 	x.w.Header().Del("Content-Length")
 	x.w.WriteHeader(res.StatusCode)
 	return h.stream(x, r, res.Body, rest)
@@ -545,12 +592,79 @@ func (h *handler) stream(x *exchange, r *http.Request, body io.Reader, rest *tra
 	}
 }
 
+// record writes the request's decision record, at most once per request.
+// A failure is counted and logged (rate-limited, by class only); whether it
+// blocks is the caller's call (cfg.AuditBlocks for a forward; a blocked
+// request stays blocked either way).
+func (h *handler) record(x *exchange, dec decisionlog.Decision, reason string, counts map[string]int) error {
+	if x.recorded {
+		return nil
+	}
+	x.recorded = true
+	profile := "unknown"
+	if x.cfg != nil {
+		profile = x.cfg.Policy.Profile
+		if profile == "" {
+			profile = config.ProfileSanitize
+		}
+	}
+	err := h.d.Decisions.Record(decisionlog.Entry{
+		RequestID: x.id, Adapter: h.d.Adapter.Name(), Profile: profile,
+		Decision: dec, Reason: reason, Counts: counts,
+	})
+	if err == nil {
+		return nil
+	}
+	h.d.Metrics.IncAuditFailed()
+	outcome := "request blocked"
+	if dec != decisionlog.Blocked && x.cfg != nil && !x.cfg.AuditBlocks() {
+		outcome = "request forwarded anyway (audit.on_error=warn)"
+	}
+	if n, ok := h.auditWarn.allow(time.Now()); ok {
+		h.d.Logf("cui-proxy: WARN decision record not written (%s); %s; %d earlier failure(s) not logged", decisionlog.ErrClass(err), outcome, n)
+	}
+	return err
+}
+
+// blockAudit refuses a request whose decision could not be recorded. It is
+// not recorded itself (record already ran, and failed).
+func (h *handler) blockAudit(x *exchange, err error) bool {
+	class := decisionlog.ErrClass(err)
+	x.entry.Blocked = reasonAudit
+	h.d.Metrics.IncBlocked(reasonAudit)
+	h.d.Logf("cui-proxy: request blocked (reason=%s kind=%s)", reasonAudit, class)
+	writeError(x, blockStatus[reasonAudit], reasonAudit, "cui_proxy_blocked", "request blocked (reason="+reasonAudit+" kind="+class+"): "+blockMessage[reasonAudit])
+	return false
+}
+
+// rateLimit lets one log line through per auditWarnEvery and counts the rest.
+type rateLimit struct {
+	mu         sync.Mutex
+	last       time.Time
+	suppressed int
+}
+
+const auditWarnEvery = time.Minute
+
+func (l *rateLimit) allow(now time.Time) (suppressed int, ok bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if !l.last.IsZero() && now.Sub(l.last) < auditWarnEvery {
+		l.suppressed++
+		return 0, false
+	}
+	n := l.suppressed
+	l.last, l.suppressed = now, 0
+	return n, true
+}
+
 // block answers with the reason's error and counts it.
 func (h *handler) block(x *exchange, reason string) bool {
+	_ = h.record(x, decisionlog.Blocked, reason, nil)
 	x.entry.Blocked = reason
 	h.d.Metrics.IncBlocked(reason)
 	h.d.Logf("cui-proxy: request blocked (reason=%s)", reason)
-	writeError(x.w, blockStatus[reason], reason, "cui_proxy_blocked", blockMessage[reason])
+	writeError(x, blockStatus[reason], reason, "cui_proxy_blocked", blockMessage[reason])
 	return false
 }
 
@@ -559,6 +673,11 @@ func (h *handler) block(x *exchange, reason string) bool {
 // in the log line, the audit entry (Blocked "<reason>:<kind>" and Rules
 // "blocked:<rule>") and the 422 message. Metrics keys stay the reason.
 func (h *handler) blockDiag(x *exchange, reason string, d diag) bool {
+	var counts map[string]int
+	if d.rule != "" {
+		counts = map[string]int{d.rule: 1}
+	}
+	_ = h.record(x, decisionlog.Blocked, reason, counts)
 	x.entry.Blocked = reason
 	if d.kind != reason {
 		x.entry.Blocked = reason + ":" + d.kind
@@ -572,21 +691,24 @@ func (h *handler) blockDiag(x *exchange, reason string, d diag) bool {
 	if d.rule != "" {
 		msg += " rule=" + d.rule
 	}
-	writeError(x.w, blockStatus[reason], reason, "cui_proxy_blocked", msg+")")
+	writeError(x, blockStatus[reason], reason, "cui_proxy_blocked", msg+")")
 	return false
 }
 
 // writeError writes an OpenAI-style JSON error. Its text is fixed per code
 // (plus, from blockDiag, closed-set kinds and safeName-cleaned rule names)
-// and never contains request data.
-func writeError(w http.ResponseWriter, status int, code, typ, msg string) {
-	h := w.Header()
+// and never contains request data. The message ends with the request id, for
+// `cui-proxy explain`, which is also in the request_id field and header.
+func writeError(x *exchange, status int, code, typ, msg string) {
+	id := x.id.String()
+	h := x.w.Header()
 	h.Set("Content-Type", "application/json")
 	h.Set("Cache-Control", "no-store")
 	h.Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(status)
-	// The values are constants or safeName output: no characters that need escaping.
-	_, _ = io.WriteString(w, `{"error":{"message":"cui-proxy: `+msg+`","type":"`+typ+`","code":"`+code+`"}}`)
+	h.Set(requestIDHeader, id)
+	x.w.WriteHeader(status)
+	// The values are constants, safeName output or hex: no characters that need escaping.
+	_, _ = io.WriteString(x.w, `{"error":{"message":"cui-proxy: `+msg+` request_id=`+id+`","type":"`+typ+`","code":"`+code+`","request_id":"`+id+`"}}`)
 }
 
 // errKind names an error's category without its text (which may carry the

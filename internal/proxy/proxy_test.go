@@ -23,6 +23,7 @@ import (
 	"cui-proxy/internal/adapter/codex"
 	"cui-proxy/internal/audit"
 	"cui-proxy/internal/config"
+	"cui-proxy/internal/decisionlog"
 	"cui-proxy/internal/detect"
 	"cui-proxy/internal/metrics"
 	"cui-proxy/internal/sse"
@@ -114,6 +115,8 @@ type harness struct {
 	reg       *metrics.Registry
 	aud       *audit.Log
 	auditCh   <-chan audit.Entry
+	decPath   string // the decision log file
+	dec       *decisionlog.Log
 	logs      *logBuf
 	reqs      chan capture
 	handle    func(w http.ResponseWriter, r *http.Request)
@@ -126,6 +129,11 @@ type harness struct {
 type option func(*harness, *Deps)
 
 func withAdapter(a adapter.Adapter) option { return func(_ *harness, d *Deps) { d.Adapter = a } }
+
+// withDecisions replaces the harness's real decision log.
+func withDecisions(r decisionlog.Recorder) option {
+	return func(_ *harness, d *Deps) { d.Decisions = r }
+}
 
 func newHarness(t *testing.T, handle func(w http.ResponseWriter, r *http.Request), opts ...option) *harness {
 	t.Helper()
@@ -155,6 +163,12 @@ func newHarness(t *testing.T, handle func(w http.ResponseWriter, r *http.Request
 		t.Fatal(err)
 	}
 	h.upTr = &http.Transport{}
+	h.decPath = t.TempDir() + "/decisions.jsonl"
+	h.dec, err = decisionlog.Open(decisionlog.Options{Path: h.decPath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { h.dec.Close() })
 	d := Deps{
 		Adapter:  codex.New(),
 		Upstream: base,
@@ -166,6 +180,7 @@ func newHarness(t *testing.T, handle func(w http.ResponseWriter, r *http.Request
 		VaultLen:  func() int { return h.cur.Load().v.Len() },
 		Metrics:   h.reg,
 		Audit:     h.aud,
+		Decisions: h.dec,
 		Transport: h.upTr,
 		Logf:      h.logs.logf,
 	}

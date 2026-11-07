@@ -60,7 +60,7 @@ func TestBlockDiagnosticsCarryKindAndRule(t *testing.T) {
 				msg += " rule=" + c.rule
 			}
 			msg += ")"
-			if e.Error.Code != c.reason || e.Error.Type != "cui_proxy_blocked" || e.Error.Message != msg {
+			if e.Error.Code != c.reason || e.Error.Type != "cui_proxy_blocked" || e.Error.Message != msg+" request_id="+res.Header.Get("X-Cui-Proxy-Request-Id") {
 				t.Errorf("error = %+v, want message %q", e.Error, msg)
 			}
 			a := h.nextAudit()

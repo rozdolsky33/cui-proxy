@@ -70,3 +70,38 @@ func TestTestEndpointExplainsAPolicyBlock(t *testing.T) {
 		t.Errorf("the response echoes the value: %s", b)
 	}
 }
+
+// The config view shows the decision log settings, with the effective
+// on_error (strict always blocks).
+func TestConfigViewShowsAudit(t *testing.T) {
+	d := testDeps(t)
+	c := d.Cfg()
+	off, days := false, 0
+	c.Audit = config.Audit{File: "/state/decisions.jsonl", OnError: "warn", RetentionDays: &days}
+	var v struct {
+		Audit struct {
+			Enabled       bool   `json:"enabled"`
+			File          string `json:"file"`
+			OnError       string `json:"on_error"`
+			MaxSizeMB     int    `json:"max_size_mb"`
+			RetentionDays int    `json:"retention_days"`
+		}
+	}
+	get := func() {
+		t.Helper()
+		rec := do(New(d), "GET", "/api/config", "", nil)
+		if err := json.Unmarshal(rec.Body.Bytes(), &v); err != nil {
+			t.Fatal(err)
+		}
+	}
+	get()
+	if !v.Audit.Enabled || v.Audit.File != "/state/decisions.jsonl" || v.Audit.OnError != "warn" || v.Audit.MaxSizeMB != 50 || v.Audit.RetentionDays != 0 {
+		t.Errorf("audit view %+v", v.Audit)
+	}
+	c.Policy.Profile = "strict"
+	c.Audit.Enabled = &off
+	get()
+	if v.Audit.Enabled || v.Audit.OnError != "block" {
+		t.Errorf("strict view %+v", v.Audit)
+	}
+}

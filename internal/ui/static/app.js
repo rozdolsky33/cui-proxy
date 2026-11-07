@@ -54,6 +54,7 @@
     box.appendChild(card("Restores", m.restores));
     box.appendChild(card("Blocked", m.blocked, pairs(m.blocked_by_reason)));
     box.appendChild(card("Errors", m.errors));
+    box.appendChild(card("Decision records not written", m.audit_write_failed || 0));
     box.appendChild(card("Feed drops", m.feed_dropped || 0));
     var o = m.overhead_ms || {};
     box.appendChild(card("Overhead p50 / p95", fmtMs(o.p50) + " / " + fmtMs(o.p95), (o.samples || 0) + " samples"));
@@ -67,7 +68,7 @@
   // Config panel
   function renderConfig(c) {
     $("version").textContent = c.version || "";
-    var pol = c.policy || {}, vlt = c.vault || {};
+    var pol = c.policy || {}, vlt = c.vault || {}, aud = c.audit || {};
     $("profile").textContent = "profile: " + (pol.profile || "unknown");
     $("upstreams").textContent = Object.keys(c.upstreams || {}).sort().map(function (k) { return k + " -> " + c.upstreams[k]; }).join("  ");
     var kv = $("config");
@@ -76,7 +77,10 @@
       ["listen", c.listen], ["ui listen", c.ui_listen],
       ["profile", pol.profile], ["unsupported", pol.unsupported],
       ["on_error", pol.on_error], ["max_body_bytes", pol.max_body_bytes],
-      ["vault mode", vlt.mode], ["vault key file", vlt.key_file || "-"], ["vault file", vlt.file || "-"]
+      ["vault mode", vlt.mode], ["vault key file", vlt.key_file || "-"], ["vault file", vlt.file || "-"],
+      ["decision log", aud.enabled ? (aud.file || "-") : "disabled"],
+      ["decision log on_error", aud.enabled ? aud.on_error : "-"],
+      ["decision log rotation / retention", aud.enabled ? aud.max_size_mb + " MB / " + (aud.retention_days ? aud.retention_days + " days" : "forever") : "-"]
     ].forEach(function (p) { kv.appendChild(el("dt", null, p[0])); kv.appendChild(el("dd", null, p[1])); });
     var tb = $("rules").tBodies[0];
     clear(tb);
@@ -117,6 +121,7 @@
   function addRow(e, prepend) {
     var tb = $("feed").tBodies[0];
     var tr = el("tr", e.blocked ? "blocked" : "");
+    if (e.request_id) { tr.title = "request " + e.request_id + " (cui-proxy explain " + e.request_id + ")"; }
     var t = e.time ? new Date(e.time) : null;
     tr.appendChild(el("td", null, t && !isNaN(t) ? t.toLocaleTimeString() : "\u2014"));
     tr.appendChild(el("td", null, e.adapter || ""));

@@ -85,7 +85,7 @@ func TestEntryHasNoValueFields(t *testing.T) {
 			}
 		}
 	}
-	want := []string{"Time", "Adapter", "Method", "Path", "Status", "BytesIn", "BytesOut", "Rules", "Blocked", "LatencyMS"}
+	want := []string{"Time", "RequestID", "Adapter", "Method", "Path", "Status", "BytesIn", "BytesOut", "Rules", "Blocked", "LatencyMS"}
 	if typ.NumField() != len(want) {
 		t.Fatalf("fields changed: %d", typ.NumField())
 	}

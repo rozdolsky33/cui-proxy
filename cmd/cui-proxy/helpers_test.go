@@ -30,6 +30,21 @@ const (
 	hostB    = "billing.agency.internal"
 )
 
+// TestMain keeps every test away from the real state directory: a config
+// that does not name audit.file would otherwise default to
+// ~/.local/state/cui-proxy/decisions.jsonl.
+func TestMain(m *testing.M) {
+	dir, err := os.MkdirTemp("", "cui-proxy-state-")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	os.Setenv("XDG_STATE_HOME", dir)
+	code := m.Run()
+	os.RemoveAll(dir)
+	os.Exit(code)
+}
+
 // ---- logs ----
 
 type logBuf struct {
@@ -58,6 +73,7 @@ type cfgSpec struct {
 	OnError          string
 	Profile          string // policy.profile; empty leaves it out (the default)
 	Vault            string // the full vault: line value
+	Audit            string // the full audit: line value; default: a decisions.jsonl next to the config
 	Extra            string // extra top-level YAML lines
 	Rules            string // the rules: list body
 }
@@ -91,10 +107,11 @@ upstreams:
   codex: %s
 policy: { on_error: %s, max_body_bytes: 1048576%s }
 vault: %s
+audit: %s
 %s
 rules:
 %s`, def(c.Listen, "127.0.0.1:0"), def(c.UIListen, "127.0.0.1:0"), def(c.Upstream, "http://127.0.0.1:1/codex"),
-		def(c.OnError, "block"), profileField(c.Profile), def(c.Vault, "{ mode: memory }"), c.Extra, def(c.Rules, rulesA))
+		def(c.OnError, "block"), profileField(c.Profile), def(c.Vault, "{ mode: memory }"), def(c.Audit, "{ file: decisions.jsonl }"), c.Extra, def(c.Rules, rulesA))
 }
 
 func profileField(p string) string {
