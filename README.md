@@ -17,14 +17,31 @@ What it is not: not a DLP product, not a guarantee that nothing sensitive
 leaves the machine, not a MITM proxy (Codex is pointed at it explicitly),
 and it never stores or alters your upstream credentials.
 
+## Contents
 
-**Jump to:** [Quick start (macOS)](#quick-start-macos-menu-bar) ·
-[Quick start (terminal)](#quick-start-terminal-linux-or-no-menu-bar) ·
-[Everyday use](#everyday-use) · [How it works](#how-it-works) · [Menu-bar details](#menu-bar-app-details) ·
-[Install options](#install-all-options) · [Commands](#commands) ·
-[Policy profiles](#policy-profiles-sanitize-or-strict) ·
-[Block diagnostics](#block-diagnostics) · [Known limitations](#known-limitations--behavior) ·
-[Uninstall](#uninstall) · [Support](#support)
+- **Get started**
+  - [Quick start (macOS menu bar)](#quick-start-macos-menu-bar)
+  - [Quick start (terminal, Linux or no menu bar)](#quick-start-terminal-linux-or-no-menu-bar)
+  - [If the first Codex run fails](#if-the-first-codex-run-fails)
+- **Understand it**
+  - [How it works](#how-it-works)
+  - [Policy profiles: sanitize or strict](#policy-profiles-sanitize-or-strict)
+  - [Known limitations / behavior](#known-limitations--behavior)
+- **Use it**
+  - [Everyday use](#everyday-use)
+  - [Menu-bar app details](#menu-bar-app-details)
+  - [Point Codex at the proxy](#point-codex-at-the-proxy)
+  - [Dashboard](#dashboard) · [Hot reload](#hot-reload) · [Vault](#vault)
+  - [Block diagnostics](#block-diagnostics)
+- **Install and remove**
+  - [Install (all options)](#install-all-options) ([Homebrew](#homebrew-macos-and-linux), [curl](#curl), [manual](#manual-download-or-from-source))
+  - [Uninstall](#uninstall)
+- **Reference**
+  - [Commands](#commands)
+  - [Build from source](#build)
+- **Help and maintenance**
+  - [Support](#support)
+  - [Releasing (maintainers)](#releasing-maintainers)
 
 ## Quick start (macOS menu bar)
 
