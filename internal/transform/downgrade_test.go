@@ -178,3 +178,31 @@ func TestSanitizeBlocksWhenNothingToDowngrade(t *testing.T) {
 		t.Errorf("built %d times, want 1", calls)
 	}
 }
+
+// I3: tcpdump addr.port tokens are masked whole and restore byte-exactly.
+func TestAddrPortRoundTrip(t *testing.T) {
+	rng := rand.New(rand.NewSource(2))
+	for _, in := range []string{
+		"IP 10.20.30.15.443 > 10.20.30.16.51234: Flags [S]",
+		"IP6 2001:db8::1.443 > 2001:db8::2.51234",
+		"10.20.30.15.443",
+	} {
+		v := vault.New(testKey)
+		out, err := NewSanitizer(builtins(t), v, nil).Text(in)
+		if err != nil {
+			t.Fatalf("%q: %v", in, err)
+		}
+		for _, real := range []string{"10.20.30.15", "10.20.30.16", "2001:db8::1", "2001:db8::2", ".443", ".51234"} {
+			if strings.Contains(out, real) {
+				t.Errorf("%q: %q remains in %q", in, real, out)
+			}
+		}
+		r := NewRestorer(v)
+		if got := r.Text(out); got != in {
+			t.Errorf("%q: restore = %q", in, got)
+		}
+		if got := streamChunks(r, out, rng); got != in {
+			t.Errorf("%q: stream restore = %q", in, got)
+		}
+	}
+}

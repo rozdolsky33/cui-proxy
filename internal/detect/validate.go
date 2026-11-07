@@ -93,6 +93,72 @@ func ipv6Find(text string, s, e int) [][2]int {
 	return out
 }
 
+// portOK reports whether p is 1-5 decimal digits with a value <= 65535.
+func portOK(p string) bool {
+	if len(p) == 0 || len(p) > 5 {
+		return false
+	}
+	n := 0
+	for i := 0; i < len(p); i++ {
+		if !isDigit(p[i]) {
+			return false
+		}
+		n = n*10 + int(p[i]-'0')
+	}
+	return n <= 65535
+}
+
+// addrPortFind accepts a candidate of exactly five dotted numeric components
+// (tcpdump's "a.b.c.d.port") whose first four are an IPv4 address and whose
+// fifth is a port, not continued on either side by letters, digits or dotted
+// digits. A run of five single-digit components ("1.2.3.4.5") is taken for a
+// version number and left alone.
+func addrPortFind(text string, s, e int) [][2]int {
+	if !boundedBefore(text, s) || !boundedAfter(text, e) {
+		return nil
+	}
+	c := text[s:e]
+	i := strings.LastIndexByte(c, '.')
+	if !parseV4(c[:i]) || !portOK(c[i+1:]) || len(c) == 9 {
+		return nil // len 9: five single digits and four dots
+	}
+	return [][2]int{{s, e}}
+}
+
+// v6Port reports whether c is an IPv6 address followed by ".<port>" (and is
+// not itself an address, as "::ffff:10.20.30.15" is).
+func v6Port(c string) bool {
+	i := strings.LastIndexByte(c, '.')
+	if i < 0 || !portOK(c[i+1:]) || strings.Count(c[:i], ":") < 2 {
+		return false
+	}
+	if _, err := netip.ParseAddr(c); err == nil {
+		return false
+	}
+	a, err := netip.ParseAddr(c[:i])
+	return err == nil && a.Is6() && !a.IsUnspecified()
+}
+
+// ipv6PortFind is ipv6Find for tcpdump's "addr.port" IPv6 notation
+// ("2001:db8::1.443"): the address plus ".port" is one span.
+func ipv6PortFind(text string, s, e int) [][2]int {
+	var out [][2]int
+	for st := s; st < e; {
+		if st > 0 && isAlnum(text[st-1]) {
+			st++
+			continue
+		}
+		en := trimTail(text, st, e)
+		if v6Port(text[st:en]) && !(en < len(text) && isAlnum(text[en])) {
+			out = append(out, [2]int{st, en})
+			st = en
+			continue
+		}
+		st++
+	}
+	return out
+}
+
 func parsePrefixAny(c string) bool {
 	if !strings.Contains(c, ":") {
 		_, ok := ipv4.ParsePrefix(c)

@@ -13,6 +13,10 @@ var builtinDefs = []builtinDef{
 	{class: "ocid", pattern: `ocid1\.[A-Za-z0-9_-]+\.[A-Za-z0-9-]+\.[A-Za-z0-9-]*\.[A-Za-z0-9]+`, refine: ocidRefine},
 	{class: "ipv4", pattern: `\d{1,3}(?:\.\d{1,3}){3}`, refine: ipv4Refine},
 	{class: "ipv6", pattern: `[0-9A-Fa-f:.]{3,}`, find: ipv6Find},
+	// tcpdump-style addr.port ("10.20.30.15.443", "2001:db8::1.443"): the
+	// whole token, port included, is masked as an opaque secret.
+	{class: "secret", pattern: `\d{1,3}(?:\.\d{1,3}){3}\.\d{1,5}`, find: addrPortFind},
+	{class: "secret", pattern: `[0-9A-Fa-f:.]{3,}`, find: ipv6PortFind},
 	{class: "cidr", pattern: `[0-9A-Fa-f:.]{3,}/\d{1,3}`, find: cidrFind},
 	{class: "email", pattern: `[\p{L}\p{N}._%+-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}`},
 	{class: "ssn", pattern: `\d{3}-\d{2}-\d{4}`, refine: ssnRefine},
