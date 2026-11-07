@@ -340,7 +340,8 @@ Any rule can also set `action: block` to refuse a request that matches it
 even under `sanitize` (for example a dictionary of names that must never
 leave). Under `strict` every rule blocks and a rule may not set
 `action: sanitize` (a verified approval may allow that in a later release; see
-[docs/adr](docs/adr/)). **Any blocking rule (the strict profile or an
+[docs/adr](docs/adr/)). `strict` needs at least one rule (with none it would
+detect nothing). **Any blocking rule (the strict profile or an
 `action: block`) also requires `policy.on_error: block`**: the config is
 refused otherwise, because `passthrough` forwards the original request when it
 cannot be inspected, and a failure can hit before the blocking rule is checked.
@@ -353,9 +354,14 @@ The proxy enforces the same thing at runtime, whatever the config says.
 - When any rule blocks, fields that are normally passed through unscanned so
   the protocol keeps working (`model`, ids, `role`, `status`, tool names and
   types, `include` entries) are **checked, not rewritten**, and so is every
-  number in the request, not just text. The one exception is
-  `encrypted_content` (the vendor's encrypted reasoning blobs, resent as
-  received).
+  number in the request, not just text (number literals are expanded exactly,
+  so `4.111111111111111e15` is checked as 4111111111111111). The one partial
+  exception is the content of `encrypted_content` (the vendor's encrypted
+  reasoning blobs, resent as received): it is not scanned, but while a rule
+  blocks it must look like base64 ciphertext or the request is refused. A
+  value written only with base64 characters could still ride in it; nothing
+  short of scanning the blob would catch that, and scanning risks false
+  positives on genuine ciphertext.
 - The `Authorization`, `Cookie` and `Chatgpt-Account-Id` headers are
   credentials and are forwarded as they are; every other header and the query
   string are scanned and a match blocks.
@@ -451,7 +457,8 @@ blocked: it is masked as a `REDACTED-<8hex>` token instead and counted as
 - Without a blocking rule, `tools[].name` and some protocol identifier fields
   are passed through unscanned so that the protocol keeps working (unknown
   `include` values are scanned, not skipped). When any rule blocks they are
-  checked too (see Policy profiles), except `encrypted_content`.
+  checked too (see Policy profiles); only the content of `encrypted_content`
+  is not scanned (it must look like base64 ciphertext).
 - The builtin set has no AWS access key detector; `examples/config.yaml`
   adds one as a regex rule (`aws-keys`, `\b(?:AKIA|ASIA)[0-9A-Z]{16}\b`).
 - Upstream 3xx responses other than 304 become 502: a redirect (and its
