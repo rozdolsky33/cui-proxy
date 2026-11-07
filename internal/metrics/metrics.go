@@ -1,0 +1,177 @@
+// Package metrics holds the proxy's in-memory counters. It never sees real
+// values: only rule names, block reasons and counts.
+package metrics
+
+import (
+	"sort"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"cui-proxy/internal/transform"
+)
+
+const (
+	reservoirSize = 4096 // latency samples kept (ring buffer)
+	rpmSlots      = 60   // one slot per second
+)
+
+// Snapshot is the JSON view served by the dashboard. Field names are stable
+// snake_case: requests, blocked, blocked_by_reason, errors, restores,
+// replacements, replacements_by_rule, requests_per_minute,
+// overhead_ms{p50,p95,samples}, vault_size, uptime_seconds.
+type Snapshot struct {
+	Requests           int64            `json:"requests"`
+	Blocked            int64            `json:"blocked"`
+	BlockedByReason    map[string]int64 `json:"blocked_by_reason"`
+	Errors             int64            `json:"errors"`
+	Restores           int64            `json:"restores"`
+	Replacements       int64            `json:"replacements"`
+	ReplacementsByRule map[string]int64 `json:"replacements_by_rule"`
+	RequestsPerMinute  int64            `json:"requests_per_minute"`
+	OverheadMS         Overhead         `json:"overhead_ms"`
+	VaultSize          int64            `json:"vault_size"`
+	UptimeSeconds      int64            `json:"uptime_seconds"`
+}
+
+// Overhead is proxy-added latency in milliseconds over the last <=4096 samples.
+type Overhead struct {
+	P50     float64 `json:"p50"`
+	P95     float64 `json:"p95"`
+	Samples int     `json:"samples"`
+}
+
+type rpmSlot struct {
+	sec int64
+	n   int64
+}
+
+// Registry is safe for concurrent use. It implements transform.Sink.
+type Registry struct {
+	now   func() time.Time // injectable clock; see newWithClock
+	start time.Time
+
+	requests, blocked, errs, restores, replacements, vaultSize atomic.Int64
+
+	mu       sync.Mutex
+	byRule   map[string]int64
+	byReason map[string]int64
+	slots    [rpmSlots]rpmSlot
+	lat      [reservoirSize]time.Duration
+	latN     int // total samples written (ring position = latN % size)
+}
+
+// New returns a Registry using the wall clock.
+func New() *Registry { return newWithClock(time.Now) }
+
+// newWithClock is the unexported test constructor that injects the clock.
+func newWithClock(now func() time.Time) *Registry {
+	return &Registry{now: now, start: now(), byRule: map[string]int64{}, byReason: map[string]int64{}}
+}
+
+// Record implements transform.Sink: counts replacements by rule.
+func (r *Registry) Record(e transform.Event) {
+	if e.Count <= 0 {
+		return
+	}
+	r.replacements.Add(int64(e.Count))
+	r.mu.Lock()
+	r.byRule[e.Rule] += int64(e.Count)
+	r.mu.Unlock()
+}
+
+// IncRequest counts one proxied request.
+func (r *Registry) IncRequest() {
+	r.requests.Add(1)
+	sec := r.now().Unix()
+	r.mu.Lock()
+	s := &r.slots[sec%rpmSlots]
+	if s.sec != sec {
+		*s = rpmSlot{sec: sec}
+	}
+	s.n++
+	r.mu.Unlock()
+}
+
+// IncBlocked counts one blocked request under reason.
+func (r *Registry) IncBlocked(reason string) {
+	r.blocked.Add(1)
+	r.mu.Lock()
+	r.byReason[reason]++
+	r.mu.Unlock()
+}
+
+// IncError counts one internal error.
+func (r *Registry) IncError() { r.errs.Add(1) }
+
+// IncRestore adds n restored synthetic values (n <= 0 is ignored).
+func (r *Registry) IncRestore(n int) {
+	if n > 0 {
+		r.restores.Add(int64(n))
+	}
+}
+
+// ObserveOverhead records proxy-added latency.
+func (r *Registry) ObserveOverhead(d time.Duration) {
+	r.mu.Lock()
+	r.lat[r.latN%reservoirSize] = d
+	r.latN++
+	r.mu.Unlock()
+}
+
+// SetVaultSize records the current vault entry count.
+func (r *Registry) SetVaultSize(n int) { r.vaultSize.Store(int64(n)) }
+
+// Snapshot returns a consistent-enough copy of all counters.
+func (r *Registry) Snapshot() Snapshot {
+	now := r.now()
+	sec := now.Unix()
+	s := Snapshot{
+		Requests:     r.requests.Load(),
+		Blocked:      r.blocked.Load(),
+		Errors:       r.errs.Load(),
+		Restores:     r.restores.Load(),
+		Replacements: r.replacements.Load(),
+		VaultSize:    r.vaultSize.Load(),
+	}
+	if up := now.Sub(r.start); up > 0 {
+		s.UptimeSeconds = int64(up / time.Second)
+	}
+	r.mu.Lock()
+	s.ReplacementsByRule = make(map[string]int64, len(r.byRule))
+	for k, v := range r.byRule {
+		s.ReplacementsByRule[k] = v
+	}
+	s.BlockedByReason = make(map[string]int64, len(r.byReason))
+	for k, v := range r.byReason {
+		s.BlockedByReason[k] = v
+	}
+	for _, sl := range r.slots {
+		if sl.sec > sec-rpmSlots && sl.sec <= sec {
+			s.RequestsPerMinute += sl.n
+		}
+	}
+	n := r.latN
+	if n > reservoirSize {
+		n = reservoirSize
+	}
+	samples := make([]time.Duration, n)
+	copy(samples, r.lat[:n])
+	r.mu.Unlock()
+
+	sort.Slice(samples, func(i, j int) bool { return samples[i] < samples[j] })
+	s.OverheadMS = Overhead{P50: pct(samples, 50), P95: pct(samples, 95), Samples: n}
+	return s
+}
+
+// pct is nearest-rank over sorted samples, in ms; 0 when empty.
+func pct(sorted []time.Duration, p int) float64 {
+	if len(sorted) == 0 {
+		return 0
+	}
+	rank := (p*len(sorted) + 99) / 100 // ceil(p/100 * n)
+	if rank < 1 {
+		rank = 1
+	}
+	return float64(sorted[rank-1]) / float64(time.Millisecond)
+}
