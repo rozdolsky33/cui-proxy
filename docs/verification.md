@@ -159,6 +159,25 @@ for any request other than `POST /v1/responses` and `GET /v1/models`:
 
 Stop the proxy with Ctrl-C. Memory mode discards every mapping.
 
+### 6c. Decision log
+
+With the proxy stopped (Ctrl-C), check that every request of the session was
+recorded and that the chain verifies. Use the same `-config` as `serve`:
+
+```sh
+/path/to/cui-proxy/bin/cui-proxy audit verify -config config.yaml   # expect: Result: OK, exit 0
+```
+
+Expect `Records checked` to be at least the number of requests in the feed, and
+the decision log (default `~/.local/state/cui-proxy/decisions.jsonl`, mode
+`0600`) to contain no IP, OCID, prompt text, header or path, only rule names
+and counts. Copy a `request_id` from a blocked request's error message
+(or from the `X-Cui-Proxy-Request-Id` header) and run
+`cui-proxy explain -config config.yaml <id>`: it should name the reason and
+the rule. Then make a copy of the log, delete one middle line from the copy
+and run `cui-proxy audit verify -file <copy>`: it must report the first
+break at that line and exit 1. See [decision-log.md](decision-log.md).
+
 ## 7. Record the result
 
 Write down, for this repo:
