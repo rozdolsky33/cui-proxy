@@ -20,12 +20,46 @@ type Rule struct {
 	Validate string `yaml:"validate"`
 	Synth    string `yaml:"synth"`
 	File     string `yaml:"file"`
+	// Action is what a detection by this rule does: "block" refuses the whole
+	// request, "sanitize" masks and restores the value. Empty follows
+	// policy.profile. Under the strict profile a rule may not weaken it.
+	Action string `yaml:"action"`
 }
 
-// Policy controls failure handling and limits. OnError is "block" or "passthrough".
+// Profiles and actions (ADR 0001).
+const (
+	ProfileSanitize = "sanitize" // detections are masked and restored (default)
+	ProfileStrict   = "strict"   // any detection blocks the request
+
+	ActionBlock    = "block"
+	ActionSanitize = "sanitize"
+)
+
+// Policy controls failure handling and limits. OnError is "block" or
+// "passthrough". Profile is "sanitize" (default) or "strict". Unsupported
+// says what happens to content the proxy cannot inspect (images, files,
+// compressed bodies, unknown routes, over-deep or unparseable bodies); the
+// only value is "block", stated so the behavior is a visible, documented
+// setting.
 type Policy struct {
 	OnError      string `yaml:"on_error"`
 	MaxBodyBytes int64  `yaml:"max_body_bytes"`
+	Profile      string `yaml:"profile"`
+	Unsupported  string `yaml:"unsupported"`
+}
+
+// EffectiveAction is what a detection by r does under profile: the rule's own
+// action if it has one, else the profile's. The result is never weaker than
+// the strict profile, even for a config that skipped validation. An empty
+// profile means the default ("sanitize").
+func EffectiveAction(profile string, r Rule) string {
+	if profile == ProfileStrict {
+		return ActionBlock
+	}
+	if r.Action == ActionBlock {
+		return ActionBlock
+	}
+	return ActionSanitize
 }
 
 // VaultConfig selects the vault backend. Mode is "memory" or "file".
@@ -79,6 +113,12 @@ func (c *Config) applyDefaults() {
 	if c.Policy.OnError == "" {
 		c.Policy.OnError = "block"
 	}
+	if c.Policy.Profile == "" {
+		c.Policy.Profile = ProfileSanitize
+	}
+	if c.Policy.Unsupported == "" {
+		c.Policy.Unsupported = "block"
+	}
 	if c.Policy.MaxBodyBytes == 0 {
 		c.Policy.MaxBodyBytes = 20 << 20
 	}
@@ -113,6 +153,19 @@ func (c *Config) ValidateWith(known func(class string) bool) error {
 	if c.Policy.MaxBodyBytes < 0 {
 		return errors.New("config: policy.max_body_bytes must not be negative")
 	}
+	// Empty means the default, for configs built in code rather than loaded.
+	switch c.Policy.Profile {
+	case "", ProfileSanitize:
+	case ProfileStrict:
+		if c.Policy.OnError == "passthrough" {
+			return errors.New(`config: policy.profile "strict" requires policy.on_error "block": passthrough would forward the original request when it cannot be inspected`)
+		}
+	default:
+		return fmt.Errorf("config: policy.profile %q must be sanitize or strict", c.Policy.Profile)
+	}
+	if c.Policy.Unsupported != "" && c.Policy.Unsupported != "block" {
+		return fmt.Errorf("config: policy.unsupported %q must be block (content the proxy cannot inspect is always refused)", c.Policy.Unsupported)
+	}
 	switch c.Vault.Mode {
 	case "memory":
 	case "file":
@@ -129,6 +182,15 @@ func (c *Config) ValidateWith(known func(class string) bool) error {
 	for i, r := range c.Rules {
 		if err := validateRule(r, known); err != nil {
 			return fmt.Errorf("config: rules[%d]: %w", i, err)
+		}
+		switch r.Action {
+		case "", ActionBlock:
+		case ActionSanitize:
+			if c.Policy.Profile == ProfileStrict {
+				return fmt.Errorf(`config: rules[%d]: action "sanitize" is not allowed under policy.profile "strict" (a verified approval may allow it in a later release; see docs/adr)`, i)
+			}
+		default:
+			return fmt.Errorf("config: rules[%d]: action %q must be block or sanitize", i, r.Action)
 		}
 		if seen[r.Name] {
 			return fmt.Errorf("config: rules[%d]: duplicate name %q", i, r.Name)

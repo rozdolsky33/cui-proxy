@@ -7,8 +7,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"cui-proxy/examples"
+	"cui-proxy/internal/config"
 )
 
 // starterFiles are the files `init` writes, in this order. hosts.txt is the
@@ -23,8 +25,12 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("init", flag.ContinueOnError)
 	dir := fs.String("dir", "", "directory to write into (default $XDG_CONFIG_HOME/cui-proxy, else ~/.config/cui-proxy)")
 	force := fs.Bool("force", false, "overwrite existing files")
+	profile := fs.String("profile", config.ProfileSanitize, "policy profile to write: sanitize (mask and restore) or strict (any detection blocks the request)")
 	if code, ok := parseFlags(fs, args, stderr, nil); !ok {
 		return code
+	}
+	if *profile != config.ProfileSanitize && *profile != config.ProfileStrict {
+		return usageError(stderr, fmt.Sprintf("init: -profile %q must be sanitize or strict", *profile))
 	}
 
 	target := *dir
@@ -56,7 +62,7 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 		return fail(stderr, fmt.Errorf("init: %w", err))
 	}
 	for _, name := range starterFiles {
-		data, err := examples.FS.ReadFile(name)
+		data, err := starterContent(name, *profile)
 		if err != nil {
 			return fail(stderr, fmt.Errorf("init: embedded %s: %w", name, err))
 		}
@@ -70,7 +76,27 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 		return fail(stderr, fmt.Errorf("init: the written config does not validate: %w", err))
 	}
 	fmt.Fprintf(stdout, nextSteps, cfgPath, filepath.Join(abs, "hosts.txt"), cfgPath, cfgPath)
+	if *profile == config.ProfileStrict {
+		fmt.Fprintf(stdout, "\nPolicy profile: strict. Any detection blocks the whole request before it is forwarded.\nReview it with: cui-proxy policy check -config %s\n", cfgPath)
+	} else {
+		fmt.Fprintf(stdout, "\nPolicy profile: sanitize (detections are masked and restored, not refused).\nFor a policy that forbids sending restricted data at all: cui-proxy policy init -profile strict\n")
+	}
 	return exitOK
+}
+
+// starterContent returns the embedded starter file, with the policy profile
+// set in config.yaml. The example states the default profile explicitly so it
+// can be changed with one visible line.
+func starterContent(name, profile string) ([]byte, error) {
+	data, err := examples.FS.ReadFile(name)
+	if err != nil || name != "config.yaml" || profile == config.ProfileSanitize {
+		return data, err
+	}
+	const marker = "\n  profile: sanitize\n"
+	if strings.Count(string(data), marker) != 1 {
+		return nil, errors.New("the starter config has no single policy.profile line to change")
+	}
+	return []byte(strings.Replace(string(data), marker, "\n  profile: "+profile+"\n", 1)), nil
 }
 
 // writeStarter creates path with mode 0600. Without force it refuses to touch

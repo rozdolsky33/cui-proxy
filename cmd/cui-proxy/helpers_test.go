@@ -56,6 +56,7 @@ type cfgSpec struct {
 	Listen, UIListen string
 	Upstream         string
 	OnError          string
+	Profile          string // policy.profile; empty leaves it out (the default)
 	Vault            string // the full vault: line value
 	Extra            string // extra top-level YAML lines
 	Rules            string // the rules: list body
@@ -88,13 +89,30 @@ func (c cfgSpec) render() string {
 ui: { listen: %s }
 upstreams:
   codex: %s
-policy: { on_error: %s, max_body_bytes: 1048576 }
+policy: { on_error: %s, max_body_bytes: 1048576%s }
 vault: %s
 %s
 rules:
 %s`, def(c.Listen, "127.0.0.1:0"), def(c.UIListen, "127.0.0.1:0"), def(c.Upstream, "http://127.0.0.1:1/codex"),
-		def(c.OnError, "block"), def(c.Vault, "{ mode: memory }"), c.Extra, def(c.Rules, rulesA))
+		def(c.OnError, "block"), profileField(c.Profile), def(c.Vault, "{ mode: memory }"), c.Extra, def(c.Rules, rulesA))
 }
+
+func profileField(p string) string {
+	if p == "" {
+		return ""
+	}
+	return ", profile: " + p
+}
+
+// rulesBlockHosts: the builtin rule sanitizes, the dictionary rule blocks.
+const rulesBlockHosts = `  - name: builtin
+    type: builtin
+  - name: hosts-a
+    type: dictionary
+    file: a.txt
+    synth: hostname
+    action: block
+`
 
 func writeFile(t testing.TB, path, content string) {
 	t.Helper()

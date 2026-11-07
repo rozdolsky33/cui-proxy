@@ -24,7 +24,8 @@ const (
 const usage = `usage: cui-proxy <command> [flags]
 
 commands:
-  init [-dir PATH] [-force]            write a starter config and dictionary
+  init [-dir PATH] [-force] [-profile P]  write a starter config and dictionary
+  policy init|check                    write or check a policy (sanitize or strict profile)
   serve -config PATH [-adapter NAME]   run the proxy and the dashboard
   check-config -config PATH            validate a config and its rule files
   info -config PATH                    print the proxy and dashboard URLs
@@ -51,6 +52,8 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return runServe(rest, stderr)
 	case "check-config":
 		return runCheck(rest, stdout, stderr)
+	case "policy":
+		return runPolicy(rest, stdout, stderr)
 	case "info":
 		return runInfo(rest, stdout, stderr)
 	case "menubar":

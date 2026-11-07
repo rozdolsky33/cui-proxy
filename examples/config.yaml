@@ -9,8 +9,17 @@ upstreams:
   codex: https://chatgpt.com/backend-api/codex   # ChatGPT-login Codex backend
 
 policy:
-  on_error: block               # block (fail closed) | passthrough (UNSAFE)
+  # sanitize: detected values are masked with synthetic ones and restored in
+  #           the reply (nothing is refused unless a rule says action: block).
+  # strict:   ANY detection blocks the whole request before it is forwarded.
+  #           Use this where a policy forbids sending restricted data at all:
+  #           cui-proxy policy init --profile strict
+  profile: sanitize
+  on_error: block               # block (fail closed) | passthrough (UNSAFE; not allowed with strict)
   max_body_bytes: 20971520      # 20 MiB, as an integer
+  # unsupported: block          # content the proxy cannot inspect (images, files, compressed
+  #                             # bodies, unknown routes, oversized or unparseable bodies) is
+  #                             # always refused; block is the only value
 
 vault:
   mode: memory                  # memory | file
@@ -27,6 +36,9 @@ rules:
     type: builtin
 
   # Your own sensitive names, one per line, in hosts.txt.
+  # Any rule may set  action: block  to refuse a request that matches it even
+  # under the sanitize profile. Under strict every rule blocks, and a rule
+  # may not weaken that.
   - name: customer-hosts
     type: dictionary
     file: hosts.txt

@@ -175,6 +175,7 @@ type ruleView struct {
 	Validate string `json:"validate,omitempty"`
 	Synth    string `json:"synth,omitempty"`
 	File     string `json:"file,omitempty"` // dictionary file PATH only
+	Action   string `json:"action"`         // effective: block or sanitize
 }
 
 type configView struct {
@@ -183,6 +184,8 @@ type configView struct {
 	UIListen  string            `json:"ui_listen"`
 	Upstreams map[string]string `json:"upstreams"`
 	Policy    struct {
+		Profile      string `json:"profile"`
+		Unsupported  string `json:"unsupported"`
 		OnError      string `json:"on_error"`
 		MaxBodyBytes int64  `json:"max_body_bytes"`
 	} `json:"policy"`
@@ -202,9 +205,17 @@ func (s *server) config(w http.ResponseWriter, r *http.Request) {
 			v.Upstreams[k] = u
 		}
 		v.Policy.OnError, v.Policy.MaxBodyBytes = c.Policy.OnError, c.Policy.MaxBodyBytes
+		v.Policy.Profile, v.Policy.Unsupported = c.Policy.Profile, c.Policy.Unsupported
+		if v.Policy.Profile == "" { // a config built in code, not loaded
+			v.Policy.Profile = config.ProfileSanitize
+		}
+		if v.Policy.Unsupported == "" {
+			v.Policy.Unsupported = "block"
+		}
 		v.Vault.Mode, v.Vault.KeyFile, v.Vault.File = c.Vault.Mode, c.Vault.KeyFile, c.Vault.File
 		for _, ru := range c.Rules {
-			v.Rules = append(v.Rules, ruleView{ru.Name, ru.Type, ru.Pattern, ru.Validate, ru.Synth, ru.File})
+			v.Rules = append(v.Rules, ruleView{ru.Name, ru.Type, ru.Pattern, ru.Validate, ru.Synth, ru.File,
+				config.EffectiveAction(c.Policy.Profile, ru)})
 		}
 	}
 	writeJSON(w, 200, v)
@@ -324,6 +335,12 @@ func (s *server) test(w http.ResponseWriter, r *http.Request) {
 	san := transform.NewSanitizer(s.d.Detectors(), vault.New(key), col) // throwaway vault: live vault and metrics untouched
 	out, err := san.Text(req.Text)
 	if err != nil {
+		var se *transform.SpanError
+		if errors.Is(err, transform.ErrBlocked) && errors.As(err, &se) {
+			// A decision, not a failure: say which rule, never the value.
+			fail(w, http.StatusUnprocessableEntity, "blocked by policy (rule="+se.Rule+", class="+se.Class+")")
+			return
+		}
 		fail(w, http.StatusUnprocessableEntity, errUnresolved)
 		return
 	}

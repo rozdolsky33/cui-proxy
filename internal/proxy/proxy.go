@@ -69,6 +69,10 @@ const (
 	reasonUnrestorable = "unrestorable"
 	reasonBadRequest   = "bad_request"
 	reasonInternal     = "internal"
+	// reasonPolicy: a rule whose effective action is block (the strict
+	// profile, or action: block) matched. It is a decision, not a failure, so
+	// policy.on_error: passthrough never forwards it.
+	reasonPolicy = "policy"
 	// reasonHeader: a request header or the query string holds a detected
 	// value. Headers are never rewritten, so this always blocks, whatever
 	// policy.on_error says.
@@ -88,6 +92,7 @@ var blockStatus = map[string]int{
 	reasonTooLarge:      http.StatusRequestEntityTooLarge,
 	reasonCompressed:    http.StatusUnsupportedMediaType,
 	reasonSanitize:      http.StatusUnprocessableEntity,
+	reasonPolicy:        http.StatusUnprocessableEntity,
 	reasonUnrestorable:  http.StatusUnprocessableEntity,
 	reasonBadRequest:    http.StatusBadRequest,
 	reasonInternal:      http.StatusInternalServerError,
@@ -100,6 +105,7 @@ var blockMessage = map[string]string{
 	reasonTooLarge:      "request body too large",
 	reasonCompressed:    "compressed request bodies are not supported",
 	reasonSanitize:      "request could not be sanitized",
+	reasonPolicy:        "request blocked by policy",
 	reasonUnrestorable:  "request could not be sanitized reversibly",
 	reasonBadRequest:    "malformed request",
 	reasonInternal:      "internal error",
@@ -117,6 +123,7 @@ const (
 	kindPseudonym     = "pseudonym"      // no synthetic for the value (e.g. invalid for its class)
 	kindAmbiguous     = "ambiguous"      // value equals a synthetic it may not pass as
 	kindUnrestorable  = "unrestorable"   // would not restore even downgraded
+	kindRuleMatch     = "rule_match"     // a blocking rule (strict profile or action: block) matched
 	kindOther         = "other"
 )
 
@@ -134,6 +141,8 @@ func diagnose(err error) diag {
 		d.rule, d.class = safeName(se.Rule), safeName(se.Class)
 	}
 	switch {
+	case errors.Is(err, transform.ErrBlocked):
+		d.kind = kindRuleMatch
 	case errors.Is(err, transform.ErrUnrestorable):
 		d.kind = kindUnrestorable
 	case errors.Is(err, synth.ErrExhausted):
@@ -321,7 +330,9 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 	case adapter.KindSanitize:
 		out, reason, d := h.sanitize(x, san, body)
 		if reason != "" {
-			if cfg.Policy.OnError != "passthrough" {
+			// A policy block is a decision, not a failure: on_error only
+			// decides what a FAILURE to sanitize does.
+			if cfg.Policy.OnError != "passthrough" || reason == reasonPolicy {
 				return h.blockDiag(x, reason, d)
 			}
 			h.d.Metrics.IncPassthrough()
@@ -361,7 +372,10 @@ func (h *handler) sanitize(x *exchange, san *transform.Sanitizer, body []byte) (
 	x.observe = true
 	if err != nil {
 		d := diagnose(err)
-		if d.kind == kindUnrestorable {
+		switch d.kind {
+		case kindRuleMatch:
+			return nil, reasonPolicy, d
+		case kindUnrestorable:
 			return nil, reasonUnrestorable, d
 		}
 		return nil, reasonSanitize, d

@@ -147,7 +147,7 @@ func loadRules(path string) (*config.Config, []detect.Detector, error) {
 	if err := cfg.ValidateWith(synth.Known); err != nil {
 		return nil, nil, err
 	}
-	ds, err := detect.Build(cfg.Rules, filepath.Dir(path))
+	ds, err := detect.BuildForProfile(cfg.Rules, filepath.Dir(path), cfg.Policy.Profile)
 	if err != nil {
 		return nil, nil, err
 	}

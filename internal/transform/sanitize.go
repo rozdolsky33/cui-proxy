@@ -47,8 +47,15 @@ var ErrPseudonym = errors.New("transform: no synthetic for detected value")
 // addresses. It is vault.ErrAmbiguous.
 var ErrAmbiguous = vault.ErrAmbiguous
 
+// ErrBlocked means a detection by a rule whose effective action is block (the
+// strict profile, or a rule with action: block): the request is refused, not
+// masked. Unlike the other errors it is a decision, not a failure, so
+// policy.on_error never turns it into a forward. Rule and Class name the
+// blocking rule and its class, never the value.
+var ErrBlocked = errors.New("transform: blocked by policy")
+
 // SpanError is the error Text returns for a detected span it cannot
-// sanitize. Kind is ErrUnrestorable, ErrPseudonym or ErrAmbiguous; Rule and
+// sanitize. Kind is ErrBlocked, ErrUnrestorable, ErrPseudonym or ErrAmbiguous; Rule and
 // Class name the span's detector and detected class (config names and a
 // closed set, never the value); Cause is the vault error, if any (its text
 // names the class and the failure, never the value). errors.Is matches Kind
@@ -130,7 +137,9 @@ func (s *Sanitizer) Detect(in string) []detect.Span {
 	return out
 }
 
-// Text returns in with every detected value replaced by its synthetic.
+// Text returns in with every detected value replaced by its synthetic, or,
+// when a rule with action block (the strict profile) matched, an ErrBlocked
+// SpanError.
 // Spans whose text already is a vault synthetic (from earlier turns) are left
 // alone, so sanitizing is idempotent. On error the returned text is empty and
 // the caller must block; events are recorded only on success, one per
@@ -149,6 +158,14 @@ func (s *Sanitizer) Text(in string) (string, error) {
 	spans := detect.Scan(s.ds, in)
 	if len(spans) == 0 {
 		return in, nil
+	}
+	// Policy first, before anything is admitted to the vault, coined or
+	// recorded: a blocking rule's match refuses the whole text. Block survives
+	// span merging (detect.resolve), so a longer sanitize match cannot hide it.
+	for _, sp := range spans {
+		if sp.Block && !s.passSynthetic(in[sp.Start:sp.End]) {
+			return "", &SpanError{Kind: ErrBlocked, Rule: sp.BlockRule, Class: sp.BlockClass}
+		}
 	}
 	// Synthetics already present, found before any new one is coined.
 	pre, _ := s.r.snapshot().scan(in, 0, true)

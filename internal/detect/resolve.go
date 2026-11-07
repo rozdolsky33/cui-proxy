@@ -47,7 +47,8 @@ func resolve(spans []Span) []Span {
 		return cand[i].End > cand[j].End
 	})
 	var out []Span
-	var best Span
+	var best, bestBlock Span // best member overall; best blocking member
+	var haveBlock bool
 	for i, sp := range cand {
 		if i > 0 && sp.Start < out[len(out)-1].End {
 			u := &out[len(out)-1]
@@ -60,9 +61,20 @@ func resolve(spans []Span) []Span {
 		} else {
 			out = append(out, sp)
 			best = sp
+			haveBlock = false
+		}
+		if sp.Block && (!haveBlock || better(sp, bestBlock)) {
+			bestBlock, haveBlock = sp, true
 		}
 		u := &out[len(out)-1]
 		u.Rule, u.Class = best.Rule, best.Class
+		// A merged group blocks if any member blocks, named by the best one.
+		u.Block = haveBlock
+		if haveBlock {
+			u.BlockRule, u.BlockClass = bestBlock.Rule, bestBlock.Class
+		} else {
+			u.BlockRule, u.BlockClass = "", ""
+		}
 	}
 	return out
 }

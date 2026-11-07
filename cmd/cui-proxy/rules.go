@@ -54,6 +54,10 @@ func runTestRules(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 	sink := &countSink{m: map[[2]string]int{}}
 	out, err := transform.NewSanitizer(ds, vault.New(key), sink).Text(string(in))
 	if err != nil {
+		var se *transform.SpanError
+		if errors.Is(err, transform.ErrBlocked) && errors.As(err, &se) {
+			return fail(stderr, fmt.Errorf("the input was blocked by policy (rule=%s class=%s); the proxy would refuse the request", se.Rule, se.Class))
+		}
 		if errors.Is(err, transform.ErrUnrestorable) {
 			return fail(stderr, errors.New("the input could not be sanitized reversibly (the proxy would block it)"))
 		}
