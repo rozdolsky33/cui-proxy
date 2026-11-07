@@ -1,6 +1,8 @@
 // Package synth generates deterministic synthetic stand-ins for sensitive
 // values. Outputs come from reserved ranges (RFC 5737 / RFC 3849 addresses,
 // .example hostnames, the 000 SSN area) so they can never be real values.
+// The one exception is the IPv4 overflow pool (198.18.0.0/15, see
+// OverflowPool), used only after RFC 5737 is exhausted.
 // Generators never retain or log the real value.
 package synth
 
@@ -65,15 +67,65 @@ var v4Nets = [3]string{"192.0.2", "198.51.100", "203.0.113"}
 
 const v4Pool = 3 * 254 // hosts .1-.254 in each RFC 5737 block
 
-// ipv4Addr walks the pool linearly from a hash-derived start, so attempts
-// 0..v4Pool-1 visit every address exactly once.
-func ipv4Addr(sum []byte, attempt int) (string, error) {
-	if attempt >= v4Pool {
-		return "", errors.New("synth: ipv4 reserved ranges exhausted")
+// OverflowPool is the number of overflow IPv4 synthetics: hosts .1-.254 of
+// the 512 /24s of 198.18.0.0/15 (RFC 2544 benchmarking). They are coined
+// only after every RFC 5737 address is taken. Unlike RFC 5737, the range can
+// carry real traffic (lab networks, proxy fake-IP modes), so a vault stops
+// using it once it has seen a real address there (see InOverflow).
+const OverflowPool = 512 * 254
+
+// ErrExhausted means a class has no free synthetic left. Its text carries
+// no value.
+var ErrExhausted = errors.New("synthetic pool exhausted")
+
+var overflowNet = netip.MustParsePrefix("198.18.0.0/15")
+
+// defaultAttempts bounds collision retries for classes with a large space.
+const defaultAttempts = 4096
+
+// Attempts is the number of attempts that visit a class's whole space: the
+// pool size for ipv4 and cidr, defaultAttempts otherwise.
+func Attempts(class string) int {
+	if class == "ipv4" || class == "cidr" {
+		return v4Pool + OverflowPool
 	}
-	start := int(binary.BigEndian.Uint32(stream(sum, 0)[:4]) % v4Pool)
-	idx := (start + attempt) % v4Pool
-	return fmt.Sprintf("%s.%d", v4Nets[idx/254], idx%254+1), nil
+	return defaultAttempts
+}
+
+// InOverflow reports whether s is an IPv4 address (IPv4-mapped IPv6
+// included) inside 198.18.0.0/15, or a prefix that overlaps it.
+func InOverflow(s string) bool {
+	if p, err := netip.ParsePrefix(s); err == nil {
+		a := p.Addr()
+		if a.Is4In6() {
+			if p.Bits() < 96 {
+				return false
+			}
+			p = netip.PrefixFrom(a.Unmap(), p.Bits()-96)
+		}
+		return p.Overlaps(overflowNet)
+	}
+	a, err := netip.ParseAddr(s)
+	return err == nil && overflowNet.Contains(a.Unmap())
+}
+
+// ipv4Addr walks the RFC 5737 pool linearly from a hash-derived start, so
+// attempts 0..v4Pool-1 visit every address there exactly once; attempts
+// v4Pool..v4Pool+OverflowPool-1 then walk the overflow pool the same way.
+func ipv4Addr(sum []byte, attempt int) (string, error) {
+	r := stream(sum, 0)
+	if attempt < v4Pool {
+		start := int(binary.BigEndian.Uint32(r[:4]) % v4Pool)
+		idx := (start + attempt) % v4Pool
+		return fmt.Sprintf("%s.%d", v4Nets[idx/254], idx%254+1), nil
+	}
+	if attempt -= v4Pool; attempt >= OverflowPool {
+		return "", ErrExhausted
+	}
+	start := int(binary.BigEndian.Uint32(r[4:8]) % OverflowPool)
+	idx := (start + attempt) % OverflowPool
+	net := idx / 254 // 0..511: 198.18.0-255 then 198.19.0-255
+	return fmt.Sprintf("198.%d.%d.%d", 18+net/256, net%256, idx%254+1), nil
 }
 
 func genIPv4(sum []byte, attempt int, _ string) (string, error) { return ipv4Addr(sum, attempt) }

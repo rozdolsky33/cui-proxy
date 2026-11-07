@@ -14,10 +14,6 @@ import (
 	"cui-proxy/internal/synth"
 )
 
-// maxAttempts bounds collision retries; generators with smaller pools (ipv4)
-// return their own exhaustion error first.
-const maxAttempts = 4096
-
 // Vault is safe for concurrent use.
 type Vault struct {
 	key      []byte
@@ -29,6 +25,10 @@ type Vault struct {
 	cls    map[string]string   // synthetic -> class
 	reals  map[string]struct{} // every real held or reserved
 	sorted []string            // synthetics, ascending, for prefix lookup
+	// noOverflow is set once a real value inside the IPv4 overflow range
+	// (synth.InOverflow) was held or reserved: from then on no overflow
+	// synthetic is coined, so none can equal a real address.
+	noOverflow bool
 }
 
 // New returns an empty vault using key for synthetic derivation.
@@ -85,11 +85,15 @@ func (v *Vault) Pseudonym(class, real string) (string, error) {
 	if s, ok := v.fwd[fk]; ok {
 		return s, nil
 	}
+	v.noteReal(real)
 	sum := v.sum(class, real)
-	for attempt := 0; attempt < maxAttempts; attempt++ {
+	for attempt, n := 0, synth.Attempts(class); attempt < n; attempt++ {
 		cand, err := synth.Generate(class, sum, attempt, real)
 		if err != nil {
 			return "", fmt.Errorf("vault: %s: %w", class, err)
+		}
+		if v.noOverflow && synth.InOverflow(cand) {
+			break // overflow attempts come last: the usable pool is used up
 		}
 		if cand == real || v.taken(cand) {
 			continue
@@ -97,7 +101,7 @@ func (v *Vault) Pseudonym(class, real string) (string, error) {
 		v.insert(fk, real, cand)
 		return cand, nil
 	}
-	return "", fmt.Errorf("vault: %s: no free synthetic after %d attempts", class, maxAttempts)
+	return "", fmt.Errorf("vault: %s: %w", class, synth.ErrExhausted)
 }
 
 // taken reports whether cand collides with an existing synthetic or real.
@@ -109,7 +113,15 @@ func (v *Vault) taken(cand string) bool {
 	return ok
 }
 
+// noteReal records that a real value was seen (callers hold mu).
+func (v *Vault) noteReal(real string) {
+	if !v.noOverflow && synth.InOverflow(real) {
+		v.noOverflow = true
+	}
+}
+
 func (v *Vault) insert(fk, real, syn string) {
+	v.noteReal(real)
 	v.fwd[fk] = syn
 	v.rev[syn] = real
 	v.cls[syn], _ = splitKey(fk)
@@ -173,6 +185,7 @@ func (v *Vault) Reserve(reals ...string) {
 	defer v.mu.Unlock()
 	for _, r := range reals {
 		v.reals[r] = struct{}{}
+		v.noteReal(r)
 	}
 }
 

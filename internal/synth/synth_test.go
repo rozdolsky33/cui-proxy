@@ -3,6 +3,7 @@ package synth
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"net/netip"
 	"regexp"
@@ -138,19 +139,63 @@ func TestGenerateDeterministic(t *testing.T) {
 }
 
 func TestIPv4AttemptsCoverPoolThenError(t *testing.T) {
+	rfc5737 := []netip.Prefix{
+		netip.MustParsePrefix("192.0.2.0/24"), netip.MustParsePrefix("198.51.100.0/24"), netip.MustParsePrefix("203.0.113.0/24"),
+	}
+	overflow := netip.MustParsePrefix("198.18.0.0/15")
+	in := func(a netip.Addr, ps ...netip.Prefix) bool {
+		for _, p := range ps {
+			if p.Contains(a) {
+				return true
+			}
+		}
+		return false
+	}
+	if n := Attempts("ipv4"); n != 762+OverflowPool {
+		t.Fatalf("Attempts(ipv4) = %d", n)
+	}
+	sum := sumOf("ipv4", "x")
 	seen := map[string]bool{}
-	for i := 0; i < 762; i++ {
-		s, err := Generate("ipv4", sumOf("ipv4", "x"), i, "x")
+	for i := 0; i < 762+OverflowPool; i++ {
+		s, err := Generate("ipv4", sum, i, "x")
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("attempt %d: %v", i, err)
+		}
+		a := netip.MustParseAddr(s)
+		last := a.As4()[3]
+		switch {
+		case i < 762 && !in(a, rfc5737...):
+			t.Fatalf("attempt %d = %s: not in RFC 5737 (the overflow pool must come last)", i, s)
+		case i >= 762 && !in(a, overflow):
+			t.Fatalf("attempt %d = %s: not in 198.18.0.0/15", i, s)
+		case last == 0 || last == 255:
+			t.Fatalf("attempt %d = %s: network or broadcast-looking address", i, s)
+		case InOverflow(s) != (i >= 762):
+			t.Fatalf("InOverflow(%s) = %v", s, InOverflow(s))
 		}
 		seen[s] = true
 	}
-	if len(seen) != 762 {
+	if len(seen) != 762+OverflowPool {
 		t.Errorf("pool coverage %d", len(seen))
 	}
-	if _, err := Generate("ipv4", sumOf("ipv4", "x"), 762, "x"); err == nil {
-		t.Error("expected exhaustion error")
+	_, err := Generate("ipv4", sum, 762+OverflowPool, "x")
+	if !errors.Is(err, ErrExhausted) || err.Error() != "synthetic pool exhausted" {
+		t.Errorf("exhaustion error = %v", err)
+	}
+	if Attempts("hostname") != 4096 {
+		t.Errorf("Attempts(hostname) = %d", Attempts("hostname"))
+	}
+}
+
+func TestInOverflow(t *testing.T) {
+	for s, want := range map[string]bool{
+		"198.18.0.1": true, "198.19.255.254": true, "198.17.255.255": false, "198.20.0.0": false,
+		"192.0.2.1": false, "198.18.4.0/24": true, "198.0.0.0/8": true, "10.0.0.0/8": false,
+		"::ffff:198.18.1.1": true, "h-1.example": false, "": false, "2001:db8::1": false,
+	} {
+		if got := InOverflow(s); got != want {
+			t.Errorf("InOverflow(%q) = %v, want %v", s, got, want)
+		}
 	}
 }
 

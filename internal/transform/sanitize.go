@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"cui-proxy/internal/detect"
+	"cui-proxy/internal/synth"
 	"cui-proxy/internal/vault"
 )
 
@@ -33,6 +34,13 @@ var ErrUnrestorable = errors.New("transform: sanitized text would not restore fa
 // ErrPseudonym wraps a vault.Pseudonym failure (unknown class, invalid value
 // for the class, exhausted pool). The caller must block.
 var ErrPseudonym = errors.New("transform: no synthetic for detected value")
+
+// ErrAmbiguous means a detected value equals a synthetic from the IPv4
+// overflow pool (198.18.0.0/15). That range can carry real traffic, so the
+// value may be a real address rather than a resent synthetic; passing it as
+// "already sanitized" could leak it and restore it to another real value.
+// The caller must block. The vault then stops coining overflow addresses.
+var ErrAmbiguous = errors.New("transform: detected value matches an overflow-range synthetic")
 
 // Sanitizer replaces detected values with synthetics. Safe for concurrent use
 // if the sink is.
@@ -60,13 +68,21 @@ func (s *Sanitizer) WithSink(sink Sink) *Sanitizer {
 	return &c
 }
 
+// passSynthetic reports whether detected text t is a vault synthetic that may
+// pass as already sanitized. Overflow-range synthetics never do: they are
+// indistinguishable from a real address in that range.
+func (s *Sanitizer) passSynthetic(t string) bool {
+	return s.v.IsSynthetic(t) && !synth.InOverflow(t)
+}
+
 // Detect returns the detected spans of in whose text is not already a vault
-// synthetic. It neither replaces nor records anything; use it to check text
-// that must be blocked rather than rewritten (e.g. request headers).
+// synthetic (overflow-range synthetics are reported). It neither replaces nor
+// records anything; use it to check text that must be blocked rather than
+// rewritten (e.g. request headers).
 func (s *Sanitizer) Detect(in string) []detect.Span {
 	var out []detect.Span
 	for _, sp := range detect.Scan(s.ds, in) {
-		if !s.v.IsSynthetic(in[sp.Start:sp.End]) {
+		if !s.passSynthetic(in[sp.Start:sp.End]) {
 			out = append(out, sp)
 		}
 	}
@@ -93,9 +109,15 @@ func (s *Sanitizer) Text(in string) (string, error) {
 	todo := spans[:0:0]
 	var reals []string
 	for _, sp := range spans {
-		if t := in[sp.Start:sp.End]; !s.v.IsSynthetic(t) {
+		t := in[sp.Start:sp.End]
+		if !s.v.IsSynthetic(t) {
 			todo = append(todo, sp)
 			reals = append(reals, t)
+			continue
+		}
+		if !s.passSynthetic(t) {
+			s.v.Reserve(t) // it may be real: never coin in that range again
+			return "", fmt.Errorf("%w: rule=%s class=%s", ErrAmbiguous, sp.Rule, sp.Class)
 		}
 	}
 	if len(todo) == 0 {

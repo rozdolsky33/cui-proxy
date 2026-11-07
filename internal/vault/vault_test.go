@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -93,18 +94,84 @@ func TestPseudonymAvoidsHeldReal(t *testing.T) {
 	}
 }
 
-func TestIPv4ExhaustionReturnsError(t *testing.T) {
-	v := New(testKey)
-	for i := 0; i < 762; i++ {
-		if _, err := v.Pseudonym("ipv4", fmt.Sprintf("10.%d.%d.1", i/256, i%256)); err != nil {
+// fillIPv4 coins n distinct ipv4 synthetics for the reals 10.x.y.1, from i.
+func fillIPv4(t *testing.T, v *Vault, from, n int) []string {
+	t.Helper()
+	var out []string
+	for i := from; i < from+n; i++ {
+		s, err := v.Pseudonym("ipv4", fmt.Sprintf("10.%d.%d.1", i/256, i%256))
+		if err != nil {
 			t.Fatalf("%d: %v", i, err)
 		}
+		out = append(out, s)
 	}
-	if _, err := v.Pseudonym("ipv4", "10.9.9.9"); err == nil {
-		t.Error("763rd should fail")
+	return out
+}
+
+func TestIPv4OverflowPoolAfterRFC5737(t *testing.T) {
+	v := New(testKey)
+	syns := fillIPv4(t, v, 0, 762+300)
+	seen := map[string]bool{}
+	for i, s := range syns {
+		if synth.InOverflow(s) != (i >= 762) {
+			t.Fatalf("synthetic %d = %s: overflow=%v", i, s, synth.InOverflow(s))
+		}
+		if seen[s] {
+			t.Fatalf("duplicate synthetic %s", s)
+		}
+		seen[s] = true
+		if r, ok := v.Real(s); !ok || r != fmt.Sprintf("10.%d.%d.1", i/256, i%256) {
+			t.Fatalf("Real(%s) = %q", s, r)
+		}
 	}
-	if v.Len() != 762 {
+	if v.Len() != 1062 {
 		t.Errorf("Len %d", v.Len())
+	}
+}
+
+// A real address inside 198.18.0.0/15 (reserved or coined) stops the vault
+// from coining overflow synthetics: it fails closed once RFC 5737 is used up.
+func TestIPv4OverflowDisabledByRealInRange(t *testing.T) {
+	for _, how := range []string{"reserve", "coin"} {
+		t.Run(how, func(t *testing.T) {
+			v := New(testKey)
+			used := 0
+			if how == "reserve" {
+				v.Reserve("198.18.1.1")
+			} else {
+				if _, err := v.Pseudonym("ipv4", "198.18.1.1"); err != nil {
+					t.Fatal(err)
+				}
+				used = 1
+			}
+			fillIPv4(t, v, 0, 762-used)
+			_, err := v.Pseudonym("ipv4", "10.250.0.1")
+			if !errors.Is(err, synth.ErrExhausted) {
+				t.Fatalf("err = %v, want pool exhausted", err)
+			}
+			if err.Error() != "vault: ipv4: synthetic pool exhausted" {
+				t.Errorf("error text %q", err)
+			}
+			for _, s := range v.Synthetics() {
+				if synth.InOverflow(s) {
+					t.Fatalf("overflow synthetic %s coined after a real 198.18/15 address", s)
+				}
+			}
+		})
+	}
+}
+
+// Overflow synthetics coined first, then a real in the range: no further
+// overflow coins (existing ones stay valid).
+func TestIPv4OverflowStopsAfterLaterRealInRange(t *testing.T) {
+	v := New(testKey)
+	syns := fillIPv4(t, v, 0, 762+5)
+	v.Reserve("198.19.200.7")
+	if _, err := v.Pseudonym("ipv4", "10.250.0.1"); !errors.Is(err, synth.ErrExhausted) {
+		t.Fatalf("err = %v, want pool exhausted", err)
+	}
+	if r, ok := v.Real(syns[len(syns)-1]); !ok || r == "" {
+		t.Error("existing overflow mapping lost")
 	}
 }
 
