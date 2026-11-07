@@ -163,3 +163,25 @@ func TestAmbiguityGateIsAtomic(t *testing.T) {
 		t.Errorf("err = %v, want ErrAmbiguous", err)
 	}
 }
+
+// Two spellings of one address get two synthetics and restore byte-exactly.
+func TestSpellingsRestoreExactly(t *testing.T) {
+	for _, in := range []string{"0.0.0.00 0.0.0.0", "ping 010.020.030.015 then 10.20.30.15"} {
+		v := vault.New(testKey)
+		out, err := NewSanitizer(builtins(t), v, nil).Text(in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		f := strings.Fields(out)
+		syns := []string{f[0], f[1]}
+		if len(f) == 4 {
+			syns = []string{f[1], f[3]}
+		}
+		if syns[0] == syns[1] {
+			t.Errorf("%q: one synthetic %s for two spellings", in, syns[0])
+		}
+		if got := NewRestorer(v).Text(out); got != in {
+			t.Errorf("restore %q = %q", in, got)
+		}
+	}
+}

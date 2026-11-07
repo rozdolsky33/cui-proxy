@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -42,10 +43,11 @@ func TestNoOverflowSetByLeadingZeroAndUnparseableReals(t *testing.T) {
 	}
 }
 
-// S3: the same address written two ways is one real: one synthetic.
-func TestSameRealTwoSpellingsOneSynthetic(t *testing.T) {
+// Each exact spelling is its own real: two synthetics, each restoring to
+// its own spelling (some tools read leading-zero octets as octal).
+func TestTwoSpellingsTwoSynthetics(t *testing.T) {
 	v := New(testKey)
-	a, err := v.Pseudonym("ipv4", "10.020.030.015")
+	a, err := v.Pseudonym("ipv4", "010.020.030.015")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,24 +55,62 @@ func TestSameRealTwoSpellingsOneSynthetic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if a != b || v.Len() != 1 {
-		t.Fatalf("two synthetics (%s, %s) for one address; Len %d", a, b, v.Len())
+	if a == b || v.Len() != 2 {
+		t.Fatalf("synthetics %s, %s; Len %d: want two distinct mappings", a, b, v.Len())
 	}
-	// A reserved real blocks its synthetic in any spelling.
-	v2 := New(testKey)
-	v2.Reserve("192.000.002.007")
-	for i := 0; i < 762; i++ {
-		s, err := v2.Pseudonym("ipv4", "10.9."+itoa(i/250)+"."+itoa(i%250+1))
-		if errors.Is(err, synth.ErrExhausted) {
-			break
-		}
-		if s == "192.0.2.7" {
-			t.Fatal("coined a synthetic equal to a reserved real (other spelling)")
-		}
+	if r, _ := v.Real(a); r != "010.020.030.015" {
+		t.Errorf("Real(%s) = %q", a, r)
+	}
+	if r, _ := v.Real(b); r != "10.20.30.15" {
+		t.Errorf("Real(%s) = %q", b, r)
+	}
+	if again, _ := v.Pseudonym("ipv4", "010.020.030.015"); again != a {
+		t.Error("exact spelling not stable")
 	}
 }
 
-func itoa(i int) string { b, _ := json.Marshal(i); return string(b) }
+// A candidate whose canonical form equals another spelling of a reserved or
+// held real is skipped.
+func TestCollisionCheckUsesCanonicalForms(t *testing.T) {
+	const target = "192.0.2.7"
+	// Find a real whose first candidate is target.
+	probe := New(testKey)
+	var real string
+	for i := 0; i < 200000 && real == ""; i++ {
+		r := fmt.Sprintf("10.%d.%d.%d", i/62500, i/250%250, i%250+1)
+		if c, _ := synth.Generate("ipv4", probe.sum("ipv4", r), 0, r); c == target {
+			real = r
+		}
+	}
+	if real == "" {
+		t.Fatal("no real maps to the target first")
+	}
+	for name, setup := range map[string]func(v *Vault){
+		"reserved": func(v *Vault) { v.Reserve("192.000.002.007") },
+		"held": func(v *Vault) {
+			if _, err := v.Pseudonym("ipv4", "192.000.002.007"); err != nil {
+				t.Fatal(err)
+			}
+		},
+		"admitted": func(v *Vault) {
+			if _, err := v.Admit([]Item{{"ipv4", "192.0.02.7"}}); err != nil {
+				t.Fatal(err)
+			}
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			v := New(testKey)
+			setup(v)
+			got, err := v.Pseudonym("ipv4", real)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got == target {
+				t.Fatalf("coined %s, equal to a known real in another spelling", got)
+			}
+		})
+	}
+}
 
 // S1: Admit is the sanitizer's single locked step: it reserves the reals,
 // disables the overflow pool for overflow-range reals, and reports a real

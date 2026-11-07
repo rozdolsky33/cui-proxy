@@ -2,11 +2,8 @@ package transform
 
 import (
 	"errors"
-	"regexp"
 	"strings"
 	"testing"
-
-	"cui-proxy/internal/ipv4"
 
 	"cui-proxy/internal/detect"
 	"cui-proxy/internal/vault"
@@ -56,18 +53,6 @@ func FuzzRoundTrip(f *testing.F) {
 	})
 }
 
-var dottedQuad = regexp.MustCompile(`\d{1,3}(?:\.\d{1,3}){3}`)
-
-// canonV4 rewrites every dotted quad in s in canonical form.
-func canonV4(s string) string {
-	return dottedQuad.ReplaceAllStringFunc(s, func(q string) string {
-		if a, ok := ipv4.Parse(q); ok {
-			return a.String()
-		}
-		return q
-	})
-}
-
 // safeAlpha has no hex letters, no 'r'/'y' (so no "bearer"/"eyJ"), no digits
 // or punctuation.
 const safeAlpha = "ghijkmnopqstuvwxz "
@@ -101,10 +86,7 @@ func check(t *testing.T, ds []detect.Detector, x, random, ra, rb string, mustSuc
 			t.Fatalf("real %q leaked in %q", s, out)
 		}
 	}
-	// Two spellings of one IPv4 address ("0.0.0.00", "0.0.0.0") share one
-	// synthetic, which restores to one spelling: compare addresses
-	// canonically.
-	if got := NewRestorer(v).Text(out); got != x && canonV4(got) != canonV4(x) {
+	if got := NewRestorer(v).Text(out); got != x {
 		t.Fatalf("round trip:\n  in %q\n out %q\ngot %q", x, out, got)
 	}
 }

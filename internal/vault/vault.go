@@ -85,8 +85,7 @@ func (v *Vault) Pseudonym(class, real string) (string, error) {
 	if !synth.Known(class) {
 		return "", fmt.Errorf("vault: unknown class %q", class)
 	}
-	c := canonical(class, real)
-	fk := class + "\x00" + c
+	fk := class + "\x00" + real // exact spelling: restores byte for byte
 	v.mu.RLock()
 	s, ok := v.fwd[fk]
 	v.mu.RUnlock()
@@ -99,9 +98,10 @@ func (v *Vault) Pseudonym(class, real string) (string, error) {
 		return s, nil
 	}
 	v.noteReal(class, real)
-	sum := v.sum(class, c)
+	c := canonical(class, real)
+	sum := v.sum(class, real)
 	for attempt, n := 0, synth.Attempts(class); attempt < n; attempt++ {
-		cand, err := synth.Generate(class, sum, attempt, c)
+		cand, err := synth.Generate(class, sum, attempt, real)
 		if err != nil {
 			return "", fmt.Errorf("vault: %s: %w", class, err)
 		}
@@ -117,18 +117,24 @@ func (v *Vault) Pseudonym(class, real string) (string, error) {
 	return "", fmt.Errorf("vault: %s: %w", class, synth.ErrExhausted)
 }
 
-// taken reports whether cand collides with an existing synthetic or real.
+// taken reports whether cand collides with an existing synthetic or with a
+// held or reserved real in any spelling (the reserved set holds every real
+// as written and, for IPv4 addresses and prefixes, canonically).
 func (v *Vault) taken(cand string) bool {
 	if _, ok := v.rev[cand]; ok {
 		return true
 	}
-	_, ok := v.reals[cand]
-	return ok
+	for _, f := range forms("", cand) {
+		if _, ok := v.reals[f]; ok {
+			return true
+		}
+	}
+	return false
 }
 
-// canonical is the vault's form of a real for keys and collision checks:
-// one spelling per address for ipv4/cidr ("198.018.1.1" is "198.18.1.1").
-// Unparseable values and other classes are kept as is.
+// canonical is the form of a real used for collision checks only (never for
+// mapping keys): one spelling per address for ipv4/cidr ("198.018.1.1" is
+// "198.18.1.1"). Unparseable values and other classes are kept as is.
 func canonical(class, real string) string {
 	if c, ok := synth.Canonical(class, real); ok {
 		return c
@@ -202,15 +208,12 @@ func (v *Vault) Changes() uint64 {
 	return v.changes
 }
 
-// insert adds a mapping. fk is class + "\x00" + canonical real; real is the
-// spelling restored for syn.
+// insert adds a mapping. fk is class + "\x00" + real (exact spelling).
 func (v *Vault) insert(fk, real, syn string) {
 	class, _ := splitKey(fk)
 	v.reserve(class, real)
 	v.changes++
-	if _, ok := v.fwd[fk]; !ok {
-		v.fwd[fk] = syn
-	}
+	v.fwd[fk] = syn
 	v.rev[syn] = real
 	v.cls[syn] = class
 	i := sort.SearchStrings(v.sorted, syn)

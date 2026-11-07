@@ -56,9 +56,10 @@ func (v *Vault) Save(path string) error {
 		return err
 	}
 	v.mu.RLock()
-	entries := make([]entry, 0, len(v.rev))
-	for syn, real := range v.rev { // every synthetic, aliases included
-		entries = append(entries, entry{v.cls[syn], real, syn})
+	entries := make([]entry, 0, len(v.fwd))
+	for fk, syn := range v.fwd {
+		class, real := splitKey(fk)
+		entries = append(entries, entry{class, real, syn})
 	}
 	noOverflow := v.noOverflow
 	v.mu.RUnlock()
@@ -159,9 +160,7 @@ func Open(path string, key []byte) (*Vault, error) {
 		if _, dup := v.rev[e.Synthetic]; dup {
 			return nil, errCorrupt
 		}
-		// Two spellings of one address saved by an older version: the first
-		// (by synthetic) is the mapping, the other still restores.
-		v.insert(e.Class+"\x00"+canonical(e.Class, e.Real), e.Real, e.Synthetic)
+		v.insert(e.Class+"\x00"+e.Real, e.Real, e.Synthetic)
 	}
 	if p.NoOverflow {
 		v.noOverflow = true

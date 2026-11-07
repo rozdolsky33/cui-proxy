@@ -150,9 +150,10 @@ used up, the vault falls back to an overflow pool of 130,048 addresses in
   cannot tell whether it is real. Leading-zero spellings
   (`198.018.001.001`) count as the same address, and an IPv4/CIDR value that
   cannot be parsed also disables the overflow pool. In file mode this
-  decision is saved with the vault and survives restarts. Two spellings of
-  one address share one synthetic, which restores to whichever spelling
-  the vault stored first (restoration is then not byte-exact). Residual risk: if your real traffic uses
+  decision is saved with the vault and survives restarts. Each exact
+  spelling still gets its own synthetic and restores byte for byte (some
+  tools read leading-zero octets as octal); no synthetic ever equals any
+  spelling of a known real. Residual risk: if your real traffic uses
   that range, expect blocks. A model reply that names a real
   `198.18.0.0/15` address the proxy has issued as a synthetic is restored to
   the wrong value.
