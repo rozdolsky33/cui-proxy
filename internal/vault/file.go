@@ -17,6 +17,13 @@ import (
 // Any other "CUIV" version is rejected with a clear error.
 var fileMagic = []byte("CUIV2")
 
+// payload is the decrypted file content. Older CUIV2 files hold a bare
+// []entry; NoOverflow is additive (absent means false).
+type payload struct {
+	Entries    []entry `json:"entries"`
+	NoOverflow bool    `json:"no_overflow,omitempty"`
+}
+
 type entry struct {
 	Class     string `json:"c"`
 	Real      string `json:"r"`
@@ -49,14 +56,14 @@ func (v *Vault) Save(path string) error {
 		return err
 	}
 	v.mu.RLock()
-	entries := make([]entry, 0, len(v.fwd))
-	for fk, syn := range v.fwd {
-		class, real := splitKey(fk)
-		entries = append(entries, entry{class, real, syn})
+	entries := make([]entry, 0, len(v.rev))
+	for syn, real := range v.rev { // every synthetic, aliases included
+		entries = append(entries, entry{v.cls[syn], real, syn})
 	}
+	noOverflow := v.noOverflow
 	v.mu.RUnlock()
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Synthetic < entries[j].Synthetic })
-	plain, err := json.Marshal(entries)
+	plain, err := json.Marshal(payload{Entries: entries, NoOverflow: noOverflow})
 	if err != nil {
 		return errors.New("vault: encode")
 	}
@@ -133,20 +140,41 @@ func Open(path string, key []byte) (*Vault, error) {
 	if err != nil {
 		return nil, errors.New("vault: cannot decrypt vault file (wrong key or corrupt)")
 	}
-	var entries []entry
-	if err := json.Unmarshal(plain, &entries); err != nil {
+	var p payload
+	if first := firstByte(plain); first == '[' {
+		err = json.Unmarshal(plain, &p.Entries) // older CUIV2 payload
+	} else {
+		err = json.Unmarshal(plain, &p)
+	}
+	if err != nil {
 		return nil, errCorrupt
 	}
 	v := New(key)
-	for _, e := range entries {
-		fk := e.Class + "\x00" + e.Real
-		if _, dup := v.fwd[fk]; dup {
+	seen := map[[2]string]bool{}
+	for _, e := range p.Entries {
+		if seen[[2]string{e.Class, e.Real}] {
 			return nil, errCorrupt
 		}
+		seen[[2]string{e.Class, e.Real}] = true
 		if _, dup := v.rev[e.Synthetic]; dup {
 			return nil, errCorrupt
 		}
-		v.insert(fk, e.Real, e.Synthetic)
+		// Two spellings of one address saved by an older version: the first
+		// (by synthetic) is the mapping, the other still restores.
+		v.insert(e.Class+"\x00"+canonical(e.Class, e.Real), e.Real, e.Synthetic)
 	}
+	if p.NoOverflow {
+		v.noOverflow = true
+	}
+	v.changes = 0 // as loaded: nothing to save yet
 	return v, nil
+}
+
+func firstByte(b []byte) byte {
+	for _, c := range b {
+		if c != ' ' && c != '\t' && c != '\r' && c != '\n' {
+			return c
+		}
+	}
+	return 0
 }

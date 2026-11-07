@@ -210,3 +210,37 @@ func TestBadInputsError(t *testing.T) {
 		t.Error("short sum should error")
 	}
 }
+
+// S3: leading-zero dotted quads (which the detector accepts) are recognised.
+func TestInOverflowLeadingZeros(t *testing.T) {
+	for s, want := range map[string]bool{
+		"198.018.001.001": true, "198.18.001.1": true, "198.018.1.1/24": true, "198.019.255.254": true,
+		"198.017.1.1": false, "010.20.30.15": false,
+		"0198.18.1.1": false, // not a dotted quad; the detector does not report it either
+	} {
+		if got := InOverflow(s); got != want {
+			t.Errorf("InOverflow(%q) = %v, want %v", s, got, want)
+		}
+	}
+}
+
+func TestCanonical(t *testing.T) {
+	for _, tc := range []struct {
+		class, in, want string
+		ok              bool
+	}{
+		{"ipv4", "198.018.001.001", "198.18.1.1", true},
+		{"ipv4", "10.20.30.15", "10.20.30.15", true},
+		{"ipv4", "999.1.1.1", "", false},
+		{"ipv4", "not an ip", "", false},
+		{"cidr", "198.018.1.1/24", "198.18.1.1/24", true},
+		{"cidr", "2001:DB8::/32", "2001:db8::/32", true},
+		{"cidr", "1.2.3.4/99", "", false},
+		{"hostname", "Db01.Example", "Db01.Example", true},
+	} {
+		got, ok := Canonical(tc.class, tc.in)
+		if ok != tc.ok || ok && got != tc.want {
+			t.Errorf("Canonical(%s, %q) = %q %v, want %q %v", tc.class, tc.in, got, ok, tc.want, tc.ok)
+		}
+	}
+}

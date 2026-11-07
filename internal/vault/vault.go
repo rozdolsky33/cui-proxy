@@ -26,10 +26,22 @@ type Vault struct {
 	reals  map[string]struct{} // every real held or reserved
 	sorted []string            // synthetics, ascending, for prefix lookup
 	// noOverflow is set once a real value inside the IPv4 overflow range
-	// (synth.InOverflow) was held or reserved: from then on no overflow
-	// synthetic is coined, so none can equal a real address.
+	// (synth.InOverflow), or an ipv4/cidr real that cannot be parsed, was
+	// held or reserved: from then on no overflow synthetic is coined, so none
+	// can equal a real address. It is saved with the vault.
 	noOverflow bool
+	// changes counts changes that a save must persist (mappings and the
+	// flag), so callers can tell whether the vault is dirty.
+	changes uint64
 }
+
+// ErrAmbiguous means a real value presented for admission is already a
+// synthetic (an overflow-range synthetic, or one coined concurrently). The
+// caller must block: the value may be a real address equal to a synthetic.
+var ErrAmbiguous = errors.New("vault: detected value equals an existing synthetic")
+
+// Item is a detected real value with its class.
+type Item struct{ Class, Real string }
 
 // New returns an empty vault using key for synthetic derivation.
 func New(key []byte) *Vault {
@@ -73,7 +85,8 @@ func (v *Vault) Pseudonym(class, real string) (string, error) {
 	if !synth.Known(class) {
 		return "", fmt.Errorf("vault: unknown class %q", class)
 	}
-	fk := class + "\x00" + real
+	c := canonical(class, real)
+	fk := class + "\x00" + c
 	v.mu.RLock()
 	s, ok := v.fwd[fk]
 	v.mu.RUnlock()
@@ -85,17 +98,17 @@ func (v *Vault) Pseudonym(class, real string) (string, error) {
 	if s, ok := v.fwd[fk]; ok {
 		return s, nil
 	}
-	v.noteReal(real)
-	sum := v.sum(class, real)
+	v.noteReal(class, real)
+	sum := v.sum(class, c)
 	for attempt, n := 0, synth.Attempts(class); attempt < n; attempt++ {
-		cand, err := synth.Generate(class, sum, attempt, real)
+		cand, err := synth.Generate(class, sum, attempt, c)
 		if err != nil {
 			return "", fmt.Errorf("vault: %s: %w", class, err)
 		}
 		if v.noOverflow && synth.InOverflow(cand) {
 			break // overflow attempts come last: the usable pool is used up
 		}
-		if cand == real || v.taken(cand) {
+		if cand == c || cand == real || v.taken(cand) {
 			continue
 		}
 		v.insert(fk, real, cand)
@@ -113,19 +126,93 @@ func (v *Vault) taken(cand string) bool {
 	return ok
 }
 
-// noteReal records that a real value was seen (callers hold mu).
-func (v *Vault) noteReal(real string) {
-	if !v.noOverflow && synth.InOverflow(real) {
+// canonical is the vault's form of a real for keys and collision checks:
+// one spelling per address for ipv4/cidr ("198.018.1.1" is "198.18.1.1").
+// Unparseable values and other classes are kept as is.
+func canonical(class, real string) string {
+	if c, ok := synth.Canonical(class, real); ok {
+		return c
+	}
+	return real
+}
+
+// forms are the strings a real occupies in the reserved set: as written and,
+// for an IPv4 address or prefix (any class, or none), its canonical form.
+func forms(class, real string) []string {
+	out := []string{real}
+	if class == "" {
+		if c, ok := synth.Canonical("ipv4", real); ok && c != real {
+			out = append(out, c)
+		} else if c, ok := synth.Canonical("cidr", real); ok && c != real {
+			out = append(out, c)
+		}
+	} else if c := canonical(class, real); c != real {
+		out = append(out, c)
+	}
+	return out
+}
+
+// noteReal disables the overflow pool for a real in the overflow range (any
+// spelling) or an ipv4/cidr real that cannot be parsed (fail closed).
+// class may be "" (Reserve). Callers hold mu.
+func (v *Vault) noteReal(class, real string) {
+	if v.noOverflow {
+		return
+	}
+	_, ok := synth.Canonical(class, real)
+	if (class == "ipv4" || class == "cidr") && !ok || synth.InOverflow(real) {
 		v.noOverflow = true
+		v.changes++
 	}
 }
 
+func (v *Vault) reserve(class, real string) {
+	v.noteReal(class, real)
+	for _, f := range forms(class, real) {
+		v.reals[f] = struct{}{}
+	}
+}
+
+// Admit is the sanitizer's single locked step before coining: it reserves
+// every real (so no synthetic coined later can equal one), disables the
+// overflow pool for overflow-range or unparseable addresses, and fails with
+// ErrAmbiguous, and the index of the first such item, if a real already is a
+// synthetic. Everything is reserved even on failure.
+func (v *Vault) Admit(items []Item) (int, error) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	for _, it := range items {
+		v.reserve(it.Class, it.Real)
+	}
+	for i, it := range items {
+		for _, f := range forms(it.Class, it.Real) {
+			if _, ok := v.rev[f]; ok {
+				return i, ErrAmbiguous
+			}
+		}
+	}
+	return -1, nil
+}
+
+// Changes returns a counter that grows whenever the vault gains something a
+// save must persist (a mapping or the overflow flag).
+func (v *Vault) Changes() uint64 {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	return v.changes
+}
+
+// insert adds a mapping. fk is class + "\x00" + canonical real; real is the
+// spelling restored for syn.
 func (v *Vault) insert(fk, real, syn string) {
-	v.noteReal(real)
-	v.fwd[fk] = syn
+	class, _ := splitKey(fk)
+	v.reserve(class, real)
+	v.changes++
+	if _, ok := v.fwd[fk]; !ok {
+		v.fwd[fk] = syn
+	}
 	v.rev[syn] = real
-	v.cls[syn], _ = splitKey(fk)
-	v.reals[real] = struct{}{}
+	v.cls[syn] = class
 	i := sort.SearchStrings(v.sorted, syn)
 	v.sorted = append(v.sorted, "")
 	copy(v.sorted[i+1:], v.sorted[i:])
@@ -184,8 +271,7 @@ func (v *Vault) Reserve(reals ...string) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	for _, r := range reals {
-		v.reals[r] = struct{}{}
-		v.noteReal(r)
+		v.reserve("", r)
 	}
 }
 

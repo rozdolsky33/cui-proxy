@@ -32,7 +32,7 @@ import (
 	"cui-proxy/internal/vault"
 )
 
-// defaultSaveInterval is how often a file-mode vault is saved when it grew.
+// defaultSaveInterval is how often a file-mode vault is saved when it changed.
 var defaultSaveInterval = 30 * time.Second
 
 const auditCapacity = 500
@@ -84,7 +84,7 @@ type App struct {
 
 	saveStop chan struct{}
 	saveDone chan struct{}
-	savedLen int // vault.Len at the last successful save
+	savedAt  uint64 // vault.Changes at the last successful save (or at open)
 
 	stopOnce sync.Once
 	stopErr  error
@@ -259,7 +259,7 @@ func (a *App) openVault(vc config.VaultConfig) error {
 		a.vault = vault.New(key)
 	}
 	a.vaultAt = path
-	a.savedLen = a.vault.Len()
+	a.savedAt = a.vault.Changes()
 	return nil
 }
 
@@ -493,7 +493,7 @@ func (a *App) stop(ctx context.Context) error {
 		<-a.saveDone
 	}
 	if a.vaultAt != "" {
-		if serr := a.saveIfGrown(); serr != nil && err == nil {
+		if serr := a.saveIfChanged(); serr != nil && err == nil {
 			err = errors.New("shutdown: vault save failed")
 		}
 	}
@@ -509,11 +509,11 @@ func (a *App) saveLoop() {
 		case <-a.saveStop:
 			return
 		case <-t.C:
-			n := a.vault.Len()
-			if n == a.savedLen {
+			if a.vault.Changes() == a.savedAt {
 				continue
 			}
-			err := a.saveIfGrown()
+			n := a.vault.Len()
+			err := a.saveIfChanged()
 			if a.opts.onSave != nil {
 				a.opts.onSave(n, err)
 			}
@@ -521,18 +521,19 @@ func (a *App) saveLoop() {
 	}
 }
 
-// saveIfGrown saves the vault if it has mappings not yet saved. A failure is
+// saveIfChanged saves the vault if it changed (mappings or the overflow
+// flag) since the last save. A failure is
 // logged by kind only and retried on the next call.
-func (a *App) saveIfGrown() error {
-	n := a.vault.Len()
-	if n == a.savedLen {
+func (a *App) saveIfChanged() error {
+	n := a.vault.Changes() // read first: a change during Save is saved next time
+	if n == a.savedAt {
 		return nil
 	}
 	if err := a.vault.Save(a.vaultAt); err != nil {
 		a.logf("WARN vault save failed (%s); will retry", fsErrKind(err))
 		return err
 	}
-	a.savedLen = n
+	a.savedAt = n
 	return nil
 }
 

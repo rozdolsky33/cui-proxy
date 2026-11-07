@@ -2,8 +2,9 @@ package detect
 
 import (
 	"net/netip"
-	"strconv"
 	"strings"
+
+	"cui-proxy/internal/ipv4"
 )
 
 // A refiner inspects a regex match text[s:e] and returns the (possibly
@@ -42,26 +43,8 @@ func boundedAfter(text string, e int) bool {
 // parseV4 parses a dotted quad of decimal octets (leading zeros allowed, as
 // they appear in real configs), each <= 255.
 func parseV4(c string) bool {
-	parts := strings.Split(c, ".")
-	if len(parts) != 4 {
-		return false
-	}
-	for _, p := range parts {
-		if len(p) == 0 || len(p) > 3 {
-			return false
-		}
-		n := 0
-		for i := 0; i < len(p); i++ {
-			if !isDigit(p[i]) {
-				return false
-			}
-			n = n*10 + int(p[i]-'0')
-		}
-		if n > 255 {
-			return false
-		}
-	}
-	return true
+	_, ok := ipv4.Parse(c)
+	return ok
 }
 
 func ipv4Refine(text string, s, e int) (int, int, bool) {
@@ -112,12 +95,8 @@ func ipv6Find(text string, s, e int) [][2]int {
 
 func parsePrefixAny(c string) bool {
 	if !strings.Contains(c, ":") {
-		i := strings.IndexByte(c, '/')
-		if i < 0 || !parseV4(c[:i]) {
-			return false
-		}
-		n, err := strconv.Atoi(c[i+1:])
-		return err == nil && n >= 0 && n <= 32
+		_, ok := ipv4.ParsePrefix(c)
+		return ok
 	}
 	_, err := netip.ParsePrefix(c)
 	return err == nil

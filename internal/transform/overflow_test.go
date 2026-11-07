@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 
 	"cui-proxy/internal/synth"
@@ -78,5 +79,87 @@ func TestOverflowSyntheticPresentedAsRealFailsClosed(t *testing.T) {
 	first, _ := s.Text("again 10.0.0.1")
 	if again, err := s.Text(first); err != nil || again != first {
 		t.Errorf("RFC 5737 synthetic not idempotent: %q, %v", again, err)
+	}
+}
+
+// S1: many goroutines sanitize texts that mix overflow-range addresses used
+// as REAL values with fresh addresses that coin overflow synthetics. A
+// successfully sanitized real must never be (or become) a synthetic.
+func TestConcurrentAmbiguityGate(t *testing.T) {
+	v := vault.New(testKey)
+	s := NewSanitizer(builtins(t), v, nil)
+	if _, err := s.Text("fill" + ips(0, 762)); err != nil {
+		t.Fatal(err)
+	}
+	// Predict the overflow synthetics fresh reals will get: a twin vault
+	// (same key, same fill) coins them without contention.
+	twin := vault.New(testKey)
+	tw := NewSanitizer(builtins(t), twin, nil)
+	if _, err := tw.Text("fill" + ips(0, 762)); err != nil {
+		t.Fatal(err)
+	}
+	const n = 64
+	predicted := make([]string, n)
+	for i := range predicted {
+		syn, err := twin.Pseudonym("ipv4", fmt.Sprintf("10.250.%d.%d", i/250, i%250+1))
+		if err != nil {
+			t.Fatal(err)
+		}
+		predicted[i] = syn
+	}
+
+	var wg sync.WaitGroup
+	ok := make([]bool, n) // the predicted address was sanitized as a real
+	for i := 0; i < n; i++ {
+		wg.Add(2)
+		go func(i int) { // coins predicted[i] (if the pool is still open)
+			defer wg.Done()
+			_, _ = s.Text(fmt.Sprintf("fresh 10.250.%d.%d", i/250, i%250+1))
+		}(i)
+		go func(i int) { // presents predicted[i] as a real lab address
+			defer wg.Done()
+			_, err := s.Text("lab " + predicted[i] + " and" + ips(100000+i*3, 3))
+			ok[i] = err == nil
+		}(i)
+	}
+	wg.Wait()
+	for i, p := range predicted {
+		if ok[i] && v.IsSynthetic(p) {
+			t.Fatalf("real %s was sanitized but is also a synthetic (restores to %v)", p, func() string { r, _ := v.Real(p); return r }())
+		}
+	}
+}
+
+// S1, deterministic: another request coins an overflow synthetic equal to
+// this request's pending real right between classifying the spans and
+// admitting the reals. The gate must still see it (fail closed).
+func TestAmbiguityGateIsAtomic(t *testing.T) {
+	v := vault.New(testKey)
+	s := NewSanitizer(builtins(t), v, nil)
+	if _, err := s.Text("fill" + ips(0, 762)); err != nil {
+		t.Fatal(err)
+	}
+	twin := vault.New(testKey)
+	if _, err := NewSanitizer(builtins(t), twin, nil).Text("fill" + ips(0, 762)); err != nil {
+		t.Fatal(err)
+	}
+	const other = "10.250.0.1"
+	p, err := twin.Pseudonym("ipv4", other)
+	if err != nil || !synth.InOverflow(p) {
+		t.Fatalf("prediction: %s, %v", p, err)
+	}
+	testHookBeforeAdmit = func() {
+		testHookBeforeAdmit = nil
+		if got, err := v.Pseudonym("ipv4", other); err != nil || got != p {
+			t.Fatalf("concurrent coin: %s, %v (want %s)", got, err, p)
+		}
+	}
+	defer func() { testHookBeforeAdmit = nil }()
+	out, err := s.Text("lab " + p)
+	if err == nil {
+		t.Fatalf("real %s sanitized to %q although it now is a synthetic for another value", p, out)
+	}
+	if !errors.Is(err, ErrAmbiguous) {
+		t.Errorf("err = %v, want ErrAmbiguous", err)
 	}
 }

@@ -14,6 +14,8 @@ import (
 	"fmt"
 	"net/netip"
 	"strings"
+
+	"cui-proxy/internal/ipv4"
 )
 
 // Generator derives a synthetic from sum = HMAC-SHA256(key, class+"\x00"+real)
@@ -92,9 +94,16 @@ func Attempts(class string) int {
 	return defaultAttempts
 }
 
-// InOverflow reports whether s is an IPv4 address (IPv4-mapped IPv6
-// included) inside 198.18.0.0/15, or a prefix that overlaps it.
+// InOverflow reports whether s is an IPv4 address (leading-zero octets and
+// IPv4-mapped IPv6 included) inside 198.18.0.0/15, or a prefix that overlaps
+// it.
 func InOverflow(s string) bool {
+	if p, ok := ipv4.ParsePrefix(s); ok {
+		return p.Overlaps(overflowNet)
+	}
+	if a, ok := ipv4.Parse(s); ok {
+		return overflowNet.Contains(a)
+	}
 	if p, err := netip.ParsePrefix(s); err == nil {
 		a := p.Addr()
 		if a.Is4In6() {
@@ -107,6 +116,31 @@ func InOverflow(s string) bool {
 	}
 	a, err := netip.ParseAddr(s)
 	return err == nil && overflowNet.Contains(a.Unmap())
+}
+
+// Canonical returns the one spelling of an ipv4 or cidr real used for vault
+// keys and collision checks ("198.018.001.001" -> "198.18.1.1"; IPv6 CIDRs
+// in netip form). ok is false when an ipv4/cidr value cannot be parsed.
+// Other classes are returned unchanged.
+func Canonical(class, real string) (string, bool) {
+	switch class {
+	case "ipv4":
+		a, ok := ipv4.Parse(real)
+		if !ok {
+			return "", false
+		}
+		return a.String(), true
+	case "cidr":
+		if p, ok := ipv4.ParsePrefix(real); ok {
+			return p.String(), true
+		}
+		p, err := netip.ParsePrefix(real)
+		if err != nil {
+			return "", false
+		}
+		return p.String(), true
+	}
+	return real, true
 }
 
 // ipv4Addr walks the RFC 5737 pool linearly from a hash-derived start, so

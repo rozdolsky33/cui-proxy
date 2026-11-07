@@ -35,12 +35,17 @@ var ErrUnrestorable = errors.New("transform: sanitized text would not restore fa
 // for the class, exhausted pool). The caller must block.
 var ErrPseudonym = errors.New("transform: no synthetic for detected value")
 
-// ErrAmbiguous means a detected value equals a synthetic from the IPv4
-// overflow pool (198.18.0.0/15). That range can carry real traffic, so the
-// value may be a real address rather than a resent synthetic; passing it as
-// "already sanitized" could leak it and restore it to another real value.
-// The caller must block. The vault then stops coining overflow addresses.
-var ErrAmbiguous = errors.New("transform: detected value matches an overflow-range synthetic")
+// ErrAmbiguous means a detected value equals a synthetic it may not pass as:
+// one from the IPv4 overflow pool (198.18.0.0/15, a range that can carry
+// real traffic), or one coined concurrently. Passing it as "already
+// sanitized" could leak a real address and restore it to another real
+// value. The caller must block; the vault then stops coining overflow
+// addresses. It is vault.ErrAmbiguous.
+var ErrAmbiguous = vault.ErrAmbiguous
+
+// testHookBeforeAdmit runs after the spans are classified and before the
+// reals are admitted to the vault (tests only; nil in production).
+var testHookBeforeAdmit func()
 
 // Sanitizer replaces detected values with synthetics. Safe for concurrent use
 // if the sink is.
@@ -109,22 +114,27 @@ func (s *Sanitizer) Text(in string) (string, error) {
 	todo := spans[:0:0]
 	var reals []string
 	for _, sp := range spans {
-		t := in[sp.Start:sp.End]
-		if !s.v.IsSynthetic(t) {
+		if t := in[sp.Start:sp.End]; !s.passSynthetic(t) {
 			todo = append(todo, sp)
 			reals = append(reals, t)
-			continue
-		}
-		if !s.passSynthetic(t) {
-			s.v.Reserve(t) // it may be real: never coin in that range again
-			return "", fmt.Errorf("%w: rule=%s class=%s", ErrAmbiguous, sp.Rule, sp.Class)
 		}
 	}
 	if len(todo) == 0 {
 		return in, nil
 	}
-	// No synthetic coined below may equal another value in this text.
-	s.v.Reserve(reals...)
+	if testHookBeforeAdmit != nil {
+		testHookBeforeAdmit()
+	}
+	// One locked step: reserve every real (no synthetic coined below, here
+	// or concurrently, may equal one), and refuse a real that already is a
+	// synthetic (an overflow-range one, or one coined since the check above).
+	items := make([]vault.Item, len(todo))
+	for i, sp := range todo {
+		items[i] = vault.Item{Class: sp.Class, Real: reals[i]}
+	}
+	if i, err := s.v.Admit(items); err != nil {
+		return "", fmt.Errorf("%w: rule=%s class=%s", ErrAmbiguous, todo[i].Rule, todo[i].Class)
+	}
 
 	syns := make([]string, len(todo))
 	for i := len(todo) - 1; i >= 0; i-- { // right to left

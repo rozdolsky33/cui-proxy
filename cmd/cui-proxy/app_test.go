@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -530,6 +531,43 @@ func TestVaultFilePeriodicSave(t *testing.T) {
 	}
 	if r, ok := v.Real(syn); !ok || r != realIP {
 		t.Fatal("periodically saved vault lacks the mapping")
+	}
+}
+
+// A change of the vault's overflow flag alone (no new mapping) is saved by
+// the periodic save, and survives a reopen.
+func TestVaultFilePeriodicSaveOnFlagChange(t *testing.T) {
+	dir, cfg := testDir(t, cfgSpec{Vault: fileVault})
+	saved := make(chan int, 16)
+	a := startApp(t, cfg, &logBuf{}, func(o *AppOptions) {
+		o.saveInterval = time.Millisecond
+		o.onSave = func(n int, err error) {
+			if err == nil {
+				saved <- n
+			}
+		}
+	})
+	a.vault.Reserve("198.18.1.1") // a reserve-only path: no mapping coined
+	select {
+	case n := <-saved:
+		if n != 0 {
+			t.Fatalf("saved %d mappings, want 0 (flag only)", n)
+		}
+	case <-time.After(waitLimit):
+		t.Fatal("flag change alone did not trigger a periodic save")
+	}
+	key, _ := os.ReadFile(filepath.Join(dir, "keys", "vault.key"))
+	v, err := vault.Open(filepath.Join(dir, "vault.bin"), key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 762; i++ {
+		if _, err := v.Pseudonym("ipv4", fmt.Sprintf("10.%d.%d.1", i/250, i%250)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if s, err := v.Pseudonym("ipv4", "10.250.0.1"); err == nil {
+		t.Fatalf("reopened vault coined %s from the overflow pool", s)
 	}
 }
 
