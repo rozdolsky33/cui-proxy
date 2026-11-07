@@ -33,6 +33,7 @@ and it never stores or alters your upstream credentials.
   - [Point Codex at the proxy](#point-codex-at-the-proxy)
   - [Dashboard](#dashboard) · [Hot reload](#hot-reload) · [Vault](#vault)
   - [Block diagnostics](#block-diagnostics)
+  - [Decision log](#decision-log)
 - **Install and remove**
   - [Install (all options)](#install-all-options) ([Homebrew](#homebrew-macos-and-linux), [curl](#curl), [manual](#manual-download-or-from-source))
   - [Uninstall](#uninstall)
@@ -342,6 +343,8 @@ change if the mapping is wrong.
 | `info -config PATH` | Print the proxy and dashboard URLs for a config (used by the menu-bar app). |
 | `serve -config PATH [-adapter codex]` | Run the proxy (default `127.0.0.1:8787`) and the dashboard (default `127.0.0.1:8788`). |
 | `check-config -config PATH` | Validate the config, rule files and upstream URLs; prints `ok: <N> rules`, exits 1 on error. |
+| `audit verify [-file PATH \| -config PATH]` | Check the decision log's hash chain across the active and rotated files; exit 1 on a break. |
+| `explain [-config PATH] REQUEST-ID` | Say in plain words why a request was forwarded, sanitized or blocked, from the decision log. |
 | `test-rules -config PATH` | Read stdin (max 8 MiB), print the sanitized text to stdout and a rule/class/count table to stderr. Uses a throwaway vault. |
 | `version` | Print the version. |
 
@@ -524,7 +527,8 @@ Why this design, and what is deferred: [ADR 0001](docs/adr/0001-govsec-policy-en
 
 A blocked request is answered with an OpenAI-style JSON error whose `code`
 is the block reason (`route`, `body_too_large`, `compressed`, `header`,
-`policy`, `sanitize`, `unrestorable`, `bad_request`, `internal`). When the body could
+`policy`, `sanitize`, `unrestorable`, `bad_request`, `audit`, `internal`; `audit` is HTTP 503 and means
+the decision log could not be written, see [Decision log](#decision-log)). When the body could
 not be sanitized, the message also names a kind and, when one span caused
 it, the detector rule (a name from your config, never a value):
 
@@ -532,6 +536,7 @@ it, the detector rule (a name from your config, never a value):
 cui-proxy: request blocked (reason=sanitize kind=pool_exhausted rule=builtin.ipv4)
 ```
 
+Every error also carries a `request_id=` you can give to `cui-proxy explain`.
 The same appears in the proxy log as
 `request blocked (reason=... kind=... rule=... class=...)`, and in the
 dashboard feed as `sanitize:<kind>` with a `blocked:<rule>` count. The
@@ -553,6 +558,29 @@ A value whose synthetic would not restore where it stands (for example
 address/number synthetic would be glued to a letter or hex digit) is not
 blocked: it is masked as a `REDACTED-<8hex>` token instead and counted as
 `downgraded` in the metrics.
+
+## Decision log
+
+Every request leaves one line in a log file on disk: **forwarded**, **sanitized**
+or **blocked**, why, and which rules matched. It never contains the data
+itself, headers, prompts, URLs or account ids. Lines are hash-chained, so an
+edited, reordered or missing line in the middle is detectable.
+
+```sh
+cui-proxy audit verify -config ~/.config/cui-proxy/config.yaml    # check the chain, exit 1 on a break
+cui-proxy explain -config ~/.config/cui-proxy/config.yaml <request-id>   # one decision in plain words
+```
+
+- **On by default**, in `~/.local/state/cui-proxy/decisions.jsonl` (mode 0600,
+  in a private directory). Rotates at 50 MB and keeps 90 days by default.
+- **Fail closed:** the record is written *before* the request is forwarded.
+  Under `strict`, if it cannot be written the request is blocked (reason
+  `audit`, HTTP 503). Under `sanitize` the default is to warn and continue.
+- **Tamper-evident, not tamper-proof.** It does not catch a full rewrite with
+  recomputed hashes or deletion of the newest lines. Do not name rules after
+  sensitive things: rule names are recorded.
+
+Settings, limits and details: [docs/decision-log.md](docs/decision-log.md).
 
 ## Known limitations / behavior
 
