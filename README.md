@@ -86,10 +86,22 @@ codex -c 'model_provider="cui-proxy"' \
 ```
 
 - Dashboard: <http://127.0.0.1:8788/> (live feed, metrics, config; never shows
-  real values).
+  real values). Each Codex turn appears in the live table. Open it first and
+  try the **"test a string"** box with `ssh admin@10.20.30.15`: you should get
+  a fake address back.
 - See what the rules do to some text without running Codex:
   `echo 'ssh admin@10.20.30.15' | cui-proxy test-rules -config ~/.config/cui-proxy/config.yaml`
-- Stop the proxy with Ctrl-C.
+- Stop the proxy with Ctrl-C. `serve` runs in the foreground, so keep it in
+  its own terminal.
+
+**If the first Codex run fails**, look at the dashboard's *Blocked* column and
+the `cui-proxy` terminal:
+
+| You see | Likely cause |
+|---|---|
+| Nothing in the dashboard | Codex is not reaching the proxy: is `serve` running, and did you pass the `-c` flags? |
+| `403 route` or a 404 | The upstream path guess is wrong (it has not been tested against the real ChatGPT backend). See the symptom table in [docs/verification.md](docs/verification.md#5-what-to-look-for-first-prompt). |
+| `422 request blocked ...` | A safety check refused the request; the message names the rule and kind, never the value. See [Block diagnostics](#block-diagnostics). |
 
 **Before you rely on it:** the upstream mapping has not been tested against the
 real ChatGPT backend yet. Run the manual smoke in
