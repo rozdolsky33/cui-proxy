@@ -16,19 +16,23 @@ import (
 // Event reports replacements of one value. It never contains the real value:
 // only the detector rule, the class, the vault's keyed fingerprint
 // (vault.Fingerprint: 8 hex chars of an HMAC under a vault-held audit subkey),
-// and how many times it was replaced in one Text call.
+// and how many times it was replaced in one Text call. Downgraded marks
+// spans masked as class secret because their own class's synthetic would not
+// have restored in place (Class is then "secret").
 type Event struct {
 	Rule, Class, Fingerprint string
 	Count                    int
+	Downgraded               bool
 }
 
 // Sink receives audit events.
 type Sink interface{ Record(Event) }
 
 // ErrUnrestorable means the sanitized text would not restore to the input
-// (e.g. a synthetic glued to a letter, which the Restorer's boundary rule
-// refuses to restore). The caller must block. Returned errors wrap it with the
-// rule and class of the nearest inserted synthetic, never the value.
+// even after the offending spans were downgraded to class secret (a bounded
+// synthetic glued to a letter is downgraded, not blocked; see Text). The
+// caller must block. Returned errors wrap it with the rule and detected class
+// of the nearest inserted synthetic, never the value.
 var ErrUnrestorable = errors.New("transform: sanitized text would not restore faithfully")
 
 // ErrPseudonym wraps a vault.Pseudonym failure (unknown class, invalid value
@@ -46,6 +50,10 @@ var ErrAmbiguous = vault.ErrAmbiguous
 // testHookBeforeAdmit runs after the spans are classified and before the
 // reals are admitted to the vault (tests only; nil in production).
 var testHookBeforeAdmit func()
+
+// testHookBuilt rewrites each built output before the self-check (tests
+// only; nil in production).
+var testHookBuilt func(string) string
 
 // Sanitizer replaces detected values with synthetics. Safe for concurrent use
 // if the sink is.
@@ -102,7 +110,13 @@ func (s *Sanitizer) Detect(in string) []detect.Span {
 //
 // Before returning, Text checks that the Restorer would find exactly the
 // inserted synthetics plus the synthetics that were already present, at the
-// same places; otherwise it returns ErrUnrestorable.
+// same places. If not, every offending bounded-class span (ipv4, ipv6, cidr,
+// ssn, card: a synthetic the boundary rule refuses where it landed, e.g.
+// "id:fe80::1", "ID123-45-6789") is downgraded to class secret, which gets
+// its own vault mapping and restores without the boundary rule, and the text
+// is rebuilt once. Only if the rebuilt text still fails the check does Text
+// return ErrUnrestorable. The result is deterministic: the same text against
+// the same vault downgrades the same spans.
 func (s *Sanitizer) Text(in string) (string, error) {
 	spans := detect.Scan(s.ds, in)
 	if len(spans) == 0 {
@@ -136,20 +150,52 @@ func (s *Sanitizer) Text(in string) (string, error) {
 		return "", fmt.Errorf("%w: rule=%s class=%s", ErrAmbiguous, todo[i].Rule, todo[i].Class)
 	}
 
-	syns := make([]string, len(todo))
-	for i := len(todo) - 1; i >= 0; i-- { // right to left
-		syn, err := s.v.Pseudonym(todo[i].Class, reals[i])
-		if err != nil {
-			return "", fmt.Errorf("%w: rule=%s class=%s: %w", ErrPseudonym, todo[i].Rule, todo[i].Class, err)
-		}
-		syns[i] = syn
+	// Coin and build; on a self-check mismatch, downgrade the offending
+	// bounded-class spans to class secret (a self-delimiting REDACTED token
+	// that restores without the boundary rule) and rebuild once.
+	classes := make([]string, len(todo))
+	for i, sp := range todo {
+		classes[i] = sp.Class
 	}
+	down := make([]bool, len(todo))
+	for pass := 0; ; pass++ {
+		syns := make([]string, len(todo))
+		for i := len(todo) - 1; i >= 0; i-- { // right to left
+			syn, err := s.v.Pseudonym(classes[i], reals[i])
+			if err != nil {
+				return "", fmt.Errorf("%w: rule=%s class=%s: %w", ErrPseudonym, todo[i].Rule, classes[i], err)
+			}
+			syns[i] = syn
+		}
+		out, want, ins := build(in, pre, todo, syns)
+		if testHookBuilt != nil {
+			out = testHookBuilt(out)
+		}
+		got, _ := s.r.snapshot().scan(out, 0, true)
+		k, bad := firstMismatch(got, want)
+		if !bad {
+			s.record(todo, classes, down, reals)
+			return out, nil
+		}
+		fix := offending(got, want, ins, syns, classes)
+		if pass > 0 || len(fix) == 0 {
+			sp := todo[nearest(ins, k)]
+			return "", fmt.Errorf("%w: rule=%s class=%s", ErrUnrestorable, sp.Rule, sp.Class)
+		}
+		for _, i := range fix {
+			classes[i], down[i] = "secret", true
+		}
+	}
+}
 
-	// Build the output; spans are sorted and disjoint. Track where each
-	// inserted synthetic lands and where surviving pre-existing ones move.
+// build writes in with each todo span replaced by its synthetic; spans are
+// sorted and disjoint. It returns the output, where the Restorer must find
+// synthetics in it (each inserted one plus each surviving pre-existing one,
+// sorted), and the start of each inserted synthetic (parallel to todo).
+func build(in string, pre []match, todo []detect.Span, syns []string) (string, []match, []int) {
 	var b strings.Builder
 	want := make([]match, 0, len(todo)+len(pre))
-	var ins []int // start of each inserted synthetic in out, parallel to todo
+	ins := make([]int, 0, len(todo))
 	last, delta, pi := 0, 0, 0
 	keepPre := func(upto int) { // pre matches ending at or before upto
 		for ; pi < len(pre) && pre[pi].end <= upto; pi++ {
@@ -173,16 +219,58 @@ func (s *Sanitizer) Text(in string) (string, error) {
 	}
 	keepPre(len(in))
 	b.WriteString(in[last:])
-	out := b.String()
-
 	sort.Slice(want, func(i, j int) bool { return want[i].start < want[j].start })
-	got, _ := s.r.snapshot().scan(out, 0, true)
-	if k, bad := firstMismatch(got, want); bad {
-		sp := todo[nearest(ins, k)]
-		return "", fmt.Errorf("%w: rule=%s class=%s", ErrUnrestorable, sp.Rule, sp.Class)
+	return b.String(), want, ins
+}
+
+// offending returns the indices of the inserted spans to downgrade after a
+// self-check mismatch: every bounded-class (not self-delimiting) inserted
+// synthetic the Restorer would not find where it was put, and, for any other
+// difference (a pre-existing synthetic lost or an unexpected match), the
+// bounded-class inserted synthetic nearest to it. Sorted, no duplicates.
+func offending(got, want []match, ins []int, syns []string, classes []string) []int {
+	inGot := make(map[match]bool, len(got))
+	for _, m := range got {
+		inGot[m] = true
 	}
-	s.record(todo, reals)
-	return out, nil
+	inWant := make(map[match]bool, len(want))
+	for _, m := range want {
+		inWant[m] = true
+	}
+	var bounded []int // starts of bounded inserted synthetics
+	var idx []int     // their todo indices
+	isIns := map[match]bool{}
+	pick := map[int]bool{}
+	for i, at := range ins {
+		m := match{at, at + len(syns[i])}
+		isIns[m] = true
+		if selfDelimiting[classes[i]] {
+			continue
+		}
+		bounded = append(bounded, at)
+		idx = append(idx, i)
+		if !inGot[m] {
+			pick[i] = true
+		}
+	}
+	if len(bounded) > 0 {
+		for _, m := range want {
+			if !isIns[m] && !inGot[m] {
+				pick[idx[nearest(bounded, m.start)]] = true
+			}
+		}
+		for _, m := range got {
+			if !inWant[m] {
+				pick[idx[nearest(bounded, m.start)]] = true
+			}
+		}
+	}
+	out := make([]int, 0, len(pick))
+	for i := range pick {
+		out = append(out, i)
+	}
+	sort.Ints(out)
+	return out
 }
 
 // firstMismatch returns the output offset where match lists a and b first
@@ -220,21 +308,24 @@ func abs(x int) int {
 	return x
 }
 
-func (s *Sanitizer) record(todo []detect.Span, reals []string) {
+func (s *Sanitizer) record(todo []detect.Span, classes []string, down []bool, reals []string) {
 	if s.sink == nil {
 		return
 	}
-	type key struct{ rule, class, fp string }
+	type key struct {
+		rule, class, fp string
+		down            bool
+	}
 	counts := map[key]int{}
 	var order []key
 	for i, sp := range todo {
-		k := key{sp.Rule, sp.Class, s.v.Fingerprint(sp.Class, reals[i])}
+		k := key{sp.Rule, classes[i], s.v.Fingerprint(classes[i], reals[i]), down[i]}
 		if counts[k] == 0 {
 			order = append(order, k)
 		}
 		counts[k]++
 	}
 	for _, k := range order {
-		s.sink.Record(Event{Rule: k.rule, Class: k.class, Fingerprint: k.fp, Count: counts[k]})
+		s.sink.Record(Event{Rule: k.rule, Class: k.class, Fingerprint: k.fp, Count: counts[k], Downgraded: k.down})
 	}
 }

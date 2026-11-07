@@ -1148,3 +1148,22 @@ func (f *failingRewriter) Event(e sse.Event) ([]sse.Event, error) {
 }
 
 func (f *failingRewriter) Flush() []sse.Event { return f.inner.Flush() }
+
+// I1: a value glued where its bounded synthetic would not restore is
+// forwarded as a REDACTED token (not blocked) and counted as downgraded.
+func TestGluedValueDowngradedNotBlocked(t *testing.T) {
+	h := newHarness(t, nil)
+	res, _ := h.post(userBody("route via:fe80::1 now"))
+	if res.StatusCode != 200 {
+		t.Fatalf("status = %d", res.StatusCode)
+	}
+	if dump := h.upstreamGot().dump(); strings.Contains(dump, "fe80::1") || !strings.Contains(dump, "via:REDACTED-") {
+		t.Errorf("upstream body: %s", dump)
+	}
+	if a := h.nextAudit(); a.Blocked != "" || a.Rules["builtin.ipv6"] != 1 {
+		t.Errorf("audit = %+v", a)
+	}
+	if s := h.reg.Snapshot(); s.Downgraded != 1 || s.Blocked != 0 {
+		t.Errorf("metrics = %+v", s)
+	}
+}

@@ -452,14 +452,20 @@ func TestNonJSONBodyBlocked(t *testing.T) {
 }
 
 // R9: a sanitizer error propagates; no partial bytes, no value in the message.
+// (The glued SSN this test used to rely on is downgraded to class secret
+// since final-review ruling I1; an invalid cidr real still cannot be coined.)
 func TestSanitizerErrorBlocks(t *testing.T) {
-	e := newEnv(t)
-	body := []byte(`{"input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"ok 10.20.30.15"},{"type":"input_text","text":"id x123-45-6789y now"}]}]}`)
-	out, err := New().SanitizeRequest(body, e.s)
-	if out != nil || !errors.Is(err, transform.ErrUnrestorable) {
-		t.Fatalf("out=%v err=%v; want nil, ErrUnrestorable", out != nil, err)
+	ds, err := detect.Build([]config.Rule{{Name: "builtin", Type: "builtin"}, {Name: "bad", Type: "regex", Pattern: `XCIDR\d+`, Synth: "cidr"}}, "")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if strings.Contains(err.Error(), "6789") || strings.Contains(err.Error(), "10.20.30.15") {
+	s := transform.NewSanitizer(ds, vault.New(testKey), nil)
+	body := []byte(`{"input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"ok 10.20.30.15"},{"type":"input_text","text":"id XCIDR123 now"}]}]}`)
+	out, err := New().SanitizeRequest(body, s)
+	if out != nil || !errors.Is(err, transform.ErrPseudonym) {
+		t.Fatalf("out=%v err=%v; want nil, ErrPseudonym", out != nil, err)
+	}
+	if strings.Contains(err.Error(), "XCIDR123") || strings.Contains(err.Error(), "10.20.30.15") {
 		t.Errorf("error message contains a value: %q", err)
 	}
 }

@@ -1,7 +1,9 @@
 package metrics
 
 import (
+	"encoding/json"
 	"math"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -150,5 +152,22 @@ func TestIncPassthrough(t *testing.T) {
 	}
 	if s.Blocked != 0 {
 		t.Errorf("passthrough must not count as blocked: %d", s.Blocked)
+	}
+}
+
+// I1: downgraded spans are counted in a single closed-set counter, also as
+// ordinary replacements.
+func TestDowngradedCounter(t *testing.T) {
+	r, _ := newTest()
+	r.Record(transform.Event{Rule: "builtin.ipv6", Class: "secret", Count: 2, Downgraded: true})
+	r.Record(transform.Event{Rule: "builtin.ipv6", Class: "ipv6", Count: 1})
+	r.Record(transform.Event{Rule: "builtin.ssn", Class: "secret", Count: 0, Downgraded: true})
+	s := r.Snapshot()
+	if s.Downgraded != 2 || s.Replacements != 3 || s.ReplacementsByRule["builtin.ipv6"] != 3 {
+		t.Fatalf("snapshot: %+v", s)
+	}
+	b, err := json.Marshal(s)
+	if err != nil || !strings.Contains(string(b), `"downgraded":2`) {
+		t.Fatalf("json %s, %v", b, err)
 	}
 }

@@ -18,7 +18,7 @@ const (
 
 // Snapshot is the JSON view served by the dashboard. Field names are stable
 // snake_case: requests, blocked, blocked_by_reason, errors, restores,
-// passthrough, replacements, replacements_by_rule, requests_per_minute,
+// passthrough, replacements, replacements_by_rule, downgraded, requests_per_minute,
 // overhead_ms{p50,p95,samples}, vault_size, uptime_seconds.
 type Snapshot struct {
 	Requests           int64            `json:"requests"`
@@ -29,10 +29,14 @@ type Snapshot struct {
 	Restores           int64            `json:"restores"`
 	Replacements       int64            `json:"replacements"`
 	ReplacementsByRule map[string]int64 `json:"replacements_by_rule"`
-	RequestsPerMinute  int64            `json:"requests_per_minute"`
-	OverheadMS         Overhead         `json:"overhead_ms"`
-	VaultSize          int64            `json:"vault_size"`
-	UptimeSeconds      int64            `json:"uptime_seconds"`
+	// Downgraded counts replacements whose span was masked as class secret
+	// because its own class's synthetic would not have restored in place
+	// (also counted in Replacements).
+	Downgraded        int64    `json:"downgraded"`
+	RequestsPerMinute int64    `json:"requests_per_minute"`
+	OverheadMS        Overhead `json:"overhead_ms"`
+	VaultSize         int64    `json:"vault_size"`
+	UptimeSeconds     int64    `json:"uptime_seconds"`
 }
 
 // Overhead is proxy-added latency in milliseconds over the last <=4096 samples.
@@ -52,7 +56,7 @@ type Registry struct {
 	now   func() time.Time // injectable clock; see newWithClock
 	start time.Time
 
-	requests, blocked, passthrough, errs, restores, replacements, vaultSize atomic.Int64
+	requests, blocked, passthrough, errs, restores, replacements, downgraded, vaultSize atomic.Int64
 
 	mu       sync.Mutex
 	byRule   map[string]int64
@@ -70,12 +74,16 @@ func newWithClock(now func() time.Time) *Registry {
 	return &Registry{now: now, start: now(), byRule: map[string]int64{}, byReason: map[string]int64{}}
 }
 
-// Record implements transform.Sink: counts replacements by rule.
+// Record implements transform.Sink: counts replacements by rule, and
+// downgraded replacements in one counter.
 func (r *Registry) Record(e transform.Event) {
 	if e.Count <= 0 {
 		return
 	}
 	r.replacements.Add(int64(e.Count))
+	if e.Downgraded {
+		r.downgraded.Add(int64(e.Count))
+	}
 	r.mu.Lock()
 	r.byRule[e.Rule] += int64(e.Count)
 	r.mu.Unlock()
@@ -140,6 +148,7 @@ func (r *Registry) Snapshot() Snapshot {
 		Errors:       r.errs.Load(),
 		Restores:     r.restores.Load(),
 		Replacements: r.replacements.Load(),
+		Downgraded:   r.downgraded.Load(),
 		VaultSize:    r.vaultSize.Load(),
 	}
 	if up := now.Sub(r.start); up > 0 {

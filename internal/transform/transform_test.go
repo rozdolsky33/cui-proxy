@@ -271,20 +271,24 @@ func TestSanitizeErrorReturnsNoText(t *testing.T) {
 	}
 }
 
-// A synthetic glued to an alphanumeric would not be restored, so the
-// sanitizer must refuse (fail closed) rather than send text that cannot round-trip.
-func TestSanitizeBlocksUnrestorableContext(t *testing.T) {
-	s := NewSanitizer(builtins(t), vault.New(testKey), nil)
+// A bounded synthetic glued to an alphanumeric would not be restored. The
+// sanitizer used to block here (fail closed); since the final-review ruling
+// I1 it downgrades the span to class secret, which restores anywhere, and
+// blocks only if that still does not round-trip (see downgrade_test.go).
+func TestSanitizeDowngradesUnrestorableContext(t *testing.T) {
+	v := vault.New(testKey)
+	s := NewSanitizer(builtins(t), v, nil)
 	// ssn keeps the boundary rule; the detector accepts it between letters.
-	out, err := s.Text("id x123-45-6789y now")
-	if !errors.Is(err, ErrUnrestorable) {
-		t.Fatalf("err = %v, want ErrUnrestorable", err)
+	in := "id x123-45-6789y now"
+	out, err := s.Text(in)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if msg := err.Error(); !strings.Contains(msg, "rule=builtin.ssn") || !strings.Contains(msg, "class=ssn") || strings.Contains(msg, "6789") {
-		t.Errorf("error should name rule and class, never the value: %q", msg)
+	if want := "id x" + pseudo(t, v, "secret", "123-45-6789") + "y now"; out != want {
+		t.Errorf("out = %q, want %q", out, want)
 	}
-	if out != "" {
-		t.Errorf("partial text returned with error: %q", out)
+	if got := NewRestorer(v).Text(out); got != in {
+		t.Errorf("restore = %q", got)
 	}
 }
 

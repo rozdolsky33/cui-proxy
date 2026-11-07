@@ -89,7 +89,7 @@ func TestMetricsEndpointShape(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &m); err != nil {
 		t.Fatal(err)
 	}
-	for _, k := range []string{"requests", "blocked", "blocked_by_reason", "errors", "restores", "replacements_by_rule", "requests_per_minute", "overhead_ms", "vault_size", "uptime_seconds"} {
+	for _, k := range []string{"requests", "blocked", "blocked_by_reason", "errors", "restores", "replacements_by_rule", "downgraded", "requests_per_minute", "overhead_ms", "vault_size", "uptime_seconds"} {
 		if _, ok := m[k]; !ok {
 			t.Errorf("missing %s", k)
 		}
@@ -343,6 +343,17 @@ func TestJSHasNoBannedSinks(t *testing.T) {
 		if regexp.MustCompile(re).Match(b) {
 			t.Errorf("string-argument timer matches %s", re)
 		}
+	}
+}
+
+// I1: the dashboard shows the downgraded counter in the metrics cards.
+func TestJSShowsDowngraded(t *testing.T) {
+	b, err := os.ReadFile("static/app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `card("Downgraded", m.downgraded`) {
+		t.Error("app.js has no Downgraded metrics card")
 	}
 }
 

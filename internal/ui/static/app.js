@@ -50,6 +50,7 @@
     box.appendChild(card("Requests / min", m.requests_per_minute));
     box.appendChild(card("Requests", m.requests, "passthrough " + (m.passthrough || 0)));
     box.appendChild(card("Replacements", m.replacements, pairs(m.replacements_by_rule)));
+    box.appendChild(card("Downgraded", m.downgraded || 0, "masked as REDACTED (would not restore in place)"));
     box.appendChild(card("Restores", m.restores));
     box.appendChild(card("Blocked", m.blocked, pairs(m.blocked_by_reason)));
     box.appendChild(card("Errors", m.errors));
