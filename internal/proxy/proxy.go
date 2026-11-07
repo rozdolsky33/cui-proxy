@@ -31,6 +31,7 @@ import (
 	"cui-proxy/internal/config"
 	"cui-proxy/internal/metrics"
 	"cui-proxy/internal/sse"
+	"cui-proxy/internal/synth"
 	"cui-proxy/internal/transform"
 )
 
@@ -104,6 +105,77 @@ var blockMessage = map[string]string{
 	reasonInternal:      "internal error",
 	reasonHeader:        "a request header or the query string contains a sensitive value",
 	reasonStreamRewrite: "response could not be restored",
+}
+
+// Block kinds: a closed set naming why a body could not be sanitized. They
+// appear in the log line, audit.Entry.Blocked ("sanitize:<kind>") and the
+// 422 message, never as metrics keys.
+const (
+	kindBadBody       = "bad_body"       // adapter.ErrBadBody
+	kindDepth         = "depth"          // adapter.ErrDepth
+	kindPoolExhausted = "pool_exhausted" // no synthetic left for the class
+	kindPseudonym     = "pseudonym"      // no synthetic for the value (e.g. invalid for its class)
+	kindAmbiguous     = "ambiguous"      // value equals a synthetic it may not pass as
+	kindUnrestorable  = "unrestorable"   // would not restore even downgraded
+	kindOther         = "other"
+)
+
+// diag is the value-free diagnosis of a sanitize block: a closed-set kind
+// and, when the error names a span, its rule and class (cleaned by safeName).
+type diag struct{ kind, rule, class string }
+
+// diagnose classifies a SanitizeRequest error. Only sentinel identities and
+// the SpanError rule/class fields are read, never the error text (which may
+// carry request data, e.g. a JSON key).
+func diagnose(err error) diag {
+	var d diag
+	var se *transform.SpanError
+	if errors.As(err, &se) {
+		d.rule, d.class = safeName(se.Rule), safeName(se.Class)
+	}
+	switch {
+	case errors.Is(err, transform.ErrUnrestorable):
+		d.kind = kindUnrestorable
+	case errors.Is(err, synth.ErrExhausted):
+		d.kind = kindPoolExhausted
+	case errors.Is(err, transform.ErrAmbiguous):
+		d.kind = kindAmbiguous
+	case errors.Is(err, transform.ErrPseudonym):
+		d.kind = kindPseudonym
+	case errors.Is(err, adapter.ErrDepth):
+		d.kind = kindDepth
+	case errors.Is(err, adapter.ErrBadBody):
+		d.kind = kindBadBody
+	default:
+		d.kind = kindOther
+	}
+	return d
+}
+
+// maxNameLen caps a rule or class name in diagnostics.
+const maxNameLen = 64
+
+// safeName keeps a config-supplied name printable in a log line, an audit
+// key and a JSON string without escaping: bytes outside [A-Za-z0-9._-]
+// become '_', and the result is cut to maxNameLen.
+func safeName(s string) string {
+	if len(s) > maxNameLen {
+		s = s[:maxNameLen]
+	}
+	b := []byte(s)
+	for i, c := range b {
+		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '.' || c == '_' || c == '-') {
+			b[i] = '_'
+		}
+	}
+	return string(b)
+}
+
+func orDash(s string) string {
+	if s == "" {
+		return "-"
+	}
+	return s
 }
 
 // defaultMaxBody applies when the config carries no positive limit.
@@ -247,14 +319,15 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 			return h.block(x, reasonBadRequest) // a passthrough route is never scanned
 		}
 	case adapter.KindSanitize:
-		out, reason := h.sanitize(x, san, body)
+		out, reason, d := h.sanitize(x, san, body)
 		if reason != "" {
 			if cfg.Policy.OnError != "passthrough" {
-				return h.block(x, reason)
+				return h.blockDiag(x, reason, d)
 			}
 			h.d.Metrics.IncPassthrough()
 			x.entry.Rules = map[string]int{"passthrough:" + reason: 1}
-			h.d.Logf("cui-proxy: forwarding an unsanitized request (policy.on_error=passthrough, reason=%s)", reason)
+			h.d.Logf("cui-proxy: forwarding an unsanitized request (policy.on_error=passthrough, reason=%s kind=%s rule=%s class=%s)",
+				reason, d.kind, orDash(d.rule), orDash(d.class))
 			out = body
 		}
 		body = out
@@ -278,18 +351,20 @@ func (c *collector) Record(e transform.Event) {
 
 // sanitize runs the adapter with a per-request sink. Events reach Metrics
 // and the audit entry only when the whole request sanitized, so a blocked
-// request counts no replacements. On failure it returns a reason code.
-func (h *handler) sanitize(x *exchange, san *transform.Sanitizer, body []byte) ([]byte, string) {
+// request counts no replacements. On failure it returns a reason code and
+// the value-free diagnosis.
+func (h *handler) sanitize(x *exchange, san *transform.Sanitizer, body []byte) ([]byte, string, diag) {
 	c := &collector{}
 	t0 := time.Now()
 	out, err := h.d.Adapter.SanitizeRequest(body, san.WithSink(c))
 	x.overhead += time.Since(t0)
 	x.observe = true
 	if err != nil {
-		if errors.Is(err, transform.ErrUnrestorable) {
-			return nil, reasonUnrestorable
+		d := diagnose(err)
+		if d.kind == kindUnrestorable {
+			return nil, reasonUnrestorable, d
 		}
-		return nil, reasonSanitize
+		return nil, reasonSanitize, d
 	}
 	if len(c.evs) > 0 {
 		x.entry.Rules = map[string]int{}
@@ -298,7 +373,7 @@ func (h *handler) sanitize(x *exchange, san *transform.Sanitizer, body []byte) (
 			x.entry.Rules[e.Rule] += e.Count
 		}
 	}
-	return out, ""
+	return out, "", diag{}
 }
 
 // forward sends the request upstream and relays the response.
@@ -450,7 +525,30 @@ func (h *handler) block(x *exchange, reason string) bool {
 	return false
 }
 
+// blockDiag blocks a request whose body could not be sanitized. Beyond
+// block, it names the closed-set kind and the rule (config name, cleaned)
+// in the log line, the audit entry (Blocked "<reason>:<kind>" and Rules
+// "blocked:<rule>") and the 422 message. Metrics keys stay the reason.
+func (h *handler) blockDiag(x *exchange, reason string, d diag) bool {
+	x.entry.Blocked = reason
+	if d.kind != reason {
+		x.entry.Blocked = reason + ":" + d.kind
+	}
+	if d.rule != "" {
+		x.entry.Rules = map[string]int{"blocked:" + d.rule: 1}
+	}
+	h.d.Metrics.IncBlocked(reason)
+	h.d.Logf("cui-proxy: request blocked (reason=%s kind=%s rule=%s class=%s)", reason, d.kind, orDash(d.rule), orDash(d.class))
+	msg := "request blocked (reason=" + reason + " kind=" + d.kind
+	if d.rule != "" {
+		msg += " rule=" + d.rule
+	}
+	writeError(x.w, blockStatus[reason], reason, "cui_proxy_blocked", msg+")")
+	return false
+}
+
 // writeError writes an OpenAI-style JSON error. Its text is fixed per code
+// (plus, from blockDiag, closed-set kinds and safeName-cleaned rule names)
 // and never contains request data.
 func writeError(w http.ResponseWriter, status int, code, typ, msg string) {
 	h := w.Header()
@@ -458,7 +556,7 @@ func writeError(w http.ResponseWriter, status int, code, typ, msg string) {
 	h.Set("Cache-Control", "no-store")
 	h.Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(status)
-	// The values are constants without characters that need escaping.
+	// The values are constants or safeName output: no characters that need escaping.
 	_, _ = io.WriteString(w, `{"error":{"message":"cui-proxy: `+msg+`","type":"`+typ+`","code":"`+code+`"}}`)
 }
 

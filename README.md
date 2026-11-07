@@ -135,7 +135,8 @@ used up, the vault falls back to an overflow pool of 130,048 addresses in
 `198.18.0.0/15` (RFC 2544 benchmarking).
 
 - Exhaustion: when no synthetic is left, the request is blocked (HTTP 422,
-  code `sanitize`; nothing is forwarded). Mappings are never
+  code `sanitize`, kind `pool_exhausted`; nothing is forwarded; see
+  [Block diagnostics](#block-diagnostics)). Mappings are never
   freed: the vault keeps growing for the life of the process (and of the
   vault file in file mode), and even a blocked request may have used up
   addresses.
@@ -157,6 +158,39 @@ used up, the vault falls back to an overflow pool of 130,048 addresses in
   that range, expect blocks. A model reply that names a real
   `198.18.0.0/15` address the proxy has issued as a synthetic is restored to
   the wrong value.
+
+## Block diagnostics
+
+A blocked request is answered with an OpenAI-style JSON error whose `code`
+is the block reason (`route`, `body_too_large`, `compressed`, `header`,
+`sanitize`, `unrestorable`, `bad_request`, `internal`). When the body could
+not be sanitized, the message also names a kind and, when one span caused
+it, the detector rule (a name from your config, never a value):
+
+```
+cui-proxy: request blocked (reason=sanitize kind=pool_exhausted rule=builtin.ipv4)
+```
+
+The same appears in the proxy log as
+`request blocked (reason=... kind=... rule=... class=...)`, and in the
+dashboard feed as `sanitize:<kind>` with a `blocked:<rule>` count. The
+metrics count blocks by reason only.
+
+| kind | meaning | what to do |
+| --- | --- | --- |
+| `pool_exhausted` | no synthetic left for the class (see Synthetic address pool) | restart with a fresh vault (memory mode) or remove the vault file |
+| `ambiguous` | a value equals an issued overflow synthetic (or a zero-padded spelling of one) | see Synthetic address pool |
+| `pseudonym` | no synthetic can be made for the value (e.g. an invalid CIDR from a custom rule) | fix the rule's pattern or `synth` class |
+| `unrestorable` | the sanitized text would not restore even after downgrading (code `unrestorable`) | rare: reproduce with `test-rules` and report the rule and kind |
+| `bad_body` | not a single JSON object, invalid UTF-8, or an image/file/audio part | expected for binary input |
+| `depth` | JSON nested deeper than 64 levels | expected for pathological input |
+| `other` | any other failure | check the log line |
+
+A value whose synthetic would not restore where it stands (for example
+`id:fe80::1`, `ID123-45-6789` or `x4111 1111 1111 1111`, where the
+address/number synthetic would be glued to a letter or hex digit) is not
+blocked: it is masked as a `REDACTED-<8hex>` token instead and counted as
+`downgraded` in the metrics.
 
 ## Known limitations / behavior
 

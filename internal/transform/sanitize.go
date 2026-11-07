@@ -47,6 +47,34 @@ var ErrPseudonym = errors.New("transform: no synthetic for detected value")
 // addresses. It is vault.ErrAmbiguous.
 var ErrAmbiguous = vault.ErrAmbiguous
 
+// SpanError is the error Text returns for a detected span it cannot
+// sanitize. Kind is ErrUnrestorable, ErrPseudonym or ErrAmbiguous; Rule and
+// Class name the span's detector and detected class (config names and a
+// closed set, never the value); Cause is the vault error, if any (its text
+// names the class and the failure, never the value). errors.Is matches Kind
+// and Cause.
+type SpanError struct {
+	Kind        error
+	Rule, Class string
+	Cause       error
+}
+
+func (e *SpanError) Error() string {
+	s := fmt.Sprintf("%v: rule=%s class=%s", e.Kind, e.Rule, e.Class)
+	if e.Cause != nil {
+		s += ": " + e.Cause.Error()
+	}
+	return s
+}
+
+// Unwrap returns Kind and, when set, Cause.
+func (e *SpanError) Unwrap() []error {
+	if e.Cause == nil {
+		return []error{e.Kind}
+	}
+	return []error{e.Kind, e.Cause}
+}
+
 // testHookBeforeAdmit runs after the spans are classified and before the
 // reals are admitted to the vault (tests only; nil in production).
 var testHookBeforeAdmit func()
@@ -147,7 +175,7 @@ func (s *Sanitizer) Text(in string) (string, error) {
 		items[i] = vault.Item{Class: sp.Class, Real: reals[i]}
 	}
 	if i, err := s.v.Admit(items); err != nil {
-		return "", fmt.Errorf("%w: rule=%s class=%s", ErrAmbiguous, todo[i].Rule, todo[i].Class)
+		return "", &SpanError{Kind: ErrAmbiguous, Rule: todo[i].Rule, Class: todo[i].Class}
 	}
 
 	// Coin and build; on a self-check mismatch, downgrade the offending
@@ -163,7 +191,7 @@ func (s *Sanitizer) Text(in string) (string, error) {
 		for i := len(todo) - 1; i >= 0; i-- { // right to left
 			syn, err := s.v.Pseudonym(classes[i], reals[i])
 			if err != nil {
-				return "", fmt.Errorf("%w: rule=%s class=%s: %w", ErrPseudonym, todo[i].Rule, classes[i], err)
+				return "", &SpanError{Kind: ErrPseudonym, Rule: todo[i].Rule, Class: classes[i], Cause: err}
 			}
 			syns[i] = syn
 		}
@@ -180,7 +208,7 @@ func (s *Sanitizer) Text(in string) (string, error) {
 		fix := offending(got, want, ins, syns, classes)
 		if pass > 0 || len(fix) == 0 {
 			sp := todo[nearest(ins, k)]
-			return "", fmt.Errorf("%w: rule=%s class=%s", ErrUnrestorable, sp.Rule, sp.Class)
+			return "", &SpanError{Kind: ErrUnrestorable, Rule: sp.Rule, Class: sp.Class}
 		}
 		for _, i := range fix {
 			classes[i], down[i] = "secret", true

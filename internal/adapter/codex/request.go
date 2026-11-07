@@ -2,18 +2,19 @@ package codex
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 	"unicode/utf8"
 
+	"cui-proxy/internal/adapter"
 	"cui-proxy/internal/transform"
 )
 
 // ErrBadBody means the request body is empty, not valid UTF-8, not a single
-// JSON object, or contains a binary (image, file, audio) part. Block.
-var ErrBadBody = errors.New("codex: request body rejected")
+// JSON object, or contains a binary (image, file, audio) part. Block. It is
+// adapter.ErrBadBody.
+var ErrBadBody = adapter.ErrBadBody
 
 // Where a value sits in the Responses API request.
 type pos int

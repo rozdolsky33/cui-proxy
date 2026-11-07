@@ -3,8 +3,9 @@ package codex
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"unicode/utf8"
+
+	"cui-proxy/internal/adapter"
 )
 
 // A JSON document is parsed once into a tree whose nodes slice into the
@@ -16,8 +17,9 @@ import (
 // counted across JSON documents carried in strings, and in one response event.
 const maxDepth = 64
 
-// ErrDepth means the JSON nests deeper than maxDepth. Block.
-var ErrDepth = errors.New("codex: JSON nested too deeply")
+// ErrDepth means the JSON nests deeper than maxDepth. Block. It is
+// adapter.ErrDepth.
+var ErrDepth = adapter.ErrDepth
 
 type node struct {
 	kind  byte   // '{', '[', '"' (string), '0' (number), 'l' (true/false/null)

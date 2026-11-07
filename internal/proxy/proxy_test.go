@@ -324,6 +324,13 @@ type apiError struct {
 
 func assertBlocked(t *testing.T, h *harness, res *http.Response, body []byte, status int, code string) {
 	t.Helper()
+	assertBlockedAudit(t, h, res, body, status, code, code)
+}
+
+// assertBlockedAudit is assertBlocked with the exact audit Blocked text,
+// which for sanitize blocks also names the kind ("sanitize:bad_body").
+func assertBlockedAudit(t *testing.T, h *harness, res *http.Response, body []byte, status int, code, audited string) {
+	t.Helper()
 	if res.StatusCode != status {
 		t.Errorf("status = %d, want %d", res.StatusCode, status)
 	}
@@ -341,8 +348,8 @@ func assertBlocked(t *testing.T, h *harness, res *http.Response, body []byte, st
 		t.Errorf("blocked_by_reason[%s] = %d, want 1", code, got)
 	}
 	a := h.nextAudit()
-	if a.Blocked != code || a.Status != status {
-		t.Errorf("audit = %+v, want blocked %q status %d", a, code, status)
+	if a.Blocked != audited || a.Status != status {
+		t.Errorf("audit = %+v, want blocked %q status %d", a, audited, status)
 	}
 	h.noUpstreamCall()
 }
@@ -726,7 +733,7 @@ func TestFailClosedOnSanitizerError(t *testing.T) {
 	t.Run("sanitize", func(t *testing.T) {
 		h := newHarness(t, nil)
 		res, body := h.post("not json " + realIP)
-		assertBlocked(t, h, res, body, http.StatusUnprocessableEntity, "sanitize")
+		assertBlockedAudit(t, h, res, body, http.StatusUnprocessableEntity, "sanitize", "sanitize:bad_body")
 		if strings.Contains(string(body), realIP) {
 			t.Error("error echoes request data")
 		}
@@ -1074,7 +1081,7 @@ func TestSnapshotKeepsPolicyAndRulesTogether(t *testing.T) {
 		t.Errorf("audit = %+v", a)
 	}
 	res, body = h.post(orig)
-	assertBlocked(t, h, res, body, http.StatusUnprocessableEntity, "sanitize")
+	assertBlockedAudit(t, h, res, body, http.StatusUnprocessableEntity, "sanitize", "sanitize:other")
 	if n := calls.Load(); n != 2 {
 		t.Errorf("Snapshot called %d times for two requests, want 2", n)
 	}

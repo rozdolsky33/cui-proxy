@@ -5,8 +5,20 @@
 package adapter
 
 import (
+	"errors"
+
 	"cui-proxy/internal/sse"
 	"cui-proxy/internal/transform"
+)
+
+// Errors an adapter's SanitizeRequest wraps so the proxy can name the block
+// kind without knowing the adapter. Their text is fixed.
+var (
+	// ErrBadBody: the body is not acceptable (empty, not valid UTF-8, not a
+	// single JSON object, a binary part, ...). Block.
+	ErrBadBody = errors.New("adapter: request body rejected")
+	// ErrDepth: the body nests deeper than the adapter's limit. Block.
+	ErrDepth = errors.New("adapter: JSON nested too deeply")
 )
 
 // Route kinds.
