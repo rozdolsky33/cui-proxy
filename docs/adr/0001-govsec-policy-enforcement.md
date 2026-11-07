@@ -202,3 +202,4 @@ Each phase is a release with its own tests and review.
 |---|---|---|
 | 2026-11-07 | Proposed | Drafted from the review of the masking-only behavior; approval format pending |
 | 2026-11-07 | Accepted | Maintainer accepted the plan, the `sanitize` default for 0.x with `strict` as a named profile, and the defaults table. Approval format split out to ADR 0002 (deferred); phase 3 stays blocked on it. Phase 1 build started. |
+| 2026-11-07 | Phase 1 delivered | `policy.profile` (sanitize default, strict), per-rule `action`, `policy.unsupported`, reason code `policy` / kind `rule_match` (never forwarded by `on_error: passthrough`), `policy init` and `policy check` (`-require-strict`), `init -profile`, profile and per-rule action in the dashboard. Strict requires `on_error: block` and forbids `action: sanitize` until an approval can allow it. Phases 2-5 pending; phase 3 blocked on ADR 0002. |

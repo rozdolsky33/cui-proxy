@@ -198,7 +198,8 @@ Commands:
 
 | Command | Purpose |
 |---|---|
-| `init [-dir PATH] [-force]` | Write a starter `config.yaml` and `hosts.txt` (mode 0600) into `$XDG_CONFIG_HOME/cui-proxy`, else `~/.config/cui-proxy`. Never overwrites without `-force`. |
+| `init [-dir PATH] [-force] [-profile sanitize\|strict]` | Write a starter `config.yaml` and `hosts.txt` (mode 0600) into `$XDG_CONFIG_HOME/cui-proxy`, else `~/.config/cui-proxy`. Never overwrites without `-force`. |
+| `policy init [-profile ...]` / `policy check -config PATH [-require-strict]` | `init` is the same as above; `check` validates the policy and says what is and is not enforced. |
 | `menubar install\|uninstall\|status` | macOS only: build and manage the menu-bar app that runs the proxy in the background. |
 | `info -config PATH` | Print the proxy and dashboard URLs for a config (used by the menu-bar app). |
 | `serve -config PATH [-adapter codex]` | Run the proxy (default `127.0.0.1:8787`) and the dashboard (default `127.0.0.1:8788`). |
@@ -265,7 +266,7 @@ valid; otherwise the running rules stay and the error is shown. Requests
 already in flight finish with the rules they started with. The vault (and so
 every existing mapping) is kept.
 
-Applied on reload: `rules` (and dictionary contents), `policy.on_error`,
+Applied on reload: `rules` (and dictionary contents), `policy.profile`, `policy.on_error`,
 `policy.max_body_bytes`.
 Need a restart (a reload logs `WARN restart required for: ...` and keeps the
 running values): `listen`, `ui.listen`, `upstreams`, `vault.*`,
@@ -320,11 +321,53 @@ used up, the vault falls back to an overflow pool of 130,048 addresses in
   `198.18.0.0/15` address the proxy has issued as a synthetic is restored to
   the wrong value.
 
+## Policy profiles: sanitize or strict
+
+`policy.profile` decides what a detection does.
+
+| Profile | A detected value... | Use it when |
+|---|---|---|
+| `sanitize` (default) | is replaced with a synthetic value and restored in the reply | you want the model to keep working on the task and masking is allowed |
+| `strict` | **blocks the whole request** before anything is forwarded | a policy forbids sending restricted data at all, or masking needs an approval you do not have |
+
+```sh
+cui-proxy policy init -profile strict      # a starter config with the strict profile
+cui-proxy policy check -config ~/.config/cui-proxy/config.yaml
+cui-proxy policy check -config ... -require-strict   # exit 1 unless strict (for scripts and audits)
+```
+
+Any rule can also set `action: block` to refuse a request that matches it
+even under `sanitize` (for example a dictionary of names that must never
+leave). Under `strict` every rule blocks and a rule may not set
+`action: sanitize` (a verified approval may allow that in a later release; see
+[docs/adr](docs/adr/)). `strict` also requires `policy.on_error: block`: the
+config is refused otherwise.
+
+- A policy block is a **decision, not a failure**: `policy.on_error:
+  passthrough` never forwards it. The error code is `policy` (HTTP 422) and
+  the message names the rule, never the value:
+  `cui-proxy: request blocked (reason=policy kind=rule_match rule=builtin.ipv4)`.
+- The profile applies on reload (SIGHUP, the dashboard button or the
+  menu-bar item); the running profile is shown in the dashboard header.
+  Switching to `strict` mid-session is safe: values the vault already issued
+  as synthetics, which Codex resends in history, do not block.
+- `policy.unsupported: block` is the only value and is the default: content
+  the proxy cannot inspect (images, files, compressed bodies, unknown routes,
+  oversized, too deeply nested or unparseable bodies) is always refused.
+- `policy check` prints the effective action of every rule and states plainly
+  what is enforced, what is not implemented yet (verified approvals, a
+  persisted decision log, account allowlists) and what no local tool can do.
+
+`strict` blocks more, and Codex resends the whole conversation each turn, so
+one false positive can block every later turn. Tune the rules with synthetic
+text (`cui-proxy test-rules`, the dashboard's test box) before switching.
+Why this design, and what is deferred: [ADR 0001](docs/adr/0001-govsec-policy-enforcement.md).
+
 ## Block diagnostics
 
 A blocked request is answered with an OpenAI-style JSON error whose `code`
 is the block reason (`route`, `body_too_large`, `compressed`, `header`,
-`sanitize`, `unrestorable`, `bad_request`, `internal`). When the body could
+`policy`, `sanitize`, `unrestorable`, `bad_request`, `internal`). When the body could
 not be sanitized, the message also names a kind and, when one span caused
 it, the detector rule (a name from your config, never a value):
 
@@ -342,6 +385,7 @@ metrics count blocks by reason only.
 | `pool_exhausted` | no synthetic left for the class (see Synthetic address pool) | restart with a fresh vault (memory mode) or remove the vault file |
 | `ambiguous` | a value equals an issued overflow synthetic (or a zero-padded spelling of one) | see Synthetic address pool |
 | `pseudonym` | no synthetic can be made for the value (e.g. an invalid CIDR from a custom rule) | fix the rule's pattern or `synth` class |
+| `rule_match` | a blocking rule matched (code `policy`: the strict profile, or a rule with `action: block`) | expected: remove the value, or use the `sanitize` profile / a rule without `action: block` if masking is allowed |
 | `unrestorable` | the sanitized text would not restore even after downgrading (code `unrestorable`) | rare: report the rule and kind from the log line |
 | `bad_body` | not a single JSON object, invalid UTF-8, or an image/file/audio part | expected for binary input |
 | `depth` | JSON nested deeper than 64 levels | expected for pathological input |
@@ -374,7 +418,9 @@ blocked: it is masked as a `REDACTED-<8hex>` token instead and counted as
   [Block diagnostics](#block-diagnostics)). Five single-digit dotted
   components (`1.2.3.4.5`) are taken for a version number and not masked.
 - Detection is pattern-based: the model receives whatever the patterns and
-  your dictionary miss. This reduces exposure; it does not bound it.
+  your dictionary miss. This reduces exposure; it does not bound it. The
+  `strict` profile refuses what is detected; it does not make detection
+  complete.
 - Hostnames that merely encode an address, such as
   `ip-10-20-30-15.ec2.internal`, are not IP literals and are not detected.
   Add your own regex or dictionary rule for them.
