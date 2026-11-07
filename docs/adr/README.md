@@ -8,12 +8,13 @@ Earlier decisions made while building v0.1 are in
 
 | ADR | Title | Status |
 |---|---|---|
-| [0001](0001-govsec-policy-enforcement.md) | Policy enforcement for restricted data: block by default, verified approval, auditable decisions | Proposed |
+| [0001](0001-govsec-policy-enforcement.md) | Policy enforcement for restricted data: block by default, verified approval, auditable decisions | Accepted (phase 3 blocked on 0002) |
+| [0002](0002-approval-record-format.md) | Approval record format and verification | Deferred (needs input from the approving authority) |
 
 ## Conventions
 
 - One file per decision: `NNNN-short-title.md`, numbered in order, never renumbered.
-- **Status** is one of `Proposed`, `Accepted`, `Superseded by NNNN`, `Rejected`.
+- **Status** is one of `Proposed`, `Accepted`, `Deferred`, `Superseded by NNNN`, `Rejected`.
   Change the status line and add a row to the ADR's "Status log"; do not
   rewrite history. If a decision changes, write a new ADR that supersedes it.
 - Keep real sensitive data, internal policy text and names of customers or

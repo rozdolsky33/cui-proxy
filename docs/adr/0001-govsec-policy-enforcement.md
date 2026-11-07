@@ -1,9 +1,9 @@
 # ADR 0001: Policy enforcement for restricted data
 
-- **Status:** Proposed
+- **Status:** Accepted (phases 1, 2, 4, 5); phase 3 is blocked on [ADR 0002](0002-approval-record-format.md)
 - **Date:** 2026-11-07
 - **Deciders:** project maintainer (decision owner); GOVSEC / ISSM review required before any claim that this meets a given organization's policy
-- **Related:** design spec section 13; README "Known limitations"
+- **Related:** [ADR 0002](0002-approval-record-format.md) (approval record format, deferred); design spec section 13; README "Known limitations"
 
 ## Context
 
@@ -69,7 +69,23 @@ and is useful on its own.
 - `policy.unsupported: block` is explicit and listed in the mapping document: images, files, audio, compressed bodies, unknown routes, over-deep or oversized bodies, unparseable bodies. (Behavior today; this makes it a visible, documented setting rather than an implementation detail.)
 - A blocked response is a 422 with a stable reason code and rule ID, never request data (as today).
 
-**Default profile.** Keep `sanitize` as the default while the version is 0.x so existing users are not surprised, and ship `strict` as a named profile (`cui-proxy policy init --profile strict`). Revisit flipping the default at 1.0. *(To confirm with the maintainer.)*
+**Default profile (decided 2026-11-07).** `sanitize` stays the default while the version is 0.x so existing users are not surprised, and `strict` ships as a named profile (`cui-proxy policy init --profile strict`). The default is revisited at 1.0 (open question 5). The CLI and dashboard always show which profile is active, and `policy check` says plainly what `sanitize` does not do.
+
+### Defaults
+
+Defaults are the safe, boring choice for each setting; anything weaker is an explicit, logged opt-in.
+
+| Setting | Default | Notes |
+|---|---|---|
+| `policy.profile` | `sanitize` | `strict` is one command away; shown everywhere |
+| `policy.on_error` | `block` | `passthrough` is UNSAFE and warned about at startup (existing) |
+| `policy.unsupported` | `block` | the only supported value; a documented setting, not a switch |
+| rule `action` | follows the profile | under `strict` a rule may not weaken it (until an approval covers it) |
+| `audit` (phase 2) | on, value-free, mode 0600, default path under the user's state/log directory | cheap and has no payloads, so it is on by default |
+| `audit.on_error` (phase 2) | `block` under `strict`, `warn` under `sanitize` | a full disk should not break a personal session, but must not be silent under `strict` |
+| `approval.mode` (phase 3) | `none` | `file` is labelled tracking-only; signed modes wait for ADR 0002 |
+| listen addresses | loopback only | existing |
+| unknown config keys | error | existing |
 
 ### 2. Persisted, tamper-evident decision log
 
@@ -161,11 +177,11 @@ not a compliance control and does not replace the approving authorities.
 
 ## Open questions
 
-1. **What does an approval look like in practice at the target organization** (a ticket with an ID and expiry, an email, a signed form)? This decides the record format and whether `signed` is feasible. *Blocking for phase 3.*
+1. **What does an approval look like in practice at the target organization** (tracked in [ADR 0002](0002-approval-record-format.md)) (a ticket with an ID and expiry, an email, a signed form)? This decides the record format and whether `signed` is feasible. *Blocking for phase 3.*
 2. Which signature mechanism can the approving authority actually produce and distribute (OpenSSH signatures, minisign, X.509, other)?
 3. Which account or workspace identifier should `approved_accounts` match, and where may it come from?
 4. Retention period for the decision log, and whether central shipping is required.
-5. Should `strict` become the default at 1.0?
+5. Should `strict` become the default at 1.0? (The 0.x default is decided: `sanitize`.)
 6. Should header and query matches (already blocking) be reported under the same decision log reason codes? (Proposed: yes.)
 
 ## Implementation plan
@@ -185,3 +201,4 @@ Each phase is a release with its own tests and review.
 | Date | Status | Note |
 |---|---|---|
 | 2026-11-07 | Proposed | Drafted from the review of the masking-only behavior; approval format pending |
+| 2026-11-07 | Accepted | Maintainer accepted the plan, the `sanitize` default for 0.x with `strict` as a named profile, and the defaults table. Approval format split out to ADR 0002 (deferred); phase 3 stays blocked on it. Phase 1 build started. |
