@@ -89,7 +89,9 @@ If something fails, check these in order:
 |---|---|
 | Codex prints a 404 from the upstream, or the feed shows status 404 | The path mapping is wrong. The proxy sends `POST <upstream base> + /responses`, i.e. `https://chatgpt.com/backend-api/codex/responses`. Find the path Codex uses without the proxy (e.g. `RUST_LOG=codex_core=debug codex exec "say hi" </dev/null` against the default provider, and look for the request URL; debug logs can contain auth headers, so do not share them and delete them afterwards). Then change either `upstreams.codex` in the config (the base) or the route's `UpstreamPath` in `internal/adapter/codex/codex.go` (`Match`), and the README's Codex section to match. `GET /v1/models` maps to `<base>/models` the same way. |
 | 401 / 403 from the upstream | The auth headers did not arrive. Check that `requires_openai_auth=true` is in the `-c` flag. The proxy forwards `Authorization` and `Chatgpt-Account-Id` untouched. |
-| 422 `header` block | A non-credential request header (e.g. `X-Codex-Turn-Metadata`, which carries the cwd) matched a rule. Headers are never rewritten, so this always blocks. Run from a directory whose path holds nothing sensitive. |
+| 422 `header` block | A non-credential request header (e.g. `X-Codex-Turn-Metadata`, which carries the cwd) matched a rule. Headers are never rewritten, so this always blocks. A dictionary entry that matches part of the working directory's path blocks every request from that directory. Run from a directory whose path holds nothing sensitive. (Once this smoke confirms the header's shape, sanitizing it like the body can be considered; the behavior is unchanged for now.) |
+| 422 `sanitize` / `unrestorable` block | The body could not be sanitized. The error message and the log line name a kind and the rule, e.g. `reason=sanitize kind=pool_exhausted rule=builtin.ipv4`; see the README's "Block diagnostics". No value is ever printed. |
+| 403 `route` on an unexpected POST path, typically after a long session | Codex called an endpoint the adapter does not know, most likely remote compaction (it advertises `X-Codex-Beta-Features: remote_compaction_v2`; the path may be e.g. `/v1/responses/compact`). The feed shows the path as `(unmatched)`; find the real path with the debug log as in the 404 row. Add it as a `KindSanitize` route in `Match` in `internal/adapter/codex/codex.go` (its body is the same kind of history, so the request sanitizer applies). Note that a non-SSE JSON response on that route is relayed as is, unrestored: safe (only synthetics leave the machine), but the compacted history Codex keeps would then hold synthetics, so review it. |
 | 502 `upstream_redirect` | The upstream answered with a 3xx. The proxy never relays redirects, so the base URL is probably wrong (see the 404 row). |
 | 502 `stream_rewrite` or a stream cut mid-answer | An SSE event the rewriter could not handle. Note the event names from the open items below and report them. |
 
@@ -119,6 +121,42 @@ and the `function_call_output` it sends back next turn, must show the
 original value locally, while the dashboard counts the value again on the
 second request (the resent history is sanitized again).
 
+### 6a. Tool output with addresses (downgrade and addr.port)
+
+In a sandboxed run, ask Codex to run a command whose output holds an IPv6
+address, a `label:fe80::1` form and tcpdump-style text (all made up):
+
+```sh
+codex exec \
+  -c 'model_provider="cui-proxy"' \
+  -c 'model_providers.cui-proxy={name="cui-proxy",base_url="http://127.0.0.1:8787/v1",wire_api="responses",requires_openai_auth=true}' \
+  "Run: printf 'addr fd12:3456:789a::5 id:fe80::1\nIP 10.20.30.15.443 > 10.20.30.16.51234: Flags [S]\n' and then tell me which addresses appear" </dev/null
+```
+
+Expect:
+
+- No `unrestorable` or `sanitize` block in the feed or the log, on this
+  request or on the following ones (the history with the tool output is
+  resent every turn).
+- The `Downgraded` card counts at least 1 (`id:fe80::1` is masked as a
+  `REDACTED-<8hex>` token because an address synthetic glued to `id:` would
+  not restore) and grows again on each later request of the same session.
+- The tcpdump endpoints are counted under `builtin.secret` (each
+  `addr.port` token is masked whole); `fd12:3456:789a::5` under `builtin.ipv6`.
+- Codex's answer and the local command output show the original values.
+
+### 6b. Long session (remote compaction)
+
+Run one interactive session (plain `codex` with the same `-c` flags) long
+enough for Codex to compact its context, for example by asking it to read
+and summarize several large files in the scratch directory. Watch the feed
+for any request other than `POST /v1/responses` and `GET /v1/models`:
+
+- A 403 `route` with path `(unmatched)` means a compaction (or other)
+  endpoint is not routed; see the 403 row in the table above.
+- If compaction goes through `POST /v1/responses`, note it under the open
+  items.
+
 Stop the proxy with Ctrl-C. Memory mode discards every mapping.
 
 ## 7. Record the result
@@ -128,7 +166,8 @@ Write down, for this repo:
 1. Whether `https://chatgpt.com/backend-api/codex` + `/responses` worked. If
    not, the base and path that did, plus the code/README change made.
 2. Codex CLI version (`codex --version`).
-3. Answers to the open items below.
+3. Answers to the open items below, including the compaction path (6b) and
+   the `X-Codex-Turn-Metadata` shape.
 
 ## Open items to confirm against a real session
 
@@ -152,4 +191,7 @@ These are assumptions in the adapter that only a real session can confirm:
   `Thread-Id`, `X-Codex-Turn-Metadata` and `X-Codex-Beta-Features`. These are
   scanned and can cause a `header` block.
 - **Non-streaming / websocket / compaction / image requests**: not observed in
-  the spike. Image parts are blocked by design.
+  the spike. Image parts are blocked by design. Remote compaction
+  (`remote_compaction_v2`) probably uses its own endpoint, which today
+  returns 403 `route` (step 6b); a route is added only once the real path
+  is confirmed.

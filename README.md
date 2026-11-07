@@ -4,7 +4,7 @@ A local, fail-closed proxy for Codex CLI. It sits between Codex and the model
 backend, replaces sensitive values in each request (IP addresses, OCIDs,
 emails, SSNs, card numbers, tokens, and your own dictionary of host names)
 with synthetic values from reserved ranges (RFC 5737 / RFC 3849 addresses,
-`.example` / `.invalid` names), and swaps the real values back into the
+`.example` host and mail names), and swaps the real values back into the
 streamed response so tool calls run against your real systems.
 
 > **Important: this tool reduces risk; it is not a compliance control.**
@@ -181,7 +181,7 @@ metrics count blocks by reason only.
 | `pool_exhausted` | no synthetic left for the class (see Synthetic address pool) | restart with a fresh vault (memory mode) or remove the vault file |
 | `ambiguous` | a value equals an issued overflow synthetic (or a zero-padded spelling of one) | see Synthetic address pool |
 | `pseudonym` | no synthetic can be made for the value (e.g. an invalid CIDR from a custom rule) | fix the rule's pattern or `synth` class |
-| `unrestorable` | the sanitized text would not restore even after downgrading (code `unrestorable`) | rare: reproduce with `test-rules` and report the rule and kind |
+| `unrestorable` | the sanitized text would not restore even after downgrading (code `unrestorable`) | rare: report the rule and kind from the log line |
 | `bad_body` | not a single JSON object, invalid UTF-8, or an image/file/audio part | expected for binary input |
 | `depth` | JSON nested deeper than 64 levels | expected for pathological input |
 | `other` | any other failure | check the log line |
@@ -198,10 +198,28 @@ blocked: it is masked as a `REDACTED-<8hex>` token instead and counted as
   forwarded unscanned and are never logged or stored.
 - Other request headers and the query string are scanned, never rewritten:
   any detected value BLOCKS the request (HTTP 422, code `header`).
+  `X-Codex-Turn-Metadata` carries the working directory (cwd; see
+  docs/verification.md), so a dictionary entry that matches a part of that
+  path blocks every request made from that directory with `header`. Work
+  from a directory whose path holds no dictionary term. (Sanitizing that
+  header like the body may follow once a real session confirms its shape;
+  today it is only scanned.)
 - Only streamed (SSE) responses are restored. A non-streaming
   (`stream: false`) response is relayed as is, with synthetics in it.
 - Unseparated card-like digit runs and long numeric ids become `REDACTED`
-  tokens rather than format-preserving synthetics.
+  tokens rather than format-preserving synthetics. So do tcpdump-style
+  `addr.port` tokens (`10.20.30.15.443`, `2001:db8::1.443`, port included)
+  and values glued where their synthetic would not restore (see
+  [Block diagnostics](#block-diagnostics)). Five single-digit dotted
+  components (`1.2.3.4.5`) are taken for a version number and not masked.
+- Detection is pattern-based: the model receives whatever the patterns and
+  your dictionary miss. This reduces exposure; it does not bound it.
+- Hostnames that merely encode an address, such as
+  `ip-10-20-30-15.ec2.internal`, are not IP literals and are not detected.
+  Add your own regex or dictionary rule for them.
+- Usernames and local paths (for example in the `<environment_context>`
+  block Codex sends: cwd, shell, home directory) are not detected by the
+  builtin set. Put the ones that matter in a dictionary.
 - Memory-mode restarts lose all mappings (see Vault).
 - `tools[].name` and some protocol identifier fields are not scanned, so
   that the protocol keeps working; unknown `include` values are scanned, not
@@ -212,7 +230,7 @@ blocked: it is masked as a `REDACTED-<8hex>` token instead and counted as
   `Location`) is never relayed to the client.
 - Any sanitize failure blocks the request (fail closed) unless
   `policy.on_error: passthrough`, which forwards the ORIGINAL request and is
-  logged as UNSAFE at startup.
+  logged as UNSAFE at startup (and by `check-config`).
 - Listeners are loopback-only unless `allow_non_loopback: true`; the bound
   address is checked after binding.
 - The dashboard is localhost-only and never shows real values: only rule
