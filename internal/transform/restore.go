@@ -1,6 +1,8 @@
 package transform
 
 import (
+	"bytes"
+	"encoding/json"
 	"sort"
 	"strings"
 	"sync"
@@ -40,7 +42,8 @@ import (
 // ipv4, '-' after an ipv4, non-ASCII runes, '.' at a sentence end) restores.
 // The rule is applied identically by Text and Stream.
 type Restorer struct {
-	v *vault.Vault
+	v      *vault.Vault
+	escape bool // write real values JSON-escaped for string-literal context
 
 	mu   sync.Mutex
 	snap *snapshot
@@ -48,6 +51,25 @@ type Restorer struct {
 
 // NewRestorer returns a restorer backed by v.
 func NewRestorer(v *vault.Vault) *Restorer { return &Restorer{v: v} }
+
+// JSONEscaped returns a restorer over the same vault that writes each real
+// value JSON-escaped for string-literal context: the content of
+// json.Marshal(real) without the surrounding quotes, HTML characters left
+// as is. Use it for text that is itself JSON (function-call arguments), so a
+// real value holding '"', '\' or control characters keeps the text valid.
+// Matching is identical to the plain restorer; NewStream on the result
+// streams with the same escaping.
+func (r *Restorer) JSONEscaped() *Restorer { return &Restorer{v: r.v, escape: true} }
+
+// jsonEscape returns s escaped for use inside a JSON string literal.
+func jsonEscape(s string) string {
+	var b bytes.Buffer
+	enc := json.NewEncoder(&b)
+	enc.SetEscapeHTML(false)
+	_ = enc.Encode(s) // a string always encodes
+	out := bytes.TrimSuffix(b.Bytes(), []byte("\n"))
+	return string(out[1 : len(out)-1])
+}
 
 // selfDelimiting lists the classes whose synthetic has a fixed, constructed
 // form that is never a proper prefix of another synthetic: REDACTED-<8hex>,
@@ -246,6 +268,9 @@ func (r *Restorer) apply(t string, from, stop int, ms []match) string {
 		b.WriteString(t[last:m.start])
 		syn := t[m.start:m.end]
 		if real, ok := r.v.Real(syn); ok {
+			if r.escape {
+				real = jsonEscape(real)
+			}
 			b.WriteString(real)
 		} else {
 			b.WriteString(syn)
