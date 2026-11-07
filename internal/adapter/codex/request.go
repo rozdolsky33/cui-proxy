@@ -168,7 +168,7 @@ var binaryTypes = []string{"image", "file", "audio"}
 
 // sanitizeRequest rewrites a Responses API request body: every string leaf,
 // every object key (protocol field names excepted) and every integer literal
-// of 13+ digits is sanitized, except the string values at protocol positions
+// is sanitized, except the string values at protocol positions
 // (opaqueAt). Strings that are themselves JSON objects or arrays are walked
 // as JSON. Untouched values keep their original bytes; a body with nothing to
 // replace is returned as is. On error the result is nil.
@@ -307,32 +307,30 @@ func checkBinary(n *node, toolEntry bool) error {
 	return nil
 }
 
-// number sanitizes an integer literal of 13 or more digits (a card number or
-// account id sent as a number); a changed value becomes a JSON string.
+// number sanitizes integer literals (including short custom identifiers); a
+// changed value becomes a JSON string. Decimal and exponent forms are checked
+// both as written and as exact expanded digits. A sensitive non-integer
+// spelling is refused: rewriting its expansion would lose the original form.
 func (w reqWalker) number(n *node) error {
 	lit := n.str
-	// Under a blocking rule every number literal is checked, floats, exponents
-	// and short integers included (a custom rule may match a 6-digit id).
 	if err := w.checkBlocked(lit); err != nil {
 		return err
 	}
 	if strings.ContainsAny(lit, ".eE") {
 		// 4.111111111111111e15 is the integer 4111111111111111 in another
 		// spelling: check the plain-digit form too, expanded exactly.
-		if w.s.HasBlockingRules() {
-			plain, ok := expandNumber(lit)
-			if !ok {
-				return fmt.Errorf("%w: number literal exponent out of range", ErrBadBody)
-			}
-			if plain != "" {
-				if err := w.checkBlocked(plain); err != nil {
-					return err
-				}
+		plain, ok := expandNumber(lit)
+		if !ok {
+			return fmt.Errorf("%w: number literal exponent out of range", ErrBadBody)
+		}
+		if plain != "" {
+			if err := w.checkBlocked(plain); err != nil {
+				return err
 			}
 		}
-		return nil
-	}
-	if len(strings.TrimPrefix(lit, "-")) < 13 {
+		if len(w.s.Detect(lit)) > 0 || plain != "" && len(w.s.Detect(plain)) > 0 {
+			return fmt.Errorf("%w: sensitive decimal or exponent number", ErrBadBody)
+		}
 		return nil
 	}
 	out, err := w.text(lit)
@@ -409,7 +407,7 @@ func first[T string | []byte](b T) byte {
 
 // maxExponent bounds the exponent of a number literal that is expanded for
 // scanning; beyond it no real number is being written and the literal is
-// refused (while a rule blocks).
+// refused.
 const maxExponent = 400
 
 // expandNumber returns the decimal digits of the integer part of a JSON number

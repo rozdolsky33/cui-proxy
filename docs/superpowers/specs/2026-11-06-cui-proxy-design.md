@@ -128,7 +128,7 @@ Exact package boundaries, YAML schema details, synthetic-value formats per class
 
 ## 13. Calls made by the author (after the builder check)
 
-Spike result (see `docs/spikes/2026-11-06-codex-redirect-spike.md`): Codex with ChatGPT login CAN be pointed at a local base URL via a custom `model_providers` entry with `requires_openai_auth=true`. Section 7's fallback is not needed. Unverified: the exact real upstream path (`https://chatgpt.com/backend-api/codex` is the likely base).
+Spike result (see `docs/spikes/2026-11-06-codex-redirect-spike.md`): Codex with ChatGPT login CAN be pointed at a local base URL via a custom `model_providers` entry with `requires_openai_auth=true`. Section 7's fallback is not needed. Follow-up on 2026-11-07: `https://chatgpt.com/backend-api/codex` was confirmed as the live base with Codex CLI 0.167.0 and `gpt-6-astra`; routing, streamed restoration, and the tool round trip passed (see `docs/verification.md`).
 
 Author's calls, to be checked by the user:
 

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -103,6 +104,7 @@ const (
 	DefaultAuditMaxSizeMB     = 50
 	DefaultAuditRetentionDays = 90
 	maxAuditSizeMB            = 1 << 20 // 1 TiB: keeps the byte count far from overflow
+	maxAuditRetentionDays     = int((1<<63 - 1) / (24 * time.Hour))
 
 	AuditBlock = "block"
 	AuditWarn  = "warn"
@@ -179,6 +181,11 @@ func Load(path string) (*Config, error) {
 	dec.KnownFields(true)
 	if err := dec.Decode(&c); err != nil && !errors.Is(err, io.EOF) {
 		return nil, fmt.Errorf("config: parse %s: %w", path, err)
+	}
+	// A second document must not silently discard rules or policy settings.
+	var extra yaml.Node
+	if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("config: %s must contain a single YAML document", path)
 	}
 	c.applyDefaults()
 	if err := c.Validate(); err != nil {
@@ -334,8 +341,8 @@ func (c *Config) validateAudit() error {
 	if a.MaxSizeMB != nil && (*a.MaxSizeMB < 1 || *a.MaxSizeMB > maxAuditSizeMB) {
 		return fmt.Errorf("config: audit.max_size_mb %d must be between 1 and %d", *a.MaxSizeMB, maxAuditSizeMB)
 	}
-	if a.RetentionDays != nil && *a.RetentionDays < 0 {
-		return fmt.Errorf("config: audit.retention_days %d must not be negative (0 keeps rotated files forever)", *a.RetentionDays)
+	if a.RetentionDays != nil && (*a.RetentionDays < 0 || *a.RetentionDays > maxAuditRetentionDays) {
+		return fmt.Errorf("config: audit.retention_days %d must be between 0 and %d (0 keeps rotated files forever)", *a.RetentionDays, maxAuditRetentionDays)
 	}
 	if c.Policy.Profile == ProfileStrict {
 		if !a.IsEnabled() {
@@ -380,8 +387,11 @@ func validateRule(r Rule, known func(string) bool) error {
 }
 
 func (c *Config) checkListen(field, addr string) error {
-	host, _, err := net.SplitHostPort(addr)
+	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
+		return fmt.Errorf("config: %s %q: %w", field, addr, err)
+	}
+	if _, err := net.LookupPort("tcp", port); err != nil {
 		return fmt.Errorf("config: %s %q: %w", field, addr, err)
 	}
 	if c.AllowNonLoopback || host == "localhost" {

@@ -27,7 +27,7 @@ commands:
   init [-dir PATH] [-force] [-profile P]  write a starter config and dictionary
   policy init|check                    write or check a policy (sanitize or strict profile)
   serve -config PATH [-adapter NAME]   run the proxy and the dashboard
-  check-config -config PATH            validate a config and its rule files
+  check-config -config PATH [-adapter NAME]  validate a config and its rule files
   audit verify [-file P | -config P]   check the decision log's hash chain
   explain [-config P] REQUEST-ID       say why a request was forwarded, sanitized or blocked
   info -config PATH                    print the proxy and dashboard URLs

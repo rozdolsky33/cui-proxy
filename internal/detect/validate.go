@@ -66,17 +66,23 @@ func trimTail(text string, s, e int) int {
 	return e
 }
 
+// The longest IPv6 spelling has six four-digit hex groups and an IPv4 tail.
+// Candidates may be much larger (e.g. runs of punctuation), but only their
+// final maxIPv6Text bytes can be a parseable suffix. Bound suffix searches
+// before counting colons or parsing so they cannot become quadratic.
+const maxIPv6Text = 45
+
 // ipv6Find scans a hex/colon/dot candidate. The candidate may swallow
 // preceding hex letters ("d" of "id:fe80::1"), so every start that is not glued
 // to a preceding letter/digit is tried, earliest first.
 func ipv6Find(text string, s, e int) [][2]int {
 	var out [][2]int
-	for st := s; st < e; {
+	en := trimTail(text, s, e)
+	for st := max(s, en-maxIPv6Text); st < en; {
 		if st > 0 && isAlnum(text[st-1]) {
 			st++
 			continue
 		}
-		en := trimTail(text, st, e)
 		c := text[st:en]
 		ok := false
 		if len(c) >= 3 && strings.Count(c, ":") >= 2 {
@@ -143,12 +149,12 @@ func v6Port(c string) bool {
 // ("2001:db8::1.443"): the address plus ".port" is one span.
 func ipv6PortFind(text string, s, e int) [][2]int {
 	var out [][2]int
-	for st := s; st < e; {
+	en := trimTail(text, s, e)
+	for st := max(s, en-maxIPv6Text-6); st < en; { // address + '.' + five port digits
 		if st > 0 && isAlnum(text[st-1]) {
 			st++
 			continue
 		}
-		en := trimTail(text, st, e)
 		if v6Port(text[st:en]) && !(en < len(text) && isAlnum(text[en])) {
 			out = append(out, [2]int{st, en})
 			st = en
@@ -169,7 +175,7 @@ func parsePrefixAny(c string) bool {
 }
 
 func cidrFind(text string, s, e int) [][2]int {
-	for st := s; st < e; st++ {
+	for st := max(s, e-maxIPv6Text-4); st < e; st++ { // address + '/' + three prefix digits
 		if st > 0 && isAlnum(text[st-1]) {
 			continue
 		}

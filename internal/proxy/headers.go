@@ -1,6 +1,8 @@
 package proxy
 
 import (
+	"mime"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -169,5 +171,29 @@ func encoded(h http.Header) bool {
 
 // isSSE reports whether the upstream response is an event stream.
 func isSSE(h http.Header) bool {
-	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(h.Get("Content-Type"))), "text/event-stream")
+	kind, _, err := mime.ParseMediaType(h.Get("Content-Type"))
+	return err == nil && kind == "text/event-stream"
+}
+
+// nativeClient prevents a browser origin (including DNS rebinding) from
+// using the shared local vault through the model endpoint. This is not
+// authentication against other native processes running as the same user.
+func nativeClient(r *http.Request, allowNonLoopback bool) bool {
+	if len(r.Header.Values("Origin")) > 0 || len(r.Header.Values("Sec-Fetch-Site")) > 0 {
+		return false
+	}
+	if allowNonLoopback {
+		return true
+	}
+	host := r.Host
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	} else {
+		host = strings.Trim(host, "[]")
+	}
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }

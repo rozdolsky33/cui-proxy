@@ -119,6 +119,53 @@ func TestReloadInvalidKeepsOldRules(t *testing.T) {
 	assertNoValues(t, "logs", logs.String(), hostA, hostB)
 }
 
+func TestReloadFailureDoesNotExposeConfigValues(t *testing.T) {
+	const sensitive = "FAKE8127"
+	for _, tc := range []struct {
+		name, content string
+	}{
+		{"regex", "rules: [{name: secret, type: regex, pattern: '(" + sensitive + "', synth: hostname}]\n"},
+		{"yaml value", "policy: {max_body_bytes: " + sensitive + "}\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, cfg := testDir(t, cfgSpec{})
+			logs := &logBuf{}
+			a := startApp(t, cfg, logs, nil)
+			before := a.cur.Load()
+			writeFile(t, cfg, tc.content)
+			err := a.Reload()
+			if err == nil {
+				t.Fatal("invalid config was reloaded")
+			}
+			assertNoValues(t, "reload error", err.Error(), sensitive)
+
+			_, uiAddr := a.Addrs()
+			req, err := http.NewRequest(http.MethodPost, "http://"+uiAddr+"/api/reload", strings.NewReader("{}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			req.Header.Set("Content-Type", "application/json")
+			res, err := testClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			body, err := io.ReadAll(res.Body)
+			res.Body.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if res.StatusCode != http.StatusUnprocessableEntity {
+				t.Fatalf("reload status = %d, want 422", res.StatusCode)
+			}
+			assertNoValues(t, "dashboard reload response", string(body), sensitive)
+			assertNoValues(t, "reload logs", logs.String(), sensitive)
+			if a.cur.Load() != before {
+				t.Fatal("invalid reload replaced the running rules")
+			}
+		})
+	}
+}
+
 func TestReloadViaDashboard(t *testing.T) {
 	up := newUpstream(t, nil)
 	spec := cfgSpec{Upstream: up.url()}

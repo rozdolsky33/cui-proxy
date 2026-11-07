@@ -39,6 +39,10 @@ func (discard) Record(Entry) error { return nil }
 // DefaultMaxBytes is the rotation size when Options.MaxBytes is not positive.
 const DefaultMaxBytes = 50 << 20
 
+// A larger day count overflows the time.Duration used by retention and can
+// turn a long retention period into a cutoff in the future.
+const maxRetentionDays = int((1<<63 - 1) / (24 * time.Hour))
+
 // Options configure Open.
 type Options struct {
 	Path string
@@ -103,6 +107,9 @@ type Log struct {
 func Open(o Options) (*Log, error) {
 	if o.Path == "" {
 		return nil, errors.New("decision log: no file configured (audit.file)")
+	}
+	if o.RetentionDays < 0 || o.RetentionDays > maxRetentionDays {
+		return nil, fmt.Errorf("decision log: retention days must be between 0 and %d", maxRetentionDays)
 	}
 	if o.MaxBytes <= 0 {
 		o.MaxBytes = DefaultMaxBytes

@@ -19,6 +19,7 @@
 package proxy
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"io"
@@ -72,6 +73,7 @@ type Deps struct {
 // Block reasons: a closed set, used as metrics.IncBlocked keys, the JSON
 // error code and audit.Entry.Blocked.
 const (
+	reasonClient       = "client"
 	reasonRoute        = "route"
 	reasonTooLarge     = "body_too_large"
 	reasonCompressed   = "compressed"
@@ -106,6 +108,7 @@ const (
 const requestIDHeader = "X-Cui-Proxy-Request-Id"
 
 var blockStatus = map[string]int{
+	reasonClient:        http.StatusForbidden,
 	reasonRoute:         http.StatusForbidden,
 	reasonTooLarge:      http.StatusRequestEntityTooLarge,
 	reasonCompressed:    http.StatusUnsupportedMediaType,
@@ -120,6 +123,7 @@ var blockStatus = map[string]int{
 }
 
 var blockMessage = map[string]string{
+	reasonClient:        "browser requests or non-local host names are not allowed",
 	reasonRoute:         "unsupported route",
 	reasonTooLarge:      "request body too large",
 	reasonCompressed:    "compressed request bodies are not supported",
@@ -332,6 +336,9 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 		x.entry.Path = "(unmatched)"
 		return h.block(x, reasonRoute)
 	}
+	if !nativeClient(r, cfg.AllowNonLoopback) {
+		return h.block(x, reasonClient)
+	}
 	if encoded(r.Header) {
 		return h.block(x, reasonCompressed)
 	}
@@ -494,11 +501,38 @@ func (h *handler) forward(x *exchange, r *http.Request, route adapter.Route, bod
 		writeError(x, http.StatusBadGateway, reasonUpstreamRedirect, "cui_proxy_error", "upstream redirected the request")
 		return false
 	}
+	// The live Codex backend can omit Content-Type on SSE responses. Probe
+	// only unencoded, unlabelled sanitize-route responses, retaining every
+	// byte for either the rewriter or the ordinary response copy.
+	var responseBody io.Reader = res.Body
+	if route.Kind == adapter.KindSanitize && res.Header.Get("Content-Type") == "" && !encoded(res.Header) {
+		buffered := bufio.NewReader(res.Body)
+		prefix, _ := buffered.Peek(32)
+		prefix = bytes.TrimPrefix(prefix, []byte{0xef, 0xbb, 0xbf})
+		prefix = bytes.TrimLeft(prefix, "\r\n")
+		for _, field := range []string{"data:", "event:", ":", "id:", "retry:"} {
+			if bytes.HasPrefix(prefix, []byte(field)) {
+				res.Header.Set("Content-Type", "text/event-stream")
+				break
+			}
+		}
+		responseBody = buffered
+	}
+	// Successful model responses must pass through restoration. Never relay
+	// an encoded or unsupported success body as executable model output.
+	needsRestore := route.Kind == adapter.KindSanitize && res.StatusCode >= 200 && res.StatusCode < 300
+	if needsRestore && (!isSSE(res.Header) || encoded(res.Header)) {
+		h.d.Metrics.IncError()
+		x.entry.Blocked = reasonStreamRewrite
+		h.d.Logf("cui-proxy: upstream response format cannot be restored; response blocked")
+		writeError(x, blockStatus[reasonStreamRewrite], reasonStreamRewrite, "cui_proxy_blocked", blockMessage[reasonStreamRewrite])
+		return false
+	}
 	if !isSSE(res.Header) {
 		copyResponseHeader(x.w.Header(), res.Header)
 		x.w.Header().Set(requestIDHeader, x.id.String())
 		x.w.WriteHeader(res.StatusCode)
-		if _, err := io.Copy(x.w, res.Body); err != nil && r.Context().Err() == nil {
+		if _, err := io.Copy(x.w, responseBody); err != nil && r.Context().Err() == nil {
 			h.d.Metrics.IncError()
 			h.d.Logf("cui-proxy: response copy failed; connection aborted")
 			return true
@@ -516,8 +550,9 @@ func (h *handler) forward(x *exchange, r *http.Request, route adapter.Route, bod
 	copyResponseHeader(x.w.Header(), res.Header)
 	x.w.Header().Set(requestIDHeader, x.id.String())
 	x.w.Header().Del("Content-Length")
+	x.w.Header().Set("Cache-Control", "no-store")
 	x.w.WriteHeader(res.StatusCode)
-	return h.stream(x, r, res.Body, rest)
+	return h.stream(x, r, responseBody, rest)
 }
 
 // stream restores the event stream body into the client, flushing after
