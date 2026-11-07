@@ -139,3 +139,16 @@ func TestConcurrent(t *testing.T) {
 		t.Fatalf("%+v", s)
 	}
 }
+
+func TestIncPassthrough(t *testing.T) {
+	r, _ := newTest()
+	r.IncPassthrough()
+	r.IncPassthrough()
+	s := r.Snapshot()
+	if s.Passthrough != 2 {
+		t.Errorf("passthrough = %d, want 2", s.Passthrough)
+	}
+	if s.Blocked != 0 {
+		t.Errorf("passthrough must not count as blocked: %d", s.Blocked)
+	}
+}

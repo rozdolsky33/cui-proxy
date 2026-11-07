@@ -48,6 +48,18 @@ func NewSanitizer(ds []detect.Detector, v *vault.Vault, sink Sink) *Sanitizer {
 	return &Sanitizer{ds: ds, v: v, sink: sink, r: NewRestorer(v)}
 }
 
+// WithSink returns a shallow copy of s that shares its detectors, vault and
+// restorer but records events to sink instead (nil records nothing). It is
+// cheap enough to call once per request. A nil s returns nil.
+func (s *Sanitizer) WithSink(sink Sink) *Sanitizer {
+	if s == nil {
+		return nil
+	}
+	c := *s
+	c.sink = sink
+	return &c
+}
+
 // Text returns in with every detected value replaced by its synthetic.
 // Spans whose text already is a vault synthetic (from earlier turns) are left
 // alone, so sanitizing is idempotent. On error the returned text is empty and

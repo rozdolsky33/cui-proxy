@@ -18,11 +18,12 @@ const (
 
 // Snapshot is the JSON view served by the dashboard. Field names are stable
 // snake_case: requests, blocked, blocked_by_reason, errors, restores,
-// replacements, replacements_by_rule, requests_per_minute,
+// passthrough, replacements, replacements_by_rule, requests_per_minute,
 // overhead_ms{p50,p95,samples}, vault_size, uptime_seconds.
 type Snapshot struct {
 	Requests           int64            `json:"requests"`
 	Blocked            int64            `json:"blocked"`
+	Passthrough        int64            `json:"passthrough"`
 	BlockedByReason    map[string]int64 `json:"blocked_by_reason"`
 	Errors             int64            `json:"errors"`
 	Restores           int64            `json:"restores"`
@@ -51,7 +52,7 @@ type Registry struct {
 	now   func() time.Time // injectable clock; see newWithClock
 	start time.Time
 
-	requests, blocked, errs, restores, replacements, vaultSize atomic.Int64
+	requests, blocked, passthrough, errs, restores, replacements, vaultSize atomic.Int64
 
 	mu       sync.Mutex
 	byRule   map[string]int64
@@ -93,13 +94,19 @@ func (r *Registry) IncRequest() {
 	r.mu.Unlock()
 }
 
-// IncBlocked counts one blocked request under reason.
+// IncBlocked counts one blocked request under reason. Callers must take
+// reason from a small closed set of constant codes (never request data), so
+// the per-reason map cannot grow without bound.
 func (r *Registry) IncBlocked(reason string) {
 	r.blocked.Add(1)
 	r.mu.Lock()
 	r.byReason[reason]++
 	r.mu.Unlock()
 }
+
+// IncPassthrough counts one request forwarded unsanitized because
+// policy.on_error is "passthrough". It does not count as blocked.
+func (r *Registry) IncPassthrough() { r.passthrough.Add(1) }
 
 // IncError counts one internal error.
 func (r *Registry) IncError() { r.errs.Add(1) }
@@ -129,6 +136,7 @@ func (r *Registry) Snapshot() Snapshot {
 	s := Snapshot{
 		Requests:     r.requests.Load(),
 		Blocked:      r.blocked.Load(),
+		Passthrough:  r.passthrough.Load(),
 		Errors:       r.errs.Load(),
 		Restores:     r.restores.Load(),
 		Replacements: r.replacements.Load(),
