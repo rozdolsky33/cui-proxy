@@ -1,0 +1,51 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: staticcheck
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+          "$(go env GOPATH)/bin/staticcheck" ./...
+
+      - name: go test -race
+        run: go test -race -count=1 ./...
+
+      # Fuzz smoke: 20 s per target. A failure writes the input under
+      # testdata/fuzz/; keep it as a seed once the bug is fixed.
+      - name: fuzz FuzzSanitizeRequest
+        run: go test -run '^$' -fuzz '^FuzzSanitizeRequest$' -fuzztime 20s ./internal/adapter/codex
+      - name: fuzz FuzzSSERewrite
+        run: go test -run '^$' -fuzz '^FuzzSSERewrite$' -fuzztime 20s ./internal/adapter/codex
+      - name: fuzz FuzzRoundTrip
+        run: go test -run '^$' -fuzz '^FuzzRoundTrip$' -fuzztime 20s ./internal/transform
+
+      - name: upload fuzz failures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-failures-${{ matrix.os }}
+          path: '**/testdata/fuzz/**'
+          if-no-files-found: ignore

@@ -38,12 +38,13 @@ func (*Adapter) Match(method, path string) (adapter.Route, bool) {
 	return adapter.Route{}, false
 }
 
-// SanitizeRequest: see request.go.
+// SanitizeRequest sanitizes a Responses API request body (see request.go).
 func (*Adapter) SanitizeRequest(body []byte, s *transform.Sanitizer) ([]byte, error) {
 	return sanitizeRequest(body, s)
 }
 
-// NewResponseRewriter: see response.go.
+// NewResponseRewriter returns the SSE rewriter that restores synthetics in
+// the response stream (see response.go).
 func (*Adapter) NewResponseRewriter(r *transform.Restorer) adapter.ResponseRewriter {
 	return newRewriter(r)
 }

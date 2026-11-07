@@ -83,6 +83,12 @@ codex -c 'model_provider="cui-proxy"' \
 `requires_openai_auth = true` makes Codex send its ChatGPT login headers to
 the proxy, which forwards them unchanged to the upstream.
 
+**Unverified:** the upstream mapping (`/v1/responses` ->
+`https://chatgpt.com/backend-api/codex/responses`) has not been tested
+against the real service yet. Run the manual smoke in
+[docs/verification.md](docs/verification.md) first. It also says what to
+change if the mapping is wrong.
+
 ## Dashboard
 
 <http://127.0.0.1:8788/> shows the live request feed (rule names and counts,
