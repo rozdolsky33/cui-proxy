@@ -96,7 +96,7 @@ func guard(next http.Handler) http.Handler {
 			}
 			if o := r.Header.Get("Origin"); o != "" {
 				u, err := url.Parse(o)
-				if err != nil || u.Host == "" || !strings.EqualFold(u.Host, r.Host) {
+				if err != nil || u.Scheme != "http" || u.Host == "" || !strings.EqualFold(u.Host, r.Host) {
 					fail(w, http.StatusForbidden, "cross-origin request refused")
 					return
 				}
@@ -211,7 +211,10 @@ func (s *server) config(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) metrics(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, 200, s.d.Metrics.Snapshot())
+	writeJSON(w, 200, struct {
+		metrics.Snapshot
+		FeedDropped uint64 `json:"feed_dropped"`
+	}{s.d.Metrics.Snapshot(), s.d.Audit.Dropped()})
 }
 
 type eventView struct {
@@ -232,7 +235,11 @@ func toView(e audit.Entry) eventView {
 	if rules == nil {
 		rules = map[string]int{}
 	}
-	return eventView{e.Time.UTC().Format(time.RFC3339Nano), e.Adapter, e.Method, e.Path, e.Status, e.BytesIn, e.BytesOut, rules, e.Blocked, e.LatencyMS}
+	ts := ""
+	if !e.Time.IsZero() {
+		ts = e.Time.UTC().Format(time.RFC3339Nano)
+	}
+	return eventView{ts, e.Adapter, e.Method, e.Path, e.Status, e.BytesIn, e.BytesOut, rules, e.Blocked, e.LatencyMS}
 }
 
 func (s *server) events(w http.ResponseWriter, r *http.Request) {

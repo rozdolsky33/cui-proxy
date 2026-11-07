@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -333,9 +334,94 @@ func TestJSHasNoBannedSinks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, bad := range []string{"innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "eval(", "new Function", "setTimeout(\"", "setInterval(\""} {
+	for _, bad := range []string{"innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "eval(", "new Function", "Function(", "javascript:", `setAttribute("on`, `setAttribute('on`, ".src=", ".src =", ".href=", ".href =", `setAttribute("href`, `setAttribute("src`, `setTimeout("`, `setTimeout('`, `setInterval("`, `setInterval('`} {
 		if strings.Contains(string(b), bad) {
 			t.Errorf("banned sink %q in app.js", bad)
 		}
+	}
+	for _, re := range []string{"set(Timeout|Interval)\\(\\s*[\"'`]"} {
+		if regexp.MustCompile(re).Match(b) {
+			t.Errorf("string-argument timer matches %s", re)
+		}
+	}
+}
+
+func TestIndexHTMLHasNoInlineCode(t *testing.T) {
+	b, err := os.ReadFile("static/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(b)
+	if regexp.MustCompile(`(?i)\son[a-z]+\s*=`).MatchString(s) {
+		t.Error("on* attribute in index.html")
+	}
+	if regexp.MustCompile(`(?i)\sstyle\s*=`).MatchString(s) || strings.Contains(strings.ToLower(s), "<style") {
+		t.Error("inline style in index.html")
+	}
+	if strings.Contains(strings.ToLower(s), "javascript:") {
+		t.Error("javascript: URL in index.html")
+	}
+	for _, m := range regexp.MustCompile(`(?is)<script\b[^>]*>.*?</script>`).FindAllString(s, -1) {
+		if !regexp.MustCompile(`(?is)^<script\s+src="[^"]+"\s*></script>$`).MatchString(m) {
+			t.Errorf("inline or odd script: %s", m)
+		}
+	}
+	if n := strings.Count(strings.ToLower(s), "<script"); n != len(regexp.MustCompile(`(?is)<script\b[^>]*>.*?</script>`).FindAllString(s, -1)) {
+		t.Error("unterminated script tag")
+	}
+}
+
+func TestOriginSchemeMustBeHTTP(t *testing.T) {
+	h := New(testDeps(t))
+	for _, o := range []string{"https://127.0.0.1:8788", "ftp://127.0.0.1:8788", "file://127.0.0.1:8788"} {
+		hdr := map[string]string{"Content-Type": "application/json", "Origin": o}
+		if rec := do(h, "POST", "/api/reload", "", hdr); rec.Code != 403 {
+			t.Errorf("origin %s: %d", o, rec.Code)
+		}
+	}
+}
+
+func TestZeroTimeEventHasEmptyTime(t *testing.T) {
+	d := testDeps(t)
+	d.Audit.Add(audit.Entry{Method: "GET", Path: "/z", Adapter: "codex"})
+	var es []map[string]any
+	_ = json.Unmarshal(do(New(d), "GET", "/api/events", "", nil).Body.Bytes(), &es)
+	if len(es) != 1 || es[0]["time"] != "" || es[0]["adapter"] != "codex" {
+		t.Fatalf("%v", es)
+	}
+}
+
+func TestMetricsFeedDropped(t *testing.T) {
+	d := testDeps(t)
+	_, cancel := d.Audit.Subscribe() // never drained: buffer fills, then drops
+	defer cancel()
+	for i := 0; i < 70; i++ {
+		d.Audit.Add(audit.Entry{Path: "/x"})
+	}
+	var m map[string]any
+	_ = json.Unmarshal(do(New(d), "GET", "/api/metrics", "", nil).Body.Bytes(), &m)
+	if m["feed_dropped"] == nil || m["feed_dropped"].(float64) < 1 {
+		t.Fatalf("feed_dropped=%v", m["feed_dropped"])
+	}
+	if _, ok := m["requests_per_minute"]; !ok {
+		t.Fatal("snapshot fields lost")
+	}
+}
+
+func TestReloadErrorFromBuildHasNoDictionaryText(t *testing.T) {
+	dir := t.TempDir()
+	var sb strings.Builder
+	for i := 0; i < 2000; i++ {
+		sb.WriteString("SENTINEL_LINE_" + strings.Repeat("q", 5) + "\n")
+	}
+	_ = os.WriteFile(dir+"/d.txt", []byte(sb.String()), 0o600)
+	d := testDeps(t)
+	d.Reload = func() error {
+		_, err := detect.Build([]config.Rule{{Name: "people", Type: "dictionary", File: dir + "/missing.txt", Synth: "email"}, {Name: "x", Type: "dictionary", File: dir + "/d.txt", Synth: "email"}}, dir)
+		return err
+	}
+	rec := do(New(d), "POST", "/api/reload", "", jsonCT)
+	if rec.Code != 422 || strings.Contains(rec.Body.String(), "SENTINEL") {
+		t.Fatal(rec.Code, rec.Body.String())
 	}
 }

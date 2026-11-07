@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+// compileDict is regexp.Compile; a var so tests can force a failure.
+var compileDict = regexp.Compile
+
 type dictDetector struct {
 	name, class string
 	re          *regexp.Regexp // nil when the dictionary is empty
@@ -37,9 +40,11 @@ func newDict(name, class, text string) (*dictDetector, error) {
 	for i, e := range entries {
 		parts[i] = regexp.QuoteMeta(e)
 	}
-	re, err := regexp.Compile("(?i)" + strings.Join(parts, "|"))
+	re, err := compileDict("(?i)" + strings.Join(parts, "|"))
 	if err != nil {
-		return nil, fmt.Errorf("detect: rule %q: dictionary: %w", name, err)
+		// The regexp error embeds the whole alternation (the dictionary), so
+		// it must never be wrapped or formatted into our error.
+		return nil, fmt.Errorf("detect: rule %q: dictionary too large or invalid", name)
 	}
 	d.re = re
 	return d, nil

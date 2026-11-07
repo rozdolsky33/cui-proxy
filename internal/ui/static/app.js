@@ -53,6 +53,7 @@
     box.appendChild(card("Restores", m.restores));
     box.appendChild(card("Blocked", m.blocked, pairs(m.blocked_by_reason)));
     box.appendChild(card("Errors", m.errors));
+    box.appendChild(card("Feed drops", m.feed_dropped || 0));
     var o = m.overhead_ms || {};
     box.appendChild(card("Overhead p50 / p95", fmtMs(o.p50) + " / " + fmtMs(o.p95), (o.samples || 0) + " samples"));
     box.appendChild(card("Vault size", m.vault_size));
@@ -84,9 +85,10 @@
       tb.appendChild(tr);
     });
   }
+  // loadConfig resolves true only when the config was fetched and rendered.
   function loadConfig() {
-    return getJSON("/api/config").then(function (c) { renderConfig(c); setBadge(true, "config ok"); })
-      .catch(function () { setBadge(false, "config unavailable"); });
+    return getJSON("/api/config").then(function (c) { renderConfig(c); setBadge(true, "config ok"); return true; })
+      .catch(function () { setBadge(false, "config unavailable"); return false; });
   }
   $("reload").addEventListener("click", function () {
     var btn = $("reload"), msg = $("reload-msg");
@@ -95,8 +97,7 @@
     postJSON("/api/reload").then(function (r) {
       if (r.body.ok) {
         msg.textContent = "reloaded " + new Date().toLocaleTimeString();
-        setBadge(true, "reload ok");
-        return loadConfig().then(function () { setBadge(true, "reload ok"); });
+        return loadConfig().then(function (ok) { if (ok) setBadge(true, "reload ok"); });
       }
       msg.textContent = "reload failed: " + (r.body.error || "error");
       setBadge(false, "reload failed");
@@ -107,11 +108,13 @@
   });
 
   // Live feed
+  function evKey(e) { return [e.time, e.method, e.path, e.status, e.bytes_in, e.bytes_out].join("|"); }
   function addRow(e, prepend) {
     var tb = $("feed").tBodies[0];
     var tr = el("tr", e.blocked ? "blocked" : "");
-    var t = new Date(e.time);
-    tr.appendChild(el("td", null, isNaN(t) ? "" : t.toLocaleTimeString()));
+    var t = e.time ? new Date(e.time) : null;
+    tr.appendChild(el("td", null, t && !isNaN(t) ? t.toLocaleTimeString() : "\u2014"));
+    tr.appendChild(el("td", null, e.adapter || ""));
     tr.appendChild(el("td", "code", e.method + " " + e.path));
     tr.appendChild(el("td", "num", e.status));
     tr.appendChild(el("td", "num", e.bytes_in + " / " + e.bytes_out));
@@ -121,16 +124,55 @@
     if (prepend) tb.insertBefore(tr, tb.firstChild); else tb.appendChild(tr);
     while (tb.rows.length > MAX_ROWS) tb.removeChild(tb.lastChild);
   }
-  function startFeed() {
-    getJSON("/api/events").then(function (es) {
-      es.slice().reverse().forEach(function (e) { addRow(e, false); });
-    }).catch(function () {}).then(function () {
-      var es = new EventSource("/api/stream");
-      es.onmessage = function (ev) {
-        try { addRow(JSON.parse(ev.data), true); } catch (x) { /* ignore malformed event */ }
-      };
-    });
+  function feedStatus(text, bad) {
+    var s = $("feed-status");
+    s.textContent = text;
+    s.className = bad ? "bad" : "muted";
   }
+
+  var MAX_RETRIES = 10, attempts = 0, source = null, retryTimer = null;
+
+  // connect opens the stream first, queues what arrives while /api/events is
+  // loading, then renders the snapshot and replays the queue minus duplicates,
+  // so no entry falls into the gap between the two requests.
+  function connect() {
+    if (source) source.close();
+    var es = new EventSource("/api/stream");
+    source = es;
+    var ready = false, queue = [];
+    function live(e) { addRow(e, true); }
+    es.onopen = function () {
+      attempts = 0;
+      feedStatus("connected", false);
+      getJSON("/api/events").then(function (list) {
+        if (source !== es) return;
+        var tb = $("feed").tBodies[0], seen = {};
+        clear(tb);
+        list.slice().reverse().forEach(function (e) { seen[evKey(e)] = true; addRow(e, false); });
+        queue.forEach(function (e) { if (!seen[evKey(e)]) live(e); });
+        queue = [];
+        ready = true;
+      }).catch(function () { ready = true; queue.forEach(live); queue = []; });
+    };
+    es.onmessage = function (ev) {
+      var e;
+      try { e = JSON.parse(ev.data); } catch (x) { return; }
+      if (ready) live(e); else queue.push(e);
+    };
+    es.onerror = function () {
+      if (es.readyState === 2) { // closed for good: back off, bounded
+        es.close();
+        if (attempts >= MAX_RETRIES) { feedStatus("live feed failed (reload the page)", true); return; }
+        var delay = Math.min(30000, 1000 * Math.pow(2, attempts));
+        attempts++;
+        feedStatus("disconnected, retrying in " + Math.round(delay / 1000) + "s", true);
+        retryTimer = setTimeout(connect, delay);
+      } else {
+        feedStatus("reconnecting...", true);
+      }
+    };
+  }
+  function startFeed() { feedStatus("connecting...", false); connect(); }
 
   // Test box
   $("test-run").addEventListener("click", function () {

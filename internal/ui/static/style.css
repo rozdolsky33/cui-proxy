@@ -22,3 +22,4 @@ button:disabled { opacity:.5; cursor:default; }
 .kv { display:grid; grid-template-columns:max-content 1fr; gap:.15rem 1rem; margin:.6rem 0; } .kv dt { color:var(--mut); } .kv dd { margin:0; font-family:ui-monospace, monospace; overflow-wrap:anywhere; }
 textarea { width:100%; font:13px ui-monospace, monospace; background:var(--card); color:var(--fg); border:1px solid var(--bd); border-radius:4px; padding:.4rem; }
 pre { background:var(--card); border:1px solid var(--bd); border-radius:4px; padding:.5rem; white-space:pre-wrap; overflow-wrap:anywhere; min-height:1.5rem; }
+#feed-status { font-size:.8rem; font-weight:normal; margin-left:.6rem; } #feed-status.bad { color:var(--bad); }
