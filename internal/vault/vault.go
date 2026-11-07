@@ -5,6 +5,7 @@ package vault
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sort"
@@ -19,7 +20,8 @@ const maxAttempts = 4096
 
 // Vault is safe for concurrent use.
 type Vault struct {
-	key []byte
+	key      []byte
+	auditKey []byte // HMAC-SHA256(key, "cui-proxy/audit"): fingerprints only
 
 	mu     sync.RWMutex
 	fwd    map[string]string   // class+"\x00"+real -> synthetic
@@ -31,11 +33,29 @@ type Vault struct {
 // New returns an empty vault using key for synthetic derivation.
 func New(key []byte) *Vault {
 	return &Vault{
-		key:   append([]byte(nil), key...),
-		fwd:   map[string]string{},
-		rev:   map[string]string{},
-		reals: map[string]struct{}{},
+		key:      append([]byte(nil), key...),
+		auditKey: subkey(key, "cui-proxy/audit"),
+		fwd:      map[string]string{},
+		rev:      map[string]string{},
+		reals:    map[string]struct{}{},
 	}
+}
+
+// subkey derives a domain-separated key: HMAC-SHA256(key, label).
+func subkey(key []byte, label string) []byte {
+	m := hmac.New(sha256.New, key)
+	m.Write([]byte(label))
+	return m.Sum(nil)
+}
+
+// Fingerprint returns an audit-safe identifier for (class, real): the first 8
+// hex chars of HMAC-SHA256(auditKey, class+"\x00"+real). It is keyed so that
+// small value spaces (SSNs, IPv4) cannot be brute-forced from audit logs, and
+// the key never leaves the vault.
+func (v *Vault) Fingerprint(class, real string) string {
+	m := hmac.New(sha256.New, v.auditKey)
+	m.Write([]byte(class + "\x00" + real))
+	return hex.EncodeToString(m.Sum(nil)[:4])
 }
 
 func (v *Vault) sum(class, real string) []byte {

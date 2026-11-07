@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -282,5 +284,58 @@ func TestConcurrentUse(t *testing.T) {
 	wg.Wait()
 	if v.Len() != 50 {
 		t.Errorf("Len %d", v.Len())
+	}
+}
+
+// Task 4 fix S1: audit fingerprints are keyed, not a bare SHA-256 prefix.
+func TestFingerprintKeyed(t *testing.T) {
+	v := New(testKey)
+	fp := v.Fingerprint("ssn", "123-45-6789")
+	if len(fp) != 8 || strings.Trim(fp, "0123456789abcdef") != "" {
+		t.Fatalf("fingerprint %q is not 8 hex chars", fp)
+	}
+	if fp != v.Fingerprint("ssn", "123-45-6789") || fp != New(testKey).Fingerprint("ssn", "123-45-6789") {
+		t.Error("fingerprint not stable for the same key")
+	}
+	if fp == New([]byte("fedcba9876543210fedcba9876543210")).Fingerprint("ssn", "123-45-6789") {
+		t.Error("different key gave same fingerprint")
+	}
+	if fp == v.Fingerprint("secret", "123-45-6789") {
+		t.Error("class not bound into fingerprint")
+	}
+	h := sha256.Sum256([]byte("123-45-6789"))
+	if fp == hex.EncodeToString(h[:4]) {
+		t.Error("fingerprint is the unkeyed SHA-256 prefix")
+	}
+	// Domain separation: not the synthetic-derivation HMAC either.
+	if fp == hex.EncodeToString(sum("ssn", "123-45-6789")[:4]) {
+		t.Error("fingerprint reuses the synthetic-derivation key")
+	}
+}
+
+// Task 4 fix S1: the vault file is sealed with a derived subkey, not the raw key.
+func TestFileSealedWithSubkey(t *testing.T) {
+	v := New(testKey)
+	if _, err := v.Pseudonym("ipv4", "10.1.2.3"); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "v.bin")
+	if err := v.Save(path); err != nil {
+		t.Fatal(err)
+	}
+	blob, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := newGCMRaw(testKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hdr := len(fileMagic) + raw.NonceSize()
+	if _, err := raw.Open(nil, blob[len(fileMagic):hdr], blob[hdr:], fileMagic); err == nil {
+		t.Error("vault file opens with the raw key; want a derived file subkey")
+	}
+	if w, err := Open(path, testKey); err != nil || w.Len() != 1 {
+		t.Fatalf("Open: %v", err)
 	}
 }

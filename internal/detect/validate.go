@@ -194,47 +194,42 @@ func luhnOK(c string) bool {
 
 func luhnRefine(text string, s, e int) (int, int, bool) { return s, e, luhnOK(text[s:e]) }
 
-// cardFind takes a run of digit groups separated by single spaces/dashes.
-//
-// Every group of 13+ digits is tested at all 13-19 digit sub-windows (longest
-// valid window per start). A strict sub-window is kept only if its first digit
-// is 3, 4, 5 or 6 (issuer prefixes), limiting noise from timestamps and IDs.
-// The window spanning the whole group is exempt from that filter when the
-// group has 14-19 digits, so PANs such as 2-series Mastercards are still
-// caught; a 13-digit whole group still needs a 3-6 first digit (a Luhn-valid
-// millisecond timestamp must not be masked). When there are several groups,
-// windows that start and end at group boundaries (at most 19 digits) are also
-// tested without a prefix filter. Windows may overlap; resolve merges them, so
-// a spurious window never hides the rest of a real card.
-func cardFind(text string, s, e int) [][2]int {
-	type grp struct{ st, en int }
-	var gs []grp
+// cardGroups splits a candidate text[s:e] (digit groups separated by single
+// spaces/dashes) into its digit groups.
+func cardGroups(text string, s, e int) [][2]int {
+	var gs [][2]int
 	for i := s; i < e; {
 		j := i
 		for j < e && isDigit(text[j]) {
 			j++
 		}
-		gs = append(gs, grp{i, j})
+		gs = append(gs, [2]int{i, j})
 		i = j + 1 // skip the single separator
 	}
+	return gs
+}
+
+// cardFind reports card-shaped windows in a run of digit groups:
+//   - a whole group of 14-19 digits that is Luhn-valid (no prefix filter, so
+//     2-series PANs such as 2223000048400011 are caught), or of 13 digits
+//     with a first digit of 3-6 (a Luhn-valid 13-digit millisecond timestamp
+//     must not be masked);
+//   - with several groups, windows that start and end at group boundaries
+//     (at most 19 digits), without a prefix filter.
+//
+// Card windows strictly inside a longer digit group are not reported here:
+// cardRunFind masks the whole group instead (see there). Windows may overlap;
+// resolve merges them, so a spurious window never hides the rest of a card.
+func cardFind(text string, s, e int) [][2]int {
+	gs := cardGroups(text, s, e)
 	var out [][2]int
 	for _, g := range gs {
-		glen := g.en - g.st
-		for st := g.st; st+13 <= g.en; st++ {
-			issuer := text[st] >= '3' && text[st] <= '6'
-			for n := 19; n >= 13; n-- {
-				if st+n > g.en {
-					continue
-				}
-				whole := st == g.st && n == glen
-				if !issuer && !(whole && glen >= 14) {
-					continue
-				}
-				if luhnOK(text[st : st+n]) {
-					out = append(out, [2]int{st, st + n})
-					break
-				}
-			}
+		n := g[1] - g[0]
+		if n < 13 || n > 19 || n == 13 && !(text[g[0]] >= '3' && text[g[0]] <= '6') {
+			continue
+		}
+		if luhnOK(text[g[0]:g[1]]) {
+			out = append(out, g)
 		}
 	}
 	if len(gs) == 1 {
@@ -243,19 +238,53 @@ func cardFind(text string, s, e int) [][2]int {
 	for i := range gs {
 		best, digits := -1, 0
 		for j := i; j < len(gs); j++ {
-			digits += gs[j].en - gs[j].st
+			digits += gs[j][1] - gs[j][0]
 			if digits > 19 {
 				break
 			}
-			if luhnOK(text[gs[i].st:gs[j].en]) {
+			if luhnOK(text[gs[i][0]:gs[j][1]]) {
 				best = j
 			}
 		}
 		if best >= 0 {
-			out = append(out, [2]int{gs[i].st, gs[best].en})
+			out = append(out, [2]int{gs[i][0], gs[best][1]})
 		}
 	}
 	return out
+}
+
+// cardRunFind reports a whole digit group (class secret, an opaque
+// REDACTED-… token) when some STRICT sub-window of it (13-19 digits, shorter
+// than the group) is Luhn-valid and starts with an issuer digit 3-6. Masking
+// only the sub-window would leave the synthetic glued to real digits, which
+// the restorer refuses to restore, blocking ordinary numeric ids; masking the
+// whole run is the safe direction (over-masking) and restores cleanly.
+func cardRunFind(text string, s, e int) [][2]int {
+	var out [][2]int
+	for _, g := range cardGroups(text, s, e) {
+		if strictCardWindow(text, g[0], g[1]) {
+			out = append(out, g)
+		}
+	}
+	return out
+}
+
+func strictCardWindow(text string, gs, ge int) bool {
+	glen := ge - gs
+	for st := gs; st+13 <= ge; st++ {
+		if text[st] < '3' || text[st] > '6' {
+			continue
+		}
+		for n := 13; n <= 19 && st+n <= ge; n++ {
+			if n == glen {
+				continue // the whole group is cardFind's job
+			}
+			if luhnOK(text[st : st+n]) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // ocidRefine requires the match not to be glued to a preceding letter/digit.

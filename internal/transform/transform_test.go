@@ -1,8 +1,11 @@
 package transform
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/rand"
 	"regexp"
 	"strconv"
 	"strings"
@@ -116,6 +119,20 @@ func TestSinkNeverSeesRealValues(t *testing.T) {
 			}
 		}
 	}
+	// S1: fingerprints are the vault's keyed fingerprint, never a bare SHA-256 prefix.
+	for _, e := range sink.evs {
+		keyed := false
+		for _, r := range reals {
+			h := sha256.Sum256([]byte(r))
+			if e.Fingerprint == hex.EncodeToString(h[:4]) {
+				t.Errorf("event %+v uses unkeyed SHA-256 fingerprint", e)
+			}
+			keyed = keyed || e.Fingerprint == v.Fingerprint(e.Class, r)
+		}
+		if !keyed {
+			t.Errorf("event %+v: fingerprint is not vault.Fingerprint(class, real)", e)
+		}
+	}
 	if total != 5 {
 		t.Errorf("total count %d, want 5", total)
 	}
@@ -123,6 +140,44 @@ func TestSinkNeverSeesRealValues(t *testing.T) {
 	for _, e := range sink.evs {
 		if e.Class == "ipv4" && e.Count != 2 {
 			t.Errorf("ipv4 event count %d, want 2", e.Count)
+		}
+	}
+}
+
+// F1: numeric IDs of any length (where strict Luhn sub-windows are common)
+// never block and always round-trip. Seeded, deterministic sweep.
+func TestNumericIDsNeverBlock(t *testing.T) {
+	ds := builtins(t)
+	rng := rand.New(rand.NewSource(42))
+	digits := func(n int) string {
+		b := make([]byte, n)
+		for i := range b {
+			b[i] = byte('0' + rng.Intn(10))
+		}
+		return string(b)
+	}
+	var s *Sanitizer
+	var r *Restorer
+	for i := 0; i < 6000; i++ {
+		if i%200 == 0 { // fresh vault: keep the per-call snapshot cost small
+			v := vault.New(testKey)
+			s, r = NewSanitizer(ds, v, nil), NewRestorer(v)
+		}
+		var in string
+		switch i % 3 {
+		case 0:
+			in = fmt.Sprintf(`{"id": %s}`, digits(14+rng.Intn(19)))
+		case 1:
+			in = "ts=" + strconv.FormatInt(1_600_000_000_000_000_000+rng.Int63n(400_000_000_000_000_000), 10)
+		default:
+			in = fmt.Sprintf(`{"id": %s, "ts": %s}`, digits(14+rng.Intn(19)), digits(19))
+		}
+		out, err := s.Text(in)
+		if err != nil {
+			t.Fatalf("%q blocked: %v", in, err)
+		}
+		if got := r.Text(out); got != in {
+			t.Fatalf("round trip %q -> %q -> %q", in, out, got)
 		}
 	}
 }
@@ -140,6 +195,9 @@ func TestSanitizeErrorReturnsNoText(t *testing.T) {
 	if out != "" {
 		t.Errorf("partial text returned with error: %q", out)
 	}
+	if !errors.Is(err, ErrPseudonym) || !strings.Contains(err.Error(), "rule=bad class=cidr") {
+		t.Errorf("err = %v, want ErrPseudonym naming rule and class", err)
+	}
 	if strings.Contains(err.Error(), "XCIDR123") {
 		t.Errorf("error leaks real value: %v", err)
 	}
@@ -155,6 +213,9 @@ func TestSanitizeBlocksUnrestorableContext(t *testing.T) {
 	out, err := s.Text("mail bob@corp.example.com5 now")
 	if !errors.Is(err, ErrUnrestorable) {
 		t.Fatalf("err = %v, want ErrUnrestorable", err)
+	}
+	if msg := err.Error(); !strings.Contains(msg, "rule=builtin.email") || !strings.Contains(msg, "class=email") || strings.Contains(msg, "bob") {
+		t.Errorf("error should name rule and class, never the value: %q", msg)
 	}
 	if out != "" {
 		t.Errorf("partial text returned with error: %q", out)

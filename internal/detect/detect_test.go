@@ -306,8 +306,9 @@ func TestCardAllWindowsAndUnbrokenRuns(t *testing.T) {
 	if len(g) != 1 || g[0].Class != "card" || g[0].Text != in {
 		t.Errorf("overlapping windows: %v", g)
 	}
-	// Unbroken run with a leading extra digit: card sub-window is masked.
-	if g := builtinScan(t, "94111111111111111"); len(g) == 0 || g[0].Class != "card" || !strings.Contains(g[0].Text, "4111111111111111"[1:]) {
+	// Unbroken run with a leading extra digit: the strict card sub-window
+	// widens to the whole digit run, masked as an opaque secret (Task 4 F1).
+	if g := builtinScan(t, "94111111111111111"); !reflect.DeepEqual(g, []got{{"secret", "94111111111111111"}}) {
 		t.Errorf("unbroken run: %v", g)
 	}
 	// 1700000000004 is a Luhn-valid 13-digit millisecond timestamp starting
@@ -318,13 +319,16 @@ func TestCardAllWindowsAndUnbrokenRuns(t *testing.T) {
 }
 
 func TestCardFindLongRunBounded(t *testing.T) {
-	// Behavioural bound (no wall clock): a very long digit run completes and
-	// every emitted window is 13-19 digits.
+	// Behavioural bound (no wall clock): a very long digit run completes,
+	// every card window is 13-19 digits, and the run is masked as one secret.
 	run := strings.Repeat("4", 200000)
 	for _, sp := range cardFind(run, 0, len(run)) {
 		if n := sp[1] - sp[0]; n < 13 || n > 19 {
 			t.Fatalf("window len %d", n)
 		}
+	}
+	if g := cardRunFind(run+"0", 0, len(run)+1); !reflect.DeepEqual(g, [][2]int{{0, len(run) + 1}}) {
+		t.Fatalf("run spans %v", g)
 	}
 }
 
@@ -335,11 +339,22 @@ func TestCardFindLongRunBounded(t *testing.T) {
 // caught); a 13-digit whole group still needs a 3-6 first digit, which keeps
 // Luhn-valid millisecond timestamps (1700000000004) unmasked.
 func TestCardSubWindowsInEveryLongGroup(t *testing.T) {
-	for _, in := range []string{"94111111111111111 5", "94111111111111111 5 items"} {
-		g := builtinScan(t, in)
-		if len(g) == 0 || g[0].Class != "card" || !strings.Contains(g[0].Text, "411111111111111") {
+	// Task 4 F1: a strict sub-window is reported as the whole digit group, class secret.
+	for _, in := range []string{"94111111111111111 5", "94111111111111111 5 items", "id=94111111111111111;"} {
+		if g := builtinScan(t, in); !reflect.DeepEqual(g, []got{{"secret", "94111111111111111"}}) {
 			t.Errorf("%q: %v", in, g)
 		}
+	}
+	// Whole-group windows are unchanged: still class card.
+	for _, in := range []string{"2223000048400011", "x4111111111111111"} {
+		if g := builtinScan(t, in); len(g) != 1 || g[0].Class != "card" {
+			t.Errorf("%q: %v", in, g)
+		}
+	}
+	// A strict window needs an issuer first digit (3-6): 1700000000004 inside
+	// a longer run with no other valid window stays unmasked.
+	if g := builtinScan(t, "id 91700000000004"); g != nil {
+		t.Errorf("non-issuer strict window masked: %v", g)
 	}
 	if g := builtinScan(t, "2223000048400011"); len(g) != 1 || g[0].Text != "2223000048400011" {
 		t.Errorf("2-series PAN: %v", g)

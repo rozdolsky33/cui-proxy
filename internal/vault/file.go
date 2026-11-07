@@ -21,10 +21,17 @@ type entry struct {
 	Synthetic string `json:"s"`
 }
 
+// newGCM returns the file cipher: AES-256-GCM under the domain-separated
+// subkey HMAC-SHA256(key, "cui-proxy/file"), so the raw vault key (also used
+// for synthetic derivation) is never used directly as an AES key.
 func newGCM(key []byte) (cipher.AEAD, error) {
 	if len(key) != keySize {
 		return nil, fmt.Errorf("vault: key must be %d bytes", keySize)
 	}
+	return newGCMRaw(subkey(key, "cui-proxy/file"))
+}
+
+func newGCMRaw(key []byte) (cipher.AEAD, error) {
 	b, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err

@@ -3,8 +3,6 @@
 package transform
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"sort"
@@ -15,8 +13,9 @@ import (
 )
 
 // Event reports replacements of one value. It never contains the real value:
-// only the detector rule, the class, the first 8 hex chars of the SHA-256 of
-// the real value, and how many times it was replaced in one Text call.
+// only the detector rule, the class, the vault's keyed fingerprint
+// (vault.Fingerprint: 8 hex chars of an HMAC under a vault-held audit subkey),
+// and how many times it was replaced in one Text call.
 type Event struct {
 	Rule, Class, Fingerprint string
 	Count                    int
@@ -27,8 +26,13 @@ type Sink interface{ Record(Event) }
 
 // ErrUnrestorable means the sanitized text would not restore to the input
 // (e.g. a synthetic glued to a letter, which the Restorer's boundary rule
-// refuses to restore). The caller must block.
+// refuses to restore). The caller must block. Returned errors wrap it with the
+// rule and class of the nearest inserted synthetic, never the value.
 var ErrUnrestorable = errors.New("transform: sanitized text would not restore faithfully")
+
+// ErrPseudonym wraps a vault.Pseudonym failure (unknown class, invalid value
+// for the class, exhausted pool). The caller must block.
+var ErrPseudonym = errors.New("transform: no synthetic for detected value")
 
 // Sanitizer replaces detected values with synthetics. Safe for concurrent use
 // if the sink is.
@@ -42,12 +46,6 @@ type Sanitizer struct {
 // NewSanitizer returns a sanitizer; sink may be nil.
 func NewSanitizer(ds []detect.Detector, v *vault.Vault, sink Sink) *Sanitizer {
 	return &Sanitizer{ds: ds, v: v, sink: sink, r: NewRestorer(v)}
-}
-
-// Fingerprint returns the first 8 hex chars of the SHA-256 of real.
-func Fingerprint(real string) string {
-	h := sha256.Sum256([]byte(real))
-	return hex.EncodeToString(h[:4])
 }
 
 // Text returns in with every detected value replaced by its synthetic.
@@ -85,7 +83,7 @@ func (s *Sanitizer) Text(in string) (string, error) {
 	for i := len(todo) - 1; i >= 0; i-- { // right to left
 		syn, err := s.v.Pseudonym(todo[i].Class, reals[i])
 		if err != nil {
-			return "", fmt.Errorf("transform: rule %s: %w", todo[i].Rule, err)
+			return "", fmt.Errorf("%w: rule=%s class=%s: %w", ErrPseudonym, todo[i].Rule, todo[i].Class, err)
 		}
 		syns[i] = syn
 	}
@@ -94,6 +92,7 @@ func (s *Sanitizer) Text(in string) (string, error) {
 	// inserted synthetic lands and where surviving pre-existing ones move.
 	var b strings.Builder
 	want := make([]match, 0, len(todo)+len(pre))
+	var ins []int // start of each inserted synthetic in out, parallel to todo
 	last, delta, pi := 0, 0, 0
 	keepPre := func(upto int) { // pre matches ending at or before upto
 		for ; pi < len(pre) && pre[pi].end <= upto; pi++ {
@@ -111,6 +110,7 @@ func (s *Sanitizer) Text(in string) (string, error) {
 		at := b.Len()
 		b.WriteString(syns[i])
 		want = append(want, match{at, at + len(syns[i])})
+		ins = append(ins, at)
 		delta += len(syns[i]) - (sp.End - sp.Start)
 		last = sp.End
 	}
@@ -120,23 +120,47 @@ func (s *Sanitizer) Text(in string) (string, error) {
 
 	sort.Slice(want, func(i, j int) bool { return want[i].start < want[j].start })
 	got, _ := s.r.snapshot().scan(out, 0, true)
-	if !equalMatches(got, want) {
-		return "", ErrUnrestorable
+	if k, bad := firstMismatch(got, want); bad {
+		sp := todo[nearest(ins, k)]
+		return "", fmt.Errorf("%w: rule=%s class=%s", ErrUnrestorable, sp.Rule, sp.Class)
 	}
 	s.record(todo, reals)
 	return out, nil
 }
 
-func equalMatches(a, b []match) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
+// firstMismatch returns the output offset where match lists a and b first
+// differ, and whether they differ at all.
+func firstMismatch(a, b []match) (int, bool) {
+	for i := 0; i < len(a) && i < len(b); i++ {
 		if a[i] != b[i] {
-			return false
+			return min(a[i].start, b[i].start), true
 		}
 	}
-	return true
+	switch {
+	case len(a) > len(b):
+		return a[len(b)].start, true
+	case len(b) > len(a):
+		return b[len(a)].start, true
+	}
+	return 0, false
+}
+
+// nearest returns the index in starts (non-empty, ascending) closest to pos.
+func nearest(starts []int, pos int) int {
+	best := 0
+	for i, s := range starts {
+		if abs(s-pos) < abs(starts[best]-pos) {
+			best = i
+		}
+	}
+	return best
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 func (s *Sanitizer) record(todo []detect.Span, reals []string) {
@@ -147,7 +171,7 @@ func (s *Sanitizer) record(todo []detect.Span, reals []string) {
 	counts := map[key]int{}
 	var order []key
 	for i, sp := range todo {
-		k := key{sp.Rule, sp.Class, Fingerprint(reals[i])}
+		k := key{sp.Rule, sp.Class, s.v.Fingerprint(sp.Class, reals[i])}
 		if counts[k] == 0 {
 			order = append(order, k)
 		}
