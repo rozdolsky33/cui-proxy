@@ -52,6 +52,9 @@ func Build(rules []config.Rule, baseDir string) ([]Detector, error) {
 			if err != nil {
 				return nil, err
 			}
+			if d.re == nil {
+				return nil, fmt.Errorf("detect: rule %q: dictionary %s has no entries", r.Name, path)
+			}
 			out = append(out, d)
 		default:
 			return nil, fmt.Errorf("detect: rule %q: unknown type %q", r.Name, r.Type)

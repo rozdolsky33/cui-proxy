@@ -4,7 +4,9 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
 	"cui-proxy/internal/config"
 )
@@ -91,31 +93,58 @@ func TestScanLongestSpanWins(t *testing.T) {
 	if len(g) != 1 || g[0].Class != "cidr" {
 		t.Errorf("cidr: %v", g)
 	}
-	// An email-like substring inside an ocid-like token: ocid wins.
-	g = builtinScan(t, "ocid1.user.oc2..bob@corp.example.com")
-	for _, x := range g {
-		if x.Class != "ocid" && x.Class != "email" {
-			t.Errorf("unexpected %v", x)
-		}
+	// The email extends past the ocid-like prefix, so it is not "inside" the
+	// ocid: the two partially overlap and merge into one email-class span
+	// covering everything (longest wins the class, no unmasked remainder).
+	in := "ocid1.user.oc2..bob@corp.example.com"
+	if g := builtinScan(t, in); !reflect.DeepEqual(g, []got{{"email", in}}) {
+		t.Errorf("ocid/email overlap: %v", g)
 	}
 }
 
 func TestResolveTiesAndOrdering(t *testing.T) {
-	in := []Span{
-		{Start: 5, End: 9, Rule: "a", Class: "ipv4"},
-		{Start: 5, End: 9, Rule: "b", Class: "cidr"},
-		{Start: 0, End: 3, Rule: "c", Class: "x"},
-		{Start: 2, End: 6, Rule: "d", Class: "y"}, // overlaps c (earlier start wins at equal... c len3 < d len4: d wins over c) and the 5..9 pair
-	}
-	// d (len 4, start 2) vs 5..9 (len 4, start 5): earlier start wins -> d; 5..9 dropped; c overlaps d -> dropped.
-	got := resolve(in)
-	want := []Span{{Start: 2, End: 6, Rule: "d", Class: "y"}}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("got %v want %v", got, want)
-	}
-	got = resolve([]Span{{Start: 5, End: 9, Rule: "a", Class: "ipv4"}, {Start: 5, End: 9, Rule: "b", Class: "cidr"}, {Start: 20, End: 22, Rule: "z", Class: "q"}})
+	// Equal span: cidr beats ipv4 on specificity; far span untouched.
+	got := resolve([]Span{{Start: 5, End: 9, Rule: "a", Class: "ipv4"}, {Start: 5, End: 9, Rule: "b", Class: "cidr"}, {Start: 20, End: 22, Rule: "z", Class: "q"}})
 	if len(got) != 2 || got[0].Class != "cidr" || got[1].Start != 20 {
 		t.Errorf("tie: %v", got)
+	}
+}
+
+func TestResolveMergesPartialOverlap(t *testing.T) {
+	got := resolve([]Span{
+		{Start: 0, End: 6, Rule: "long", Class: "x"},
+		{Start: 4, End: 8, Rule: "short", Class: "y"},
+	})
+	want := []Span{{Start: 0, End: 8, Rule: "long", Class: "x"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("partial overlap: got %v want %v", got, want)
+	}
+	// Chain: a-b and b-c overlap through b; one union span.
+	got = resolve([]Span{{Start: 0, End: 5, Rule: "a", Class: "x"}, {Start: 4, End: 10, Rule: "b", Class: "y"}, {Start: 9, End: 12, Rule: "c", Class: "z"}})
+	if len(got) != 1 || got[0].Start != 0 || got[0].End != 12 || got[0].Class != "y" {
+		t.Errorf("chain: %v", got)
+	}
+	// Fully contained span is dropped; touching spans stay separate.
+	got = resolve([]Span{{Start: 0, End: 10, Rule: "big", Class: "x"}, {Start: 2, End: 4, Rule: "in", Class: "y"}, {Start: 10, End: 12, Rule: "next", Class: "z"}})
+	want = []Span{{Start: 0, End: 10, Rule: "big", Class: "x"}, {Start: 10, End: 12, Rule: "next", Class: "z"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("contained: got %v want %v", got, want)
+	}
+}
+
+func TestResolveScalesLinearish(t *testing.T) {
+	const n = 100000
+	spans := make([]Span, n)
+	for i := range spans {
+		spans[i] = Span{Start: i * 3, End: i*3 + 2, Rule: "r", Class: "x"}
+	}
+	start := time.Now()
+	got := resolve(spans)
+	if len(got) != n {
+		t.Fatalf("len %d", len(got))
+	}
+	if d := time.Since(start); d > 2*time.Second {
+		t.Errorf("resolve of %d disjoint spans took %v", n, d)
 	}
 }
 
@@ -149,17 +178,27 @@ func TestDictionaryMatchesWholeEntriesCaseInsensitive(t *testing.T) {
 
 func TestDictionaryAbsolutePathAndMissingFile(t *testing.T) {
 	dir := t.TempDir()
-	writeDict(t, dir, "e.txt", "# only comments\n")
+	writeDict(t, dir, "e.txt", "# only comments\nx.example\n")
 	abs := filepath.Join(dir, "e.txt")
 	ds, err := Build([]config.Rule{{Name: "e", Type: "dictionary", File: abs, Synth: "hostname"}}, "/nonexistent")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sp := Scan(ds, "anything"); len(sp) != 0 {
-		t.Errorf("empty dict spans: %v", sp)
+	if sp := Scan(ds, "see x.example"); len(sp) != 1 {
+		t.Errorf("abs path dict spans: %v", sp)
 	}
 	if _, err := Build([]config.Rule{{Name: "m", Type: "dictionary", File: "nope.txt", Synth: "hostname"}}, dir); err == nil {
 		t.Error("missing dictionary file must fail Build")
+	}
+}
+
+// Finding 12: an effectively empty dictionary silently disables the rule.
+func TestEmptyDictionaryFileIsAnError(t *testing.T) {
+	dir := t.TempDir()
+	writeDict(t, dir, "empty.txt", "# only comments\n\n  \n")
+	_, err := Build([]config.Rule{{Name: "e", Type: "dictionary", File: "empty.txt", Synth: "hostname"}}, dir)
+	if err == nil || !strings.Contains(err.Error(), "empty.txt") {
+		t.Errorf("want error naming the file, got %v", err)
 	}
 }
 
@@ -194,5 +233,65 @@ func TestValidators(t *testing.T) {
 	}
 	if !ssnOK("123-45-6789") || ssnOK("000-12-3456") || ssnOK("666-12-3456") || ssnOK("900-12-3456") || ssnOK("123-00-6789") || ssnOK("123-45-0000") {
 		t.Error("ssn")
+	}
+}
+
+// Fix round 1 regressions (findings 1-9).
+func TestFixRound1Regressions(t *testing.T) {
+	tests := []struct {
+		name, in string
+		want     []got
+	}{
+		{"1 card plus CVV", "4111 1111 1111 1111 123", []got{{"card", "4111 1111 1111 1111"}}},
+		{"1 card after year", "2024 4111 1111 1111 1111", []got{{"card", "4111 1111 1111 1111"}}},
+		{"2 ipv6 after id:", "id:fe80::1", []got{{"ipv6", "fe80::1"}}},
+		{"2 ipv6 after via:", "via:fe80::1", []got{{"ipv6", "fe80::1"}}},
+		{"2 cidr6 after via:", "via:fe80::/64", []got{{"cidr", "fe80::/64"}}},
+		{"3 ipv4 leading zeros", "192.168.001.001", []got{{"ipv4", "192.168.001.001"}}},
+		{"3 ipv4 leading zeros still bound", "999.168.001.001", nil},
+		{"5 bearer 8 chars", "Bearer abcd1234", []got{{"secret", "abcd1234"}}},
+		{"5 bearer 7 chars", "Bearer abcd123", nil},
+		{"6 ocid after dash", "opc-ocid1.tenancy.oc2..aaaa", []got{{"ocid", "ocid1.tenancy.oc2..aaaa"}}},
+		{"6 ocid after underscore", "x_ocid1.tenancy.oc2..aaaa", []got{{"ocid", "ocid1.tenancy.oc2..aaaa"}}},
+		{"6 ocid after letter", "myocid1.tenancy.oc2..aaaa", nil},
+		{"7 ssn after underscore", "_123-45-6789", []got{{"ssn", "123-45-6789"}}},
+		{"7 card after letter", "x4111111111111111", []got{{"card", "4111111111111111"}}},
+		{"7 card after underscore", "id_4111111111111111", []got{{"card", "4111111111111111"}}},
+		{"8 email unicode local", "mail josé@corp.com now", []got{{"email", "josé@corp.com"}}},
+		{"9 pgp block", "-----BEGIN PGP PRIVATE KEY BLOCK-----\nabc\n-----END PGP PRIVATE KEY BLOCK-----", []got{{"secret", "-----BEGIN PGP PRIVATE KEY BLOCK-----\nabc\n-----END PGP PRIVATE KEY BLOCK-----"}}},
+		{"9 pgp unterminated", "-----BEGIN PGP PRIVATE KEY BLOCK-----\nabc", []got{{"secret", "-----BEGIN PGP PRIVATE KEY BLOCK-----\nabc"}}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if g := builtinScan(t, tc.in); !reflect.DeepEqual(g, tc.want) {
+				t.Errorf("Scan(%q) = %v, want %v", tc.in, g, tc.want)
+			}
+		})
+	}
+}
+
+// Finding 4. Decision: whole-entry adjacency is judged per entry. When the
+// longest entry is rejected at a position (glued to an alphanumeric), shorter
+// entries starting there, and entries starting later, are still tried.
+// "db1" followed by "." is a valid boundary, so it matches inside "db1.corp.localx".
+func TestDictionaryRetriesAfterRejectedLongestMatch(t *testing.T) {
+	dir := t.TempDir()
+	writeDict(t, dir, "d.txt", "db1.corp.local\ndb1\nfoo bar\nbar\n")
+	ds, err := Build([]config.Rule{{Name: "d", Type: "dictionary", File: "d.txt", Synth: "hostname"}}, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for in, want := range map[string]string{
+		"db1.corp.localx": "db1",
+		"xfoo bar":        "bar",
+		"xdb1 db1":        "db1",
+	} {
+		sp := Scan(ds, in)
+		if len(sp) != 1 || in[sp[0].Start:sp[0].End] != want {
+			t.Errorf("%q: got %v want one span %q", in, sp, want)
+		}
+	}
+	if sp := Scan(ds, "db1.corp.local"); len(sp) != 1 || sp[0].End != len("db1.corp.local") {
+		t.Errorf("full entry: %v", sp)
 	}
 }

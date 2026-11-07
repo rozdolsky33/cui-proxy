@@ -16,9 +16,23 @@ func specificity(class string) int {
 	}
 }
 
-// resolve keeps the longest spans first (ties: earlier Start, then more
-// specific class, then input order), dropping any span that overlaps a kept
-// one, and returns the survivors sorted by Start.
+// better reports whether a outranks b: longer, then earlier Start, then more
+// specific class.
+func better(a, b Span) bool {
+	if la, lb := a.End-a.Start, b.End-b.Start; la != lb {
+		return la > lb
+	}
+	if a.Start != b.Start {
+		return a.Start < b.Start
+	}
+	return specificity(a.Class) > specificity(b.Class)
+}
+
+// resolve groups transitively overlapping spans and replaces each group with
+// its union, so no part of any detected value is left unmasked. The group's
+// Rule and Class come from its best member (longer, then earlier Start, then
+// more specific class, then input order). Spans that merely touch stay
+// separate. Output is sorted by Start. O(n log n).
 func resolve(spans []Span) []Span {
 	cand := make([]Span, 0, len(spans))
 	for _, sp := range spans {
@@ -27,28 +41,28 @@ func resolve(spans []Span) []Span {
 		}
 	}
 	sort.SliceStable(cand, func(i, j int) bool {
-		a, b := cand[i], cand[j]
-		if la, lb := a.End-a.Start, b.End-b.Start; la != lb {
-			return la > lb
+		if cand[i].Start != cand[j].Start {
+			return cand[i].Start < cand[j].Start
 		}
-		if a.Start != b.Start {
-			return a.Start < b.Start
-		}
-		return specificity(a.Class) > specificity(b.Class)
+		return cand[i].End > cand[j].End
 	})
-	var kept []Span
-	for _, sp := range cand {
-		overlap := false
-		for _, k := range kept {
-			if sp.Start < k.End && k.Start < sp.End {
-				overlap = true
-				break
+	var out []Span
+	var best Span
+	for i, sp := range cand {
+		if i > 0 && sp.Start < out[len(out)-1].End {
+			u := &out[len(out)-1]
+			if sp.End > u.End {
+				u.End = sp.End
 			}
+			if better(sp, best) {
+				best = sp
+			}
+		} else {
+			out = append(out, sp)
+			best = sp
 		}
-		if !overlap {
-			kept = append(kept, sp)
-		}
+		u := &out[len(out)-1]
+		u.Rule, u.Class = best.Rule, best.Class
 	}
-	sort.Slice(kept, func(i, j int) bool { return kept[i].Start < kept[j].Start })
-	return kept
+	return out
 }

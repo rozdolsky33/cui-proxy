@@ -9,8 +9,12 @@ type regexDetector struct {
 	name, class string
 	re          *regexp.Regexp
 	refine      refiner // nil: accept every match
+	find        finder  // if set, replaces refine: may return several spans per candidate
 	group       bool    // report capture group 1 instead of the whole match
 }
+
+// A finder turns a regex candidate text[s:e] into zero or more spans.
+type finder func(text string, s, e int) [][2]int
 
 func newRegex(name, class, pattern, validate string) (*regexDetector, error) {
 	re, err := regexp.Compile(pattern)
@@ -37,6 +41,12 @@ func (d *regexDetector) Find(s string) []Span {
 		st, en := m[0], m[1]
 		if d.group && len(m) >= 4 && m[2] >= 0 {
 			st, en = m[2], m[3]
+		}
+		if d.find != nil {
+			for _, sp := range d.find(s, st, en) {
+				out = append(out, Span{Start: sp[0], End: sp[1], Rule: d.name, Class: d.class})
+			}
+			continue
 		}
 		if d.refine != nil {
 			var ok bool
