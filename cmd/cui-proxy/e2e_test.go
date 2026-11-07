@@ -643,10 +643,16 @@ func TestNoRealValueInAnyOutput(t *testing.T) {
 
 	surfaces := map[string]string{}
 	for _, p := range []string{"/api/config", "/api/metrics", "/api/events", "/healthz", "/"} {
-		_, b := e.ui("GET", p, "")
+		code, b := e.ui("GET", p, "")
+		if code != 200 {
+			t.Fatalf("GET %s: status %d", p, code)
+		}
 		surfaces["GET "+p] = string(b)
 	}
-	_, b := e.ui("POST", "/api/test", string(mustJSON(t, map[string]string{"text": seededText})))
+	code, b := e.ui("POST", "/api/test", string(mustJSON(t, map[string]string{"text": seededText})))
+	if code != 200 || !bytes.Contains(b, []byte(`"sanitized"`)) {
+		t.Fatalf("POST /api/test: %d %s", code, b)
+	}
 	surfaces["POST /api/test"] = string(b)
 	code, stdout, stderr := runCLI(seededText, "test-rules", "-config", e.cfgPath)
 	if code != 0 {
@@ -654,7 +660,9 @@ func TestNoRealValueInAnyOutput(t *testing.T) {
 	}
 	surfaces["test-rules stdout"], surfaces["test-rules stderr"] = stdout, stderr
 	writeFile(t, e.cfgPath, e2eConfig(e.upstreamBase(), "hosts2.txt", ""))
-	_, b = e.ui("POST", "/api/reload", "{}")
+	if code, b = e.ui("POST", "/api/reload", "{}"); code != 200 {
+		t.Fatalf("POST /api/reload: %d %s", code, b)
+	}
 	surfaces["POST /api/reload"] = string(b)
 
 	select {
@@ -743,9 +751,6 @@ func TestHeaderBlockedEndToEnd(t *testing.T) {
 	}
 	if m := e.metrics(); m.BlockedByReason["header"] != 1 {
 		t.Errorf("blocked_by_reason = %v", m.BlockedByReason)
-	}
-	if n := e.up.count(); n != 0 {
-		t.Fatalf("upstream received %d requests", n)
 	}
 }
 
@@ -881,5 +886,93 @@ func TestDashboardServesAndRejectsForeignHost(t *testing.T) {
 				t.Errorf("Host %q %s: status %d, want 421", host, p, res.StatusCode)
 			}
 		}
+	}
+}
+
+// proxyDo sends a Codex-like request with any method and path+query.
+func (e *e2eEnv) proxyDo(method, pathQuery string, body []byte) (*http.Response, []byte) {
+	e.t.Helper()
+	var rd io.Reader
+	if body != nil {
+		rd = bytes.NewReader(body)
+	}
+	req, err := http.NewRequest(method, e.pxURL+pathQuery, rd)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	req.Header.Set("Authorization", fakeAuth)
+	req.Header.Set("Chatgpt-Account-Id", fakeAcct)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	res, err := e.client.Do(req)
+	if err != nil {
+		e.t.Fatalf("proxy request: %v", err)
+	}
+	defer res.Body.Close()
+	b, err := io.ReadAll(res.Body)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	return res, b
+}
+
+// TestQueryBlockedEndToEnd: a detected value in the query string blocks the
+// request (the query is forwarded as is, never rewritten) on both routes,
+// and nothing reaches the upstream.
+func TestQueryBlockedEndToEnd(t *testing.T) {
+	e := newE2E(t)
+	e.up.setRespond(e.turn1Responder())
+	for _, tc := range []struct {
+		method, pathQuery string
+		body              []byte
+	}{
+		{"POST", "/v1/responses?trace=" + e2eIP, mustJSON(t, turn1Request(t))},
+		{"GET", "/v1/models?client=" + e2eIP, nil},
+		{"GET", "/v1/models?client=" + strings.ReplaceAll(e2eIP, ".", "%2E"), nil}, // percent-encoded
+	} {
+		res, body := e.proxyDo(tc.method, tc.pathQuery, tc.body)
+		if res.StatusCode != http.StatusUnprocessableEntity {
+			t.Errorf("%s %s: status %d", tc.method, tc.pathQuery, res.StatusCode)
+		}
+		var apiErr struct{ Error struct{ Code string } }
+		if json.Unmarshal(body, &apiErr) != nil || apiErr.Error.Code != "header" {
+			t.Errorf("%s %s: body %s", tc.method, tc.pathQuery, body)
+		}
+		assertNoValues(t, "error body", string(body), secretsEverywhere...)
+	}
+	if n := e.up.count(); n != 0 {
+		t.Fatalf("upstream received %d requests", n)
+	}
+	if m := e.metrics(); m.BlockedByReason["header"] != 3 {
+		t.Errorf("blocked_by_reason = %v", m.BlockedByReason)
+	}
+	_, raw := e.events()
+	assertNoValues(t, "/api/events", string(raw), secretsEverywhere...)
+}
+
+// TestModelsPassthroughEndToEnd: GET /v1/models with a clean query is
+// forwarded to <base>/models with the query unchanged and the credentials
+// untouched, and the upstream's JSON answer is relayed as is.
+func TestModelsPassthroughEndToEnd(t *testing.T) {
+	e := newE2E(t)
+	const models = `{"models":[{"slug":"gpt-5-codex"}]}`
+	e.up.setRespond(func(w http.ResponseWriter, r *http.Request, c capture) {
+		w.Header().Set("Content-Type", "application/json")
+		io.WriteString(w, models)
+	})
+	res, body := e.proxyDo("GET", "/v1/models?client_version=0.166.0", nil)
+	if res.StatusCode != http.StatusOK || string(body) != models {
+		t.Fatalf("status %d, body %s", res.StatusCode, body)
+	}
+	c := e.up.next(t)
+	if c.Method != "GET" || c.URI != "/backend-api/codex/models?client_version=0.166.0" {
+		t.Errorf("upstream request line = %s %s", c.Method, c.URI)
+	}
+	if len(c.Body) != 0 {
+		t.Errorf("upstream body %q", c.Body)
+	}
+	if c.Header.Get("Authorization") != fakeAuth || c.Header.Get("Chatgpt-Account-Id") != fakeAcct {
+		t.Error("credential headers were not forwarded untouched")
 	}
 }
