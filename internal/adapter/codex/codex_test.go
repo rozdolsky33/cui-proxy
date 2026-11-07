@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -196,38 +197,182 @@ func TestSanitizeTurn1Fixture(t *testing.T) {
 	}
 }
 
+// F1: opaque applies only to string values at known protocol positions.
 func TestOpaqueKeysUntouched(t *testing.T) {
 	e := newEnv(t)
 	ip := "10.20.30.15"
-	opaque := map[string]string{
-		"id":                `"msg_` + ip + `"`,
-		"call_id":           `"call_` + ip + `"`,
-		"item_id":           `"item_` + ip + `"`,
-		"encrypted_content": `"gAAAA` + ip + `\u002b=="`,
-		"signature":         `"sig ` + ip + `"`,
-		"data":              `"QUJD ` + ip + `"`,
-		"prompt_cache_key":  `"pck ` + ip + `"`,
-		"model":             `"model-` + ip + `"`,
-		"type":              `"message"`,
-		"role":              `"user"`,
-		"status":            `"st ` + ip + `"`,
-		"name":              `"fn_` + ip + `"`,
-	}
-	var b strings.Builder
-	b.WriteString(`{"input":[{`)
-	for k, v := range opaque {
-		b.WriteString(`"` + k + `":` + v + `,`)
-	}
-	b.WriteString(`"content":[{"type":"input_text","text":"real ` + ip + `"}]}],`)
-	b.WriteString(`"prompt_cache_key":` + opaque["prompt_cache_key"] + `,"model":` + opaque["model"] + `}`)
-	out := mustSanitize(t, e, []byte(b.String()))
-	for k, v := range opaque {
-		if !bytes.Contains(out, []byte(`"`+k+`":`+v)) {
-			t.Errorf("opaque key %q not byte-identical", k)
+	body := `{"model":"model-` + ip + `","prompt_cache_key":"pck ` + ip + `","tool_choice":"tc ` + ip + `",` +
+		`"include":["inc ` + ip + `"],` +
+		`"input":[` +
+		`{"type":"function_call","id":"fc_` + ip + `","call_id":"call_` + ip + `","status":"st ` + ip + `","name":"fn_` + ip + `","arguments":"{}"},` +
+		`{"type":"message","role":"user","content":[{"type":"input_text","id":"part_` + ip + `","status":"ps ` + ip + `","text":"real ` + ip + `"}]},` +
+		`{"type":"reasoning","id":"rs_1","summary":[],"encrypted_content":"gAAAA` + ip + `\u002b=="}],` +
+		`"tools":[{"type":"function","name":"tool_` + ip + `"}]}`
+	out := mustSanitize(t, e, []byte(body))
+	for _, keep := range []string{
+		`"model":"model-` + ip + `"`, `"prompt_cache_key":"pck ` + ip + `"`, `"tool_choice":"tc ` + ip + `"`,
+		`["inc ` + ip + `"]`, `"id":"fc_` + ip + `"`, `"call_id":"call_` + ip + `"`, `"status":"st ` + ip + `"`,
+		`"name":"fn_` + ip + `"`, `"id":"part_` + ip + `"`, `"status":"ps ` + ip + `"`,
+		`"encrypted_content":"gAAAA` + ip + `\u002b=="`, `"name":"tool_` + ip + `"`,
+	} {
+		if !bytes.Contains(out, []byte(keep)) {
+			t.Errorf("protocol value not byte-identical: %s", keep)
 		}
 	}
 	if bytes.Contains(out, []byte(`"real `+ip+`"`)) {
 		t.Errorf("non-opaque text was not sanitized")
+	}
+}
+
+// F1 regressions: opaque-named keys outside protocol positions, and any
+// object or array under an opaque-named key, are scanned.
+func TestOpaqueOnlyAtProtocolPositions(t *testing.T) {
+	e := newEnv(t)
+	for _, body := range []string{
+		`{"tools":[{"type":"function","name":"f","parameters":{"type":"object","properties":{"name":{"type":"string","description":"host 10.20.30.15"}}}}],"input":[]}`,
+		`{"tools":[{"type":"function","name":"f","parameters":{"type":"object","properties":{"data":{"type":"string","enum":["10.20.30.15"]}}}}],"input":[]}`,
+		`{"client_metadata":{"name":"10.20.30.15"}}`,
+		`{"client_metadata":{"id":"10.20.30.15","model":"10.20.30.15","type":"10.20.30.15"}}`,
+		`{"input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"hi","data":{"note":"10.20.30.15"}}]}]}`,
+		`{"input":[{"type":"message","role":"user","name":"10.20.30.15","content":[]}]}`,
+		`{"input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"hi","name":"10.20.30.15","role":"10.20.30.15"}]}]}`,
+		`{"input":[{"type":"function_call","call_id":"c","name":"f","arguments":"{}","id":{"x":"10.20.30.15"}}]}`,
+		`{"model":["10.20.30.15"],"input":[]}`,
+		`{"tool_choice":{"type":"function","name":"10.20.30.15"},"input":[]}`,
+		`{"input":[{"type":"function_call_output","call_id":"c","output":"x","extra":{"call_id":"10.20.30.15","signature":"10.20.30.15","item_id":"10.20.30.15"}}]}`,
+	} {
+		out := mustSanitize(t, e, []byte(body))
+		assertAbsent(t, out, "10.20.30.15")
+	}
+}
+
+// F2: binary checks are skipped only inside schema subtrees (and for the
+// type of a tools[] entry); schema values are still scanned.
+func TestBinaryChecksOutsideSchema(t *testing.T) {
+	e := newEnv(t)
+	for _, body := range []string{
+		`{"tools":[{"type":"function","name":"f","image_url":"data:image/png;base64,AAAA","data":"10.20.30.15"}],"input":[]}`,
+		`{"tools":[{"type":"function","name":"f","data":"10.20.30.15"}],"input":[]}`,
+		`{"text":{"image_url":"x"},"input":[]}`,
+		`{"tool_choice":{"type":"input_file"},"input":[]}`,
+		`{"input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"x","data":"QUJD"}]}]}`,
+		`{"client_metadata":{"file_id":"f"}}`,
+	} {
+		if out, err := New().SanitizeRequest([]byte(body), e.s); err == nil || out != nil {
+			t.Errorf("not blocked: %s", body)
+		}
+	}
+	body := `{"tools":[{"type":"function","name":"view_image","parameters":{"type":"object","properties":{"image_url":{"type":"string","description":"url, e.g. http://10.20.30.15/a.png"},"file_id":{"type":"string"},"data":{"type":"string"}}}},{"type":"image_generation"}],"input":[]}`
+	out := mustSanitize(t, e, []byte(body))
+	assertAbsent(t, out, "10.20.30.15")
+}
+
+// F3: object keys are sanitized (protocol field names excepted), including
+// decoded keys of JSON carried in strings.
+func TestKeysScanned(t *testing.T) {
+	e := newEnv(t)
+	for _, body := range []string{
+		`{"client_metadata":{"10.20.30.15":"x"}}`,
+		`{"input":[{"type":"function_call","call_id":"c","name":"f","arguments":"{\"10\\u002e20\\u002e30\\u002e15\":1}"}]}`,
+		`{"input":[{"type":"function_call_output","call_id":"c","output":"{\"hosts\":{\"10\\u002e20\\u002e30\\u002e15\":\"up\"}}"}]}`,
+		`{"input":[{"type":"function_call_output","call_id":"c","output":"{\"a\":[{\"10.20.30.1\\u0035\":{\"k\":1}}]}"}]}`,
+		`{"x":{"10\u002e20\u002e30\u002e15":{"y":[1]}}}`,
+	} {
+		out := mustSanitize(t, e, []byte(body))
+		assertAbsent(t, out, "10.20.30.15")
+		for _, s := range strs(t, out) {
+			if c := first([]byte(s)); (c == '{' || c == '[') && !json.Valid([]byte(s)) {
+				t.Errorf("embedded JSON invalid after sanitizing: %s", body)
+			}
+		}
+	}
+}
+
+// F5: integer literals of 13 or more digits are scanned.
+func TestLargeIntegersScanned(t *testing.T) {
+	e := newEnv(t)
+	out := mustSanitize(t, e, []byte(`{"client_metadata":{"n":4111111111111111,"m":-4111111111111111,"small":123,"f":1.5,"ts":1700000000004}}`))
+	assertAbsent(t, out, "4111111111111111")
+	for _, keep := range []string{`"small":123`, `"f":1.5`, `"ts":1700000000004`} {
+		if !bytes.Contains(out, []byte(keep)) {
+			t.Errorf("number changed: want %s", keep)
+		}
+	}
+	out = mustSanitize(t, e, []byte(`{"input":[{"type":"function_call","call_id":"c","name":"f","arguments":"{\"card\":4111111111111111}"}]}`))
+	assertAbsent(t, out, "4111111111111111")
+}
+
+// F6 end to end: session and turn ids pass unchanged.
+func TestUUIDIdsUnchanged(t *testing.T) {
+	e := newEnv(t)
+	body := []byte(`{"client_metadata":{"session_id":"00000000-0000-4000-8000-000000000003","turn_id":"01a1b391-bc82-7fc1-af74-707b50231d77"},"input":[]}`)
+	if out := mustSanitize(t, e, body); !bytes.Equal(out, body) {
+		t.Errorf("UUID ids rewritten: %s", out)
+	}
+}
+
+func nested(depth int, leaf string) string {
+	// depth counts containers, including the request object itself.
+	return `{"input":` + strings.Repeat("[", depth-1) + leaf + strings.Repeat("]", depth-1) + `}`
+}
+
+// F4: nesting deeper than 64 containers blocks; 64 passes.
+func TestDepthCap(t *testing.T) {
+	e := newEnv(t)
+	if _, err := New().SanitizeRequest([]byte(nested(64, `"10.20.30.15"`)), e.s); err != nil {
+		t.Errorf("depth 64 blocked: %v", err)
+	}
+	if out, err := New().SanitizeRequest([]byte(nested(65, `"x"`)), e.s); err == nil || out != nil {
+		t.Errorf("depth 65 not blocked")
+	}
+	// Depth counts across JSON carried in strings.
+	inner := strings.Repeat("[", 64) + strings.Repeat("]", 64)
+	body := `{"input":[{"type":"function_call","call_id":"c","name":"f","arguments":` + string(quoteJSON(inner)) + `}]}`
+	if out, err := New().SanitizeRequest([]byte(body), e.s); err == nil || out != nil {
+		t.Errorf("deep inner JSON not blocked")
+	}
+	rw := New().NewResponseRewriter(e.r)
+	ok := `{"type":"x","a":` + strings.Repeat("[", 63) + strings.Repeat("]", 63) + `}`
+	if _, err := rw.Event(ev("x", ok)); err != nil {
+		t.Errorf("response depth 64: %v", err)
+	}
+	deep := `{"type":"x","a":` + strings.Repeat("[", 64) + strings.Repeat("]", 64) + `}`
+	if _, err := rw.Event(ev("x", deep)); err == nil {
+		t.Errorf("response depth 65 not rejected")
+	}
+}
+
+func quoteJSON(s string) []byte { b, _ := json.Marshal(s); return b }
+
+// F4: a large string deep in the body costs a small constant factor, not
+// O(depth x size). Asserted on bytes allocated, not wall-clock time.
+func TestDeepLargeBodyAllocations(t *testing.T) {
+	e := newEnv(t)
+	big := `"` + strings.Repeat("A", 4<<20) + `"`
+	body := []byte(nested(60, big))
+	data := []byte(`{"type":"response.created","response":{"output":` + strings.Repeat("[", 57) + big + strings.Repeat("]", 57) + `}}`)
+	measure := func(f func()) uint64 {
+		var a, b runtime.MemStats
+		runtime.GC()
+		runtime.ReadMemStats(&a)
+		f()
+		runtime.ReadMemStats(&b)
+		t.Logf("allocated %d bytes", b.TotalAlloc-a.TotalAlloc)
+		return b.TotalAlloc - a.TotalAlloc
+	}
+	if n := measure(func() {
+		if _, err := New().SanitizeRequest(body, e.s); err != nil {
+			t.Fatal(err)
+		}
+	}); n > 10*uint64(len(body)) {
+		t.Errorf("request: allocated %d bytes for a %d-byte body", n, len(body))
+	}
+	if n := measure(func() {
+		if _, err := New().NewResponseRewriter(e.r).Event(ev("response.created", string(data))); err != nil {
+			t.Fatal(err)
+		}
+	}); n > 10*uint64(len(data)) {
+		t.Errorf("response: allocated %d bytes for a %d-byte event", n, len(data))
 	}
 }
 

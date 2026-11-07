@@ -4,97 +4,197 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"unicode/utf8"
 )
 
-// Order-preserving JSON helpers. Values are kept as raw bytes so that
-// anything not rewritten is emitted exactly as received. Inputs must be
-// valid JSON (callers check json.Valid once at the top).
+// A JSON document is parsed once into a tree whose nodes slice into the
+// original buffer (no per-level copies). Anything not rewritten is emitted
+// as its original bytes. parse must only be given input that json.Valid
+// accepts; it then only has to find token boundaries.
 
-var errShape = errors.New("codex: malformed JSON")
+// maxDepth bounds container nesting (objects plus arrays) in a request body,
+// counted across JSON documents carried in strings, and in one response event.
+const maxDepth = 64
 
-type member struct {
-	key string
-	val json.RawMessage
+// ErrDepth means the JSON nests deeper than maxDepth. Block.
+var ErrDepth = errors.New("codex: JSON nested too deeply")
+
+type node struct {
+	kind  byte   // '{', '[', '"' (string), '0' (number), 'l' (true/false/null)
+	raw   []byte // original bytes
+	str   string // decoded string, or the number literal
+	keys  []string
+	kids  []*node
+	dirty bool // rewritten: encode from fields, not raw
 }
 
-// first returns the first non-whitespace byte of raw, or 0.
-func first(raw []byte) byte {
-	for _, c := range raw {
-		switch c {
+// parse parses valid JSON. base is the number of containers already
+// enclosing buf (for JSON carried in a string).
+func parse(buf []byte, base int) (*node, error) {
+	p := parser{buf: buf}
+	n, err := p.value(base)
+	if err != nil {
+		return nil, err
+	}
+	return n, nil
+}
+
+type parser struct {
+	buf []byte
+	i   int
+}
+
+func (p *parser) ws() {
+	for p.i < len(p.buf) {
+		switch p.buf[p.i] {
 		case ' ', '\t', '\r', '\n':
+			p.i++
+		default:
+			return
+		}
+	}
+}
+
+func (p *parser) value(depth int) (*node, error) {
+	p.ws()
+	start := p.i
+	switch c := p.buf[p.i]; c {
+	case '{', '[':
+		if depth+1 > maxDepth {
+			return nil, ErrDepth
+		}
+		n := &node{kind: c}
+		p.i++
+		for {
+			p.ws()
+			if b := p.buf[p.i]; b == '}' || b == ']' {
+				p.i++
+				break
+			} else if b == ',' {
+				p.i++
+				p.ws()
+			}
+			if c == '{' {
+				k := p.str()
+				n.keys = append(n.keys, k.str)
+				p.ws()
+				p.i++ // ':'
+			}
+			kid, err := p.value(depth + 1)
+			if err != nil {
+				return nil, err
+			}
+			n.kids = append(n.kids, kid)
+		}
+		n.raw = p.buf[start:p.i]
+		return n, nil
+	case '"':
+		return p.str(), nil
+	case 't', 'f', 'n':
+		for p.i < len(p.buf) && p.buf[p.i] >= 'a' && p.buf[p.i] <= 'z' {
+			p.i++
+		}
+		return &node{kind: 'l', raw: p.buf[start:p.i]}, nil
+	default:
+		for p.i < len(p.buf) && isNumByte(p.buf[p.i]) {
+			p.i++
+		}
+		return &node{kind: '0', raw: p.buf[start:p.i], str: string(p.buf[start:p.i])}, nil
+	}
+}
+
+func isNumByte(c byte) bool {
+	return c >= '0' && c <= '9' || c == '-' || c == '+' || c == '.' || c == 'e' || c == 'E'
+}
+
+// str parses a string token at p.i.
+func (p *parser) str() *node {
+	start := p.i
+	p.i++
+	esc := false
+	for {
+		j := bytes.IndexAny(p.buf[p.i:], `"\`)
+		p.i += j
+		if p.buf[p.i] == '\\' {
+			esc = true
+			p.i += 2
 			continue
 		}
-		return c
+		p.i++
+		break
 	}
-	return 0
+	raw := p.buf[start:p.i]
+	return &node{kind: '"', raw: raw, str: decodeString(raw, esc)}
 }
 
-// members splits a JSON object into its members, in order.
-func members(raw []byte) ([]member, error) {
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	if t, err := dec.Token(); err != nil || t != json.Delim('{') {
-		return nil, errShape
+// decodeString decodes a valid JSON string token, as encoding/json does
+// (invalid UTF-8 becomes U+FFFD).
+func decodeString(raw []byte, esc bool) string {
+	if body := raw[1 : len(raw)-1]; !esc && utf8.Valid(body) {
+		return string(body)
 	}
-	var ms []member
-	for dec.More() {
-		t, err := dec.Token()
-		k, ok := t.(string)
-		if err != nil || !ok {
-			return nil, errShape
-		}
-		var v json.RawMessage
-		if err := dec.Decode(&v); err != nil {
-			return nil, errShape
-		}
-		ms = append(ms, member{k, v})
-	}
-	if t, err := dec.Token(); err != nil || t != json.Delim('}') {
-		return nil, errShape
-	}
-	return ms, nil
+	var s string
+	_ = json.Unmarshal(raw, &s) // valid by contract
+	return s
 }
 
-// elements splits a JSON array into its elements, in order.
-func elements(raw []byte) ([]json.RawMessage, error) {
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	if t, err := dec.Token(); err != nil || t != json.Delim('[') {
-		return nil, errShape
-	}
-	var es []json.RawMessage
-	for dec.More() {
-		var v json.RawMessage
-		if err := dec.Decode(&v); err != nil {
-			return nil, errShape
-		}
-		es = append(es, v)
-	}
-	if t, err := dec.Token(); err != nil || t != json.Delim(']') {
-		return nil, errShape
-	}
-	return es, nil
-}
-
-// get returns the raw value of the first member named key.
-func get(ms []member, key string) (json.RawMessage, bool) {
-	for _, m := range ms {
-		if m.key == key {
-			return m.val, true
+// get returns the value of the first member named key of an object node.
+func (n *node) get(key string) *node {
+	for i, k := range n.keys {
+		if k == key {
+			return n.kids[i]
 		}
 	}
-	return nil, false
+	return nil
 }
 
 // getString returns the string value of member key, if it is a string.
-func getString(ms []member, key string) (string, bool) {
-	raw, ok := get(ms, key)
-	if !ok || first(raw) != '"' {
-		return "", false
+func (n *node) getString(key string) (string, bool) {
+	if v := n.get(key); v != nil && v.kind == '"' {
+		return v.str, true
 	}
-	var s string
-	if json.Unmarshal(raw, &s) != nil {
-		return "", false
+	return "", false
+}
+
+// setString replaces n's value with the string s.
+func (n *node) setString(s string) {
+	n.kind, n.str, n.dirty = '"', s, true
+}
+
+// encode returns n as JSON: original bytes where nothing changed. With
+// canonical, every container and string is re-encoded from decoded values.
+func (n *node) encode(canonical bool) []byte {
+	var b bytes.Buffer
+	n.write(&b, canonical)
+	return b.Bytes()
+}
+
+func (n *node) write(b *bytes.Buffer, canonical bool) {
+	if !n.dirty && !canonical || n.kind == '0' && !n.dirty || n.kind == 'l' {
+		b.Write(n.raw)
+		return
 	}
-	return s, true
+	switch n.kind {
+	case '{', '[':
+		b.WriteByte(n.kind)
+		for i, kid := range n.kids {
+			if i > 0 {
+				b.WriteByte(',')
+			}
+			if n.kind == '{' {
+				b.Write(quote(n.keys[i]))
+				b.WriteByte(':')
+			}
+			kid.write(b, canonical)
+		}
+		if n.kind == '{' {
+			b.WriteByte('}')
+		} else {
+			b.WriteByte(']')
+		}
+	default:
+		b.Write(quote(n.str))
+	}
 }
 
 // quote encodes s as a JSON string without HTML escaping.
@@ -104,32 +204,4 @@ func quote(s string) []byte {
 	enc.SetEscapeHTML(false)
 	_ = enc.Encode(s) // a string always encodes
 	return bytes.TrimSuffix(b.Bytes(), []byte("\n"))
-}
-
-func encodeObject(ms []member) []byte {
-	var b bytes.Buffer
-	b.WriteByte('{')
-	for i, m := range ms {
-		if i > 0 {
-			b.WriteByte(',')
-		}
-		b.Write(quote(m.key))
-		b.WriteByte(':')
-		b.Write(m.val)
-	}
-	b.WriteByte('}')
-	return b.Bytes()
-}
-
-func encodeArray(es []json.RawMessage) []byte {
-	var b bytes.Buffer
-	b.WriteByte('[')
-	for i, e := range es {
-		if i > 0 {
-			b.WriteByte(',')
-		}
-		b.Write(e)
-	}
-	b.WriteByte(']')
-	return b.Bytes()
 }

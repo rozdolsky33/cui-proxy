@@ -378,3 +378,40 @@ func TestCardSubWindowsInEveryLongGroup(t *testing.T) {
 		t.Errorf("timestamp masked: %v", g)
 	}
 }
+
+// Task 6 fix round 1, F6: digit runs inside a canonical UUID token are ids,
+// not cards; a real card elsewhere in the same text is still found.
+func TestCardSkipsUUIDTokens(t *testing.T) {
+	for _, u := range []string{
+		"01a1b391-bc82-7fc1-af74-707b50231d77",
+		"00000000-0000-4000-8000-000000000003",
+		"00000000-0000-4000-8000-000000000001",
+		"123E4567-E89B-12D3-A456-426614174000",
+		"41111111-1111-1111-1111-111111111111",
+	} {
+		for _, in := range []string{u, `"turn_id":"` + u + `"`, "id=" + u + ".", "x-" + u} {
+			if g := builtinScan(t, in); g != nil {
+				t.Errorf("UUID token masked in %q: %v", in, g)
+			}
+		}
+	}
+	for _, in := range []string{"4111-1111-1111-1111", "4111 1111 1111 1111"} {
+		if g := builtinScan(t, "pay "+in+" now"); !reflect.DeepEqual(g, []got{{"card", in}}) {
+			t.Errorf("card %q: got %v", in, g)
+		}
+	}
+	// A card next to a UUID is not hidden by it.
+	in := "id 00000000-0000-4000-8000-000000000003 card 4111111111111111 end"
+	if g := builtinScan(t, in); !reflect.DeepEqual(g, []got{{"secret", "4111111111111111"}}) {
+		t.Errorf("card beside UUID: got %v", g)
+	}
+	// Not canonical UUID tokens: glued to alphanumerics, or wrong shape.
+	for _, in := range []string{
+		"z00000000-0000-4000-8000-000000000003",
+		"0000-0000-4000-8000-000000000003",
+	} {
+		if builtinScan(t, in) == nil {
+			t.Errorf("non-UUID digit run %q not masked", in)
+		}
+	}
+}

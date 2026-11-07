@@ -225,7 +225,7 @@ func cardFind(text string, s, e int) [][2]int {
 			if digits > 19 {
 				break
 			}
-			if luhnOK(text[gs[i][0]:gs[j][1]]) {
+			if luhnOK(text[gs[i][0]:gs[j][1]]) && !inUUID(text, gs[i][0], gs[j][1]) {
 				best = j
 			}
 		}
@@ -253,11 +253,47 @@ func cardFind(text string, s, e int) [][2]int {
 func cardRunFind(text string, s, e int) [][2]int {
 	var out [][2]int
 	for _, g := range cardGroups(text, s, e) {
-		if luhnRun(text, g[0], g[1]) {
+		if luhnRun(text, g[0], g[1]) && !inUUID(text, g[0], g[1]) {
 			out = append(out, g)
 		}
 	}
 	return out
+}
+
+// uuidLen is the length of a canonical UUID: 8-4-4-4-12 hex digits.
+const uuidLen = 36
+
+// inUUID reports whether text[s:e] lies inside a canonical UUID token
+// (8-4-4-4-12 hex digits, any case) bounded by non-alphanumerics. Digit runs
+// in session and turn ids are not cards. Only the bytes around the window
+// are examined, so the check is O(1) per candidate.
+func inUUID(text string, s, e int) bool {
+	if e-s > uuidLen {
+		return false
+	}
+	for u := max(0, e-uuidLen); u <= s && u+uuidLen <= len(text); u++ {
+		if isUUID(text[u:u+uuidLen]) && (u == 0 || !isAlnum(text[u-1])) &&
+			(u+uuidLen == len(text) || !isAlnum(text[u+uuidLen])) {
+			return true
+		}
+	}
+	return false
+}
+
+func isUUID(c string) bool {
+	for i := 0; i < len(c); i++ {
+		switch i {
+		case 8, 13, 18, 23:
+			if c[i] != '-' {
+				return false
+			}
+		default:
+			if b := c[i]; !isDigit(b) && !(b >= 'a' && b <= 'f') && !(b >= 'A' && b <= 'F') {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func luhnRun(text string, gs, ge int) bool {

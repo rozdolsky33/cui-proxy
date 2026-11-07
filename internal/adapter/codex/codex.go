@@ -48,10 +48,10 @@ func (*Adapter) NewResponseRewriter(r *transform.Restorer) adapter.ResponseRewri
 	return newRewriter(r)
 }
 
-// opaque lists keys whose values are protocol identifiers or opaque blobs.
-// They are neither sanitized in requests nor restored in responses, and pass
-// byte-identical. Applies to the protocol JSON only, never to JSON documents
-// carried inside strings (function-call arguments).
+// opaque lists keys whose values are protocol identifiers or opaque blobs in
+// response events: they are never restored and pass byte-identical. The
+// request side does not use this set: there opacity is limited to string
+// values at known protocol positions (see opaqueAt in request.go).
 var opaque = map[string]bool{
 	"id": true, "call_id": true, "item_id": true, "encrypted_content": true,
 	"signature": true, "data": true, "image_url": true, "prompt_cache_key": true,

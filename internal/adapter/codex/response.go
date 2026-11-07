@@ -35,11 +35,11 @@ var terminal = map[string]bool{
 // openStream is one in-progress streamed text field.
 type openStream struct {
 	st       *transform.Stream
-	name     string   // SSE event name of the last delta
-	last     []member // members of the last delta event, reused for trailing deltas
-	deltaAt  int      // index of "delta" in last
-	item     string   // raw item_id
-	outIndex string   // raw output_index
+	name     string // SSE event name of the last delta
+	last     *node  // the last delta event, reused for trailing deltas
+	deltaAt  int    // index of "delta" in last
+	item     string // raw item_id
+	outIndex string // raw output_index
 }
 
 type rewriter struct {
@@ -62,25 +62,27 @@ func newRewriter(r *transform.Restorer) *rewriter {
 //     reasoning items' fields other than summary; it is re-encoded only when
 //     something changed. Done events first release the held-back text of the
 //     streams they close as a trailing delta event.
+//
+// An event nesting deeper than maxDepth returns ErrDepth (cut the stream).
 func (rw *rewriter) Event(e sse.Event) ([]sse.Event, error) {
 	pass := []sse.Event{e}
 	if first(e.Data) != '{' || !json.Valid(e.Data) {
 		return pass, nil
 	}
-	ms, err := members(e.Data)
+	root, err := parse(e.Data, 0)
 	if err != nil {
-		return pass, nil
+		return nil, err
 	}
-	typ, _ := getString(ms, "type")
+	typ, _ := root.getString("type")
 	if _, ok := deltaKinds[typ]; ok {
-		return rw.delta(e, ms, typ)
+		return rw.delta(e, root, typ)
 	}
 	if strings.HasSuffix(typ, ".delta") || strings.Contains(typ, "reasoning") && !strings.Contains(typ, "reasoning_summary") {
 		return pass, nil
 	}
-	out := rw.release(typ, ms)
-	if raw, changed := rw.restore(e.Data, ""); changed {
-		e.Data = raw
+	out := rw.release(typ, root)
+	if rw.restore(root, ""); root.dirty {
+		e.Data = root.encode(false)
 	}
 	return append(out, e), nil
 }
@@ -90,42 +92,46 @@ func (rw *rewriter) Flush() []sse.Event {
 	return rw.flushWhere(func(string, *openStream) bool { return true })
 }
 
-func streamKey(kind string, ms []member) string {
+func rawOf(n *node) string {
+	if n == nil {
+		return ""
+	}
+	return string(n.raw)
+}
+
+func streamKey(kind string, n *node) string {
 	var b strings.Builder
 	b.WriteString(kind)
 	for _, k := range []string{"item_id", "output_index", "content_index", "summary_index"} {
-		raw, _ := get(ms, k)
 		b.WriteByte(0)
-		b.Write(raw)
+		b.WriteString(rawOf(n.get(k)))
 	}
 	return b.String()
 }
 
-func (rw *rewriter) delta(e sse.Event, ms []member, typ string) ([]sse.Event, error) {
+func (rw *rewriter) delta(e sse.Event, root *node, typ string) ([]sse.Event, error) {
 	at := -1
-	for i, m := range ms {
-		if m.key == "delta" {
+	for i, k := range root.keys {
+		if k == "delta" {
 			at = i
 		}
 	}
-	var d string
-	if at < 0 || first(ms[at].val) != '"' || json.Unmarshal(ms[at].val, &d) != nil {
+	if at < 0 || root.kids[at].kind != '"' {
 		return nil, fmt.Errorf("codex: %s event without a string delta", typ)
 	}
-	key := streamKey(typ, ms)
+	d := root.kids[at].str
+	key := streamKey(typ, root)
 	os := rw.streams[key]
 	if os == nil {
 		r := rw.plain
 		if deltaKinds[typ] {
 			r = rw.esc
 		}
-		item, _ := get(ms, "item_id")
-		out, _ := get(ms, "output_index")
-		os = &openStream{st: r.NewStream(), item: string(item), outIndex: string(out)}
+		os = &openStream{st: r.NewStream(), item: rawOf(root.get("item_id")), outIndex: rawOf(root.get("output_index"))}
 		rw.streams[key] = os
 		rw.order = append(rw.order, key)
 	}
-	os.name, os.last, os.deltaAt = e.Name, ms, at
+	os.name, os.last, os.deltaAt = e.Name, root, at
 	out := os.st.Write(d)
 	switch out {
 	case d:
@@ -138,35 +144,35 @@ func (rw *rewriter) delta(e sse.Event, ms []member, typ string) ([]sse.Event, er
 
 // withDelta returns the last delta event with its delta replaced.
 func (os *openStream) withDelta(d string) sse.Event {
-	ms := append([]member(nil), os.last...)
-	ms[os.deltaAt].val = quote(d)
-	return sse.Event{Name: os.name, Data: encodeObject(ms)}
+	ev := *os.last
+	ev.kids = append([]*node(nil), os.last.kids...)
+	ev.kids[os.deltaAt] = &node{kind: '"', str: d, dirty: true}
+	ev.dirty = true
+	return sse.Event{Name: os.name, Data: ev.encode(false)}
 }
 
-// release flushes the streams that the event typ (with members ms) closes.
-func (rw *rewriter) release(typ string, ms []member) []sse.Event {
+// release flushes the streams that the event typ closes.
+func (rw *rewriter) release(typ string, root *node) []sse.Event {
 	switch {
 	case terminal[typ]:
 		return rw.Flush()
 	case typ == "response.output_item.done":
-		var id, idx []byte
-		if item, ok := get(ms, "item"); ok && first(item) == '{' {
-			if ims, err := members(item); err == nil {
-				id, _ = get(ims, "id")
-			}
+		var id string
+		if item := root.get("item"); item != nil && item.kind == '{' {
+			id = rawOf(item.get("id"))
 		}
-		idx, _ = get(ms, "output_index")
+		idx := rawOf(root.get("output_index"))
 		return rw.flushWhere(func(_ string, os *openStream) bool {
-			return len(id) > 0 && os.item == string(id) || len(idx) > 0 && os.outIndex == string(idx)
+			return id != "" && os.item == id || idx != "" && os.outIndex == idx
 		})
 	case partDone[typ] != nil:
 		keys := map[string]bool{}
 		for _, k := range partDone[typ] {
-			keys[streamKey(k, ms)] = true
+			keys[streamKey(k, root)] = true
 		}
 		return rw.flushWhere(func(k string, _ *openStream) bool { return keys[k] })
 	case strings.HasSuffix(typ, ".done"):
-		k := streamKey(strings.TrimSuffix(typ, ".done")+".delta", ms)
+		k := streamKey(strings.TrimSuffix(typ, ".done")+".delta", root)
 		return rw.flushWhere(func(key string, _ *openStream) bool { return key == k })
 	}
 	return nil
@@ -191,57 +197,32 @@ func (rw *rewriter) flushWhere(sel func(string, *openStream) bool) []sse.Event {
 	return out
 }
 
-// restore restores the string leaves of raw. key is the member name raw is
-// the value of ("" for array elements and the event itself).
-func (rw *rewriter) restore(raw json.RawMessage, key string) (json.RawMessage, bool) {
-	switch first(raw) {
+// restore restores the string leaves of n in place. key is the member name
+// n is the value of ("" for array elements and the event itself).
+func (rw *rewriter) restore(n *node, key string) {
+	switch n.kind {
 	case '{':
-		ms, err := members(raw)
-		if err != nil {
-			return raw, false
-		}
-		t, _ := getString(ms, "type")
+		t, _ := n.getString("type")
 		reasoning := t == "reasoning"
-		changed := false
-		for i, m := range ms {
-			if opaque[m.key] || reasoning && m.key != "summary" {
+		for i, k := range n.keys {
+			if opaque[k] || reasoning && k != "summary" {
 				continue
 			}
-			if nv, ch := rw.restore(m.val, m.key); ch {
-				ms[i].val, changed = nv, true
-			}
+			rw.restore(n.kids[i], k)
+			n.dirty = n.dirty || n.kids[i].dirty
 		}
-		if !changed {
-			return raw, false
-		}
-		return encodeObject(ms), true
 	case '[':
-		es, err := elements(raw)
-		if err != nil {
-			return raw, false
+		for _, kid := range n.kids {
+			rw.restore(kid, "")
+			n.dirty = n.dirty || kid.dirty
 		}
-		changed := false
-		for i, e := range es {
-			if ne, ch := rw.restore(e, ""); ch {
-				es[i], changed = ne, true
-			}
-		}
-		if !changed {
-			return raw, false
-		}
-		return encodeArray(es), true
 	case '"':
-		var s string
-		if json.Unmarshal(raw, &s) != nil {
-			return raw, false
-		}
 		r := rw.plain
 		if key == "arguments" {
 			r = rw.esc
 		}
-		if out := r.Text(s); out != s {
-			return quote(out), true
+		if out := r.Text(n.str); out != n.str {
+			n.setString(out)
 		}
 	}
-	return raw, false
 }

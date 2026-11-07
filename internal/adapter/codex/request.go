@@ -14,131 +14,223 @@ import (
 // JSON object, or contains a binary (image, file, audio) part. Block.
 var ErrBadBody = errors.New("codex: request body rejected")
 
-// Keys that carry or reference binary content. Any of them in the request
-// protocol JSON blocks the request: its content cannot be scanned.
+// Where a value sits in the Responses API request.
+type pos int
+
+const (
+	posOther    pos = iota
+	posTop          // the request object
+	posItems        // top.input
+	posItem         // an element of top.input
+	posParts        // item.content / item.output / item.summary
+	posPart         // an element of those
+	posTools        // top.tools
+	posTool         // an element of top.tools
+	posIncludes     // top.include
+	posText         // top.text
+)
+
+// childPos is the position of member key of an object at p.
+func childPos(p pos, key string) pos {
+	switch p {
+	case posTop:
+		switch key {
+		case "input":
+			return posItems
+		case "tools":
+			return posTools
+		case "include":
+			return posIncludes
+		case "text":
+			return posText
+		}
+	case posItem:
+		switch key {
+		case "content", "output", "summary":
+			return posParts
+		}
+	}
+	return posOther
+}
+
+// elemPos is the position of an element of an array at p.
+func elemPos(p pos) pos {
+	switch p {
+	case posItems:
+		return posItem
+	case posParts:
+		return posPart
+	case posTools:
+		return posTool
+	case posIncludes:
+		return posIncludes
+	}
+	return posOther
+}
+
+// opaqueAt reports whether the STRING value of member key of object obj at
+// p is a protocol value passed byte-identical (never scanned). Only these
+// protocol positions are opaque; everywhere else (schemas, client_metadata,
+// tool results, unknown keys) every string is scanned, and objects or arrays
+// under these names are always walked.
+func opaqueAt(p pos, key string, obj *node) bool {
+	if key == "encrypted_content" {
+		return true
+	}
+	switch p {
+	case posTop:
+		return key == "model" || key == "prompt_cache_key" || key == "tool_choice"
+	case posItem:
+		switch key {
+		case "id", "call_id", "type", "role", "status":
+			return true
+		case "name":
+			t, _ := obj.getString("type")
+			return t == "function_call" || t == "custom_tool_call"
+		}
+	case posPart:
+		return key == "type" || key == "id" || key == "status"
+	case posTool:
+		return key == "type" || key == "name"
+	}
+	return false
+}
+
+// protocolKeys are field names that are not scanned as keys (any other key
+// is: a key can carry a value, e.g. a host name used as a map key). They are
+// fixed words, so exempting them cannot hide a value.
+var protocolKeys = map[string]bool{}
+
+func init() {
+	for _, k := range strings.Fields(`
+		id call_id item_id encrypted_content signature data image_url prompt_cache_key
+		model type role status name content input tools text arguments output summary
+		reasoning parameters properties schema format description client_metadata store
+		stream include tool_choice parallel_tool_calls instructions required enum items
+		additionalProperties strict effort verbosity syntax definition execution
+		external_web_access search_content_types annotations metadata user
+		previous_response_id max_output_tokens temperature top_p truncation service_tier
+		session_id thread_id turn_id root_turn_id x-codex-installation-id
+		x-codex-turn-metadata x-codex-window-id cmd workdir`) {
+		protocolKeys[k] = true
+	}
+}
+
+// Keys that carry or reference binary content.
 var binaryKeys = map[string]bool{"image_url": true, "file_data": true, "file_id": true}
 
 // A "type" value containing one of these marks a binary part.
 var binaryTypes = []string{"image", "file", "audio"}
 
-// Top-level keys whose subtrees define tools or output formats. Their
-// strings are still scanned, but schema property names such as "file_id" or
-// tool types such as "image_generation" describe data and do not block.
-var definitionKeys = map[string]bool{"tools": true, "tool_choice": true, "text": true}
-
-// sanitizeRequest rewrites a Responses API request body. Every string leaf is
-// sanitized except values of opaque keys; strings that are themselves JSON
-// objects or arrays (function-call arguments, metadata) are sanitized leaf by
-// leaf and then scanned again as text. Untouched values keep their original
-// bytes; a body with nothing to replace is returned as is. On error the
-// result is nil.
+// sanitizeRequest rewrites a Responses API request body: every string leaf,
+// every object key (protocol field names excepted) and every integer literal
+// of 13+ digits is sanitized, except the string values at protocol positions
+// (opaqueAt). Strings that are themselves JSON objects or arrays are walked
+// as JSON. Untouched values keep their original bytes; a body with nothing to
+// replace is returned as is. On error the result is nil.
 func sanitizeRequest(body []byte, s *transform.Sanitizer) ([]byte, error) {
 	if first(body) != '{' || !utf8.Valid(body) || !json.Valid(body) {
 		return nil, fmt.Errorf("%w: not a JSON object", ErrBadBody)
 	}
-	w := reqWalker{s: s}
-	out, changed, err := w.object(body, scope{top: true})
+	root, err := parse(body, 0)
 	if err != nil {
 		return nil, err
 	}
-	if !changed {
+	w := reqWalker{s: s}
+	if err := w.walk(root, scope{pos: posTop}); err != nil {
+		return nil, err
+	}
+	if !root.dirty {
 		return body, nil
 	}
-	return out, nil
+	return root.encode(false), nil
 }
 
 type reqWalker struct{ s *transform.Sanitizer }
 
-// scope says where a value sits.
 type scope struct {
-	top        bool // the request object itself
-	inner      bool // inside a JSON document carried in a string: no opaque keys, no binary checks
-	definition bool // inside tools / tool_choice / text: no binary checks
+	pos    pos
+	inner  bool // inside JSON carried in a string: nothing opaque, no binary checks
+	schema bool // inside a tool/format schema: no binary checks
+	depth  int  // containers enclosing the value
 }
 
-func (w reqWalker) value(raw json.RawMessage, sc scope) (json.RawMessage, bool, error) {
-	switch first(raw) {
-	case '{':
-		return w.object(raw, sc)
-	case '[':
-		es, err := elements(raw)
-		if err != nil {
-			return nil, false, err
-		}
-		changed := false
-		for i, e := range es {
-			ne, ch, err := w.value(e, sc)
-			if err != nil {
-				return nil, false, err
-			}
-			if ch {
-				es[i], changed = ne, true
-			}
-		}
-		if !changed {
-			return raw, false, nil
-		}
-		return encodeArray(es), true, nil
-	case '"':
-		var str string
-		if err := json.Unmarshal(raw, &str); err != nil {
-			return nil, false, errShape
-		}
-		out, err := w.str(str)
-		if err != nil {
-			return nil, false, err
-		}
-		if out == str {
-			return raw, false, nil
-		}
-		return quote(out), true, nil
-	}
-	return raw, false, nil // number, true, false, null
-}
-
-func (w reqWalker) object(raw json.RawMessage, sc scope) (json.RawMessage, bool, error) {
-	ms, err := members(raw)
+func (w reqWalker) text(s string) (string, error) {
+	out, err := w.s.Text(s)
 	if err != nil {
-		return nil, false, err
+		return "", fmt.Errorf("codex: sanitize request: %w", err)
 	}
-	if !sc.inner && !sc.definition {
-		if err := checkBinary(ms); err != nil {
-			return nil, false, err
-		}
-	}
-	changed := false
-	for i, m := range ms {
-		if !sc.inner && opaque[m.key] {
-			continue
-		}
-		child := scope{inner: sc.inner, definition: sc.definition || sc.top && definitionKeys[m.key]}
-		nv, ch, err := w.value(m.val, child)
-		if err != nil {
-			return nil, false, err
-		}
-		if ch {
-			ms[i].val, changed = nv, true
-		}
-	}
-	if !changed {
-		return raw, false, nil
-	}
-	return encodeObject(ms), true, nil
+	return out, nil
 }
 
-// checkBinary rejects an object that is or references a binary part. Error
-// messages name the key, never a value. Every "type" member is checked, so a
-// duplicate key cannot hide a binary type from a last-key-wins parser.
-func checkBinary(ms []member) error {
-	for _, m := range ms {
-		if binaryKeys[m.key] {
-			return fmt.Errorf("%w: binary content key %q", ErrBadBody, m.key)
+// walk sanitizes n in place, marking it dirty if anything changed.
+func (w reqWalker) walk(n *node, sc scope) error {
+	switch n.kind {
+	case '{':
+		return w.object(n, sc)
+	case '[':
+		ep := elemPos(sc.pos)
+		for _, kid := range n.kids {
+			if !sc.inner && ep == posIncludes && kid.kind == '"' {
+				continue // include entries are protocol values
+			}
+			if err := w.walk(kid, scope{pos: ep, inner: sc.inner, schema: sc.schema, depth: sc.depth + 1}); err != nil {
+				return err
+			}
+			n.dirty = n.dirty || kid.dirty
 		}
-		var t string
-		if m.key != "type" || first(m.val) != '"' || json.Unmarshal(m.val, &t) != nil {
+	case '"':
+		return w.str(n, sc)
+	case '0':
+		return w.number(n)
+	}
+	return nil
+}
+
+func (w reqWalker) object(n *node, sc scope) error {
+	if !sc.inner && !sc.schema {
+		if err := checkBinary(n, sc.pos == posTool); err != nil {
+			return err
+		}
+	}
+	for i, k := range n.keys {
+		if !protocolKeys[k] {
+			nk, err := w.text(k)
+			if err != nil {
+				return err
+			}
+			if nk != k {
+				n.keys[i], n.dirty = nk, true
+			}
+		}
+		kid := n.kids[i]
+		if !sc.inner && kid.kind == '"' && opaqueAt(sc.pos, k, n) {
 			continue
 		}
-		lt := strings.ToLower(t)
+		schema := sc.schema || !sc.inner &&
+			(sc.pos == posTool && (k == "parameters" || k == "format") || sc.pos == posText && (k == "format" || k == "schema"))
+		if err := w.walk(kid, scope{pos: childPos(sc.pos, k), inner: sc.inner, schema: schema, depth: sc.depth + 1}); err != nil {
+			return err
+		}
+		n.dirty = n.dirty || kid.dirty
+	}
+	return nil
+}
+
+// checkBinary rejects an object that is or references a binary part. Every
+// member is checked, so a duplicate key cannot hide a binary type. The type
+// of a tools[] entry (e.g. "image_generation") is exempt. Messages name the
+// key, never a value.
+func checkBinary(n *node, toolEntry bool) error {
+	for i, k := range n.keys {
+		kid := n.kids[i]
+		if binaryKeys[k] || k == "data" && kid.kind == '"' {
+			return fmt.Errorf("%w: binary content key %q", ErrBadBody, k)
+		}
+		if k != "type" || kid.kind != '"' || toolEntry {
+			continue
+		}
+		lt := strings.ToLower(kid.str)
 		for _, b := range binaryTypes {
 			if strings.Contains(lt, b) {
 				return fmt.Errorf("%w: %s part", ErrBadBody, b)
@@ -148,31 +240,81 @@ func checkBinary(ms []member) error {
 	return nil
 }
 
+// number sanitizes an integer literal of 13 or more digits (a card number or
+// account id sent as a number); a changed value becomes a JSON string.
+func (w reqWalker) number(n *node) error {
+	lit := n.str
+	if strings.ContainsAny(lit, ".eE") || len(strings.TrimPrefix(lit, "-")) < 13 {
+		return nil
+	}
+	out, err := w.text(lit)
+	if err != nil {
+		return err
+	}
+	if out != lit {
+		n.setString(out)
+	}
+	return nil
+}
+
 // str sanitizes one string leaf. A string holding a JSON object or array is
-// walked as JSON (so escapes inside it cannot hide a value), then the whole
-// re-encoded text is scanned again; the result must still be valid JSON.
-func (w reqWalker) str(s string) (string, error) {
-	if c := first([]byte(s)); (c == '{' || c == '[') && json.Valid([]byte(s)) {
-		out, changed, err := w.value([]byte(s), scope{inner: true})
+// parsed (depth counted from here) and walked with nothing opaque, keys
+// included; the result is re-encoded if anything changed. Then the text and,
+// if still unchanged, its canonical re-encoding are scanned again as a whole
+// (belt and braces), and the result must still be valid JSON.
+func (w reqWalker) str(n *node, sc scope) error {
+	s := n.str
+	if c := first(s); (c == '{' || c == '[') && json.Valid([]byte(s)) {
+		tree, err := parse([]byte(s), sc.depth)
 		if err != nil {
-			return "", err
+			return err
+		}
+		if err := w.walk(tree, scope{pos: posOther, inner: true, depth: sc.depth}); err != nil {
+			return err
 		}
 		text := s
-		if changed {
-			text = string(out)
+		if tree.dirty {
+			text = string(tree.encode(false))
 		}
-		again, err := w.s.Text(text)
+		out, err := w.text(text)
 		if err != nil {
-			return "", fmt.Errorf("codex: sanitize request: %w", err)
+			return err
 		}
-		if again != text && !json.Valid([]byte(again)) {
-			return "", fmt.Errorf("%w: embedded JSON broken by sanitizing", ErrBadBody)
+		if out == text && !tree.dirty {
+			canon := string(tree.encode(true))
+			if c2, err := w.text(canon); err != nil {
+				return err
+			} else if c2 != canon {
+				out = c2
+			}
 		}
-		return again, nil
+		if out != s && !json.Valid([]byte(out)) {
+			return fmt.Errorf("%w: embedded JSON broken by sanitizing", ErrBadBody)
+		}
+		if out != s {
+			n.setString(out)
+		}
+		return nil
 	}
-	out, err := w.s.Text(s)
+	out, err := w.text(s)
 	if err != nil {
-		return "", fmt.Errorf("codex: sanitize request: %w", err)
+		return err
 	}
-	return out, nil
+	if out != s {
+		n.setString(out)
+	}
+	return nil
+}
+
+// first returns the first non-whitespace byte of b, or 0.
+func first[T string | []byte](b T) byte {
+	for i := 0; i < len(b); i++ {
+		switch c := b[i]; c {
+		case ' ', '\t', '\r', '\n':
+			continue
+		default:
+			return c
+		}
+	}
+	return 0
 }
