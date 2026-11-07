@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"path/filepath"
 	"regexp"
 
 	"gopkg.in/yaml.v3"
@@ -70,6 +71,75 @@ type VaultConfig struct {
 	File    string `yaml:"file"`
 }
 
+// Audit configures the persisted decision log (ADR 0001, phase 2). Every
+// field is restart-only. The pointer fields distinguish "unset" (take the
+// default) from an explicit value; use the accessor methods, which also give
+// the defaults for a config built in code rather than loaded.
+type Audit struct {
+	Enabled *bool  `yaml:"enabled"` // default true
+	File    string `yaml:"file"`    // default DefaultAuditFile(); relative paths resolve against the config file
+	// OnError is what happens when a decision cannot be recorded: "block"
+	// refuses the request (default under the strict profile), "warn" forwards
+	// it and logs a WARN (default under sanitize; refused under strict).
+	OnError       string `yaml:"on_error"`
+	MaxSizeMB     *int   `yaml:"max_size_mb"`    // rotate before a record would pass this size; default 50
+	RetentionDays *int   `yaml:"retention_days"` // delete rotated files older than this; default 90, 0 keeps them forever
+}
+
+// Audit defaults and the on_error values.
+const (
+	DefaultAuditMaxSizeMB     = 50
+	DefaultAuditRetentionDays = 90
+	maxAuditSizeMB            = 1 << 20 // 1 TiB: keeps the byte count far from overflow
+
+	AuditBlock = "block"
+	AuditWarn  = "warn"
+)
+
+// IsEnabled reports whether the decision log is on (the default).
+func (a Audit) IsEnabled() bool { return a.Enabled == nil || *a.Enabled }
+
+// MaxBytes is the rotation size in bytes.
+func (a Audit) MaxBytes() int64 {
+	if a.MaxSizeMB == nil || *a.MaxSizeMB <= 0 {
+		return DefaultAuditMaxSizeMB << 20
+	}
+	return int64(*a.MaxSizeMB) << 20
+}
+
+// Retention is the retention period in days; 0 keeps rotated files forever.
+func (a Audit) Retention() int {
+	if a.RetentionDays == nil || *a.RetentionDays < 0 {
+		return DefaultAuditRetentionDays
+	}
+	return *a.RetentionDays
+}
+
+// AuditBlocks reports whether a decision that cannot be recorded must block
+// the request. It is never weaker than asked: only an explicit "warn" under a
+// profile that is exactly sanitize (or empty) lets the request through; any
+// other profile string is treated as strict, as in EffectiveAction.
+func (c *Config) AuditBlocks() bool {
+	if c.Policy.Profile != "" && c.Policy.Profile != ProfileSanitize {
+		return true
+	}
+	return c.Audit.OnError != AuditWarn
+}
+
+// DefaultAuditFile is $XDG_STATE_HOME/cui-proxy/decisions.jsonl, else
+// ~/.local/state/cui-proxy/decisions.jsonl (also on macOS, so the docs have
+// one path). It is "" when neither is known.
+func DefaultAuditFile() string {
+	if x := os.Getenv("XDG_STATE_HOME"); x != "" && filepath.IsAbs(x) {
+		return filepath.Join(x, "cui-proxy", "decisions.jsonl")
+	}
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return ""
+	}
+	return filepath.Join(home, ".local", "state", "cui-proxy", "decisions.jsonl")
+}
+
 // Config is the top-level configuration.
 type Config struct {
 	Listen string `yaml:"listen"`
@@ -80,6 +150,7 @@ type Config struct {
 	Upstreams        map[string]string `yaml:"upstreams"` // adapter name -> base URL
 	Policy           Policy            `yaml:"policy"`
 	Vault            VaultConfig       `yaml:"vault"`
+	Audit            Audit             `yaml:"audit"`
 	Rules            []Rule            `yaml:"rules"`
 }
 
@@ -125,6 +196,27 @@ func (c *Config) applyDefaults() {
 	}
 	if c.Vault.Mode == "" {
 		c.Vault.Mode = "memory"
+	}
+	if c.Audit.Enabled == nil {
+		on := true
+		c.Audit.Enabled = &on
+	}
+	if c.Audit.File == "" {
+		c.Audit.File = DefaultAuditFile()
+	}
+	if c.Audit.OnError == "" {
+		c.Audit.OnError = AuditWarn
+		if c.Policy.Profile == ProfileStrict {
+			c.Audit.OnError = AuditBlock
+		}
+	}
+	if c.Audit.MaxSizeMB == nil {
+		n := DefaultAuditMaxSizeMB
+		c.Audit.MaxSizeMB = &n
+	}
+	if c.Audit.RetentionDays == nil {
+		n := DefaultAuditRetentionDays
+		c.Audit.RetentionDays = &n
 	}
 }
 
@@ -189,6 +281,9 @@ func (c *Config) ValidateWith(known func(class string) bool) error {
 	default:
 		return fmt.Errorf("config: vault.mode %q must be memory or file", c.Vault.Mode)
 	}
+	if err := c.validateAudit(); err != nil {
+		return err
+	}
 	if c.Policy.Profile == ProfileStrict && len(c.Rules) == 0 {
 		return errors.New(`config: policy.profile "strict" needs at least one rule: with none it would detect, and so block, nothing`)
 	}
@@ -210,6 +305,32 @@ func (c *Config) ValidateWith(known func(class string) bool) error {
 			return fmt.Errorf("config: rules[%d]: duplicate name %q", i, r.Name)
 		}
 		seen[r.Name] = true
+	}
+	return nil
+}
+
+// validateAudit checks the audit block. Under strict the decision log may not
+// be weakened: it must be on and a failed write must block.
+func (c *Config) validateAudit() error {
+	a := c.Audit
+	switch a.OnError {
+	case "", AuditBlock, AuditWarn:
+	default:
+		return fmt.Errorf("config: audit.on_error %q must be block or warn", a.OnError)
+	}
+	if a.MaxSizeMB != nil && (*a.MaxSizeMB < 1 || *a.MaxSizeMB > maxAuditSizeMB) {
+		return fmt.Errorf("config: audit.max_size_mb %d must be between 1 and %d", *a.MaxSizeMB, maxAuditSizeMB)
+	}
+	if a.RetentionDays != nil && *a.RetentionDays < 0 {
+		return fmt.Errorf("config: audit.retention_days %d must not be negative (0 keeps rotated files forever)", *a.RetentionDays)
+	}
+	if c.Policy.Profile == ProfileStrict {
+		if !a.IsEnabled() {
+			return errors.New(`config: audit.enabled false is not allowed under policy.profile "strict": every decision must be recorded`)
+		}
+		if a.OnError == AuditWarn {
+			return errors.New(`config: audit.on_error "warn" is not allowed under policy.profile "strict": a decision that cannot be recorded must block the request`)
+		}
 	}
 	return nil
 }
