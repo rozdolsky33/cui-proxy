@@ -1,0 +1,66 @@
+event: response.created
+data: {"type":"response.created","sequence_number":0,"response":{"id":"resp_e2e_0001","object":"response","status":"in_progress","model":"gpt-5-codex","output":[]}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","sequence_number":1,"output_index":0,"item":{"type":"reasoning","id":"rs_e2e_0001","summary":[]}}
+
+event: response.reasoning_summary_part.added
+data: {"type":"response.reasoning_summary_part.added","sequence_number":2,"item_id":"rs_e2e_0001","output_index":0,"summary_index":0,"part":{"type":"summary_text","text":""}}
+
+event: response.reasoning_summary_text.delta
+data: {"type":"response.reasoning_summary_text.delta","sequence_number":3,"item_id":"rs_e2e_0001","output_index":0,"summary_index":0,"delta":"**Checking {{IP|1}}","obfuscation":"r1"}
+
+event: response.reasoning_summary_text.delta
+data: {"type":"response.reasoning_summary_text.delta","sequence_number":4,"item_id":"rs_e2e_0001","output_index":0,"summary_index":0,"delta":"{{IP|2}}** reachability","obfuscation":"r2"}
+
+event: response.reasoning_summary_text.done
+data: {"type":"response.reasoning_summary_text.done","sequence_number":5,"item_id":"rs_e2e_0001","output_index":0,"summary_index":0,"text":"**Checking {{IP}}** reachability"}
+
+event: response.reasoning_summary_part.done
+data: {"type":"response.reasoning_summary_part.done","sequence_number":6,"item_id":"rs_e2e_0001","output_index":0,"summary_index":0,"part":{"type":"summary_text","text":"**Checking {{IP}}** reachability"}}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","sequence_number":7,"output_index":0,"item":{"type":"reasoning","id":"rs_e2e_0001","summary":[{"type":"summary_text","text":"**Checking {{IP}}** reachability"}],"encrypted_content":"gAAAAB-e2e-opaque-blob=="}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","sequence_number":8,"output_index":1,"item":{"type":"function_call","id":"fc_e2e_0001","status":"in_progress","name":"exec_command","call_id":"call_e2e_0001","arguments":""}}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","sequence_number":9,"item_id":"fc_e2e_0001","output_index":1,"delta":"{\"cmd\":\"ssh ops@{{IP|1}}","obfuscation":"f1"}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","sequence_number":10,"item_id":"fc_e2e_0001","output_index":1,"delta":"{{IP|2}} oci describe {{OCID|1}}","obfuscation":"f2"}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","sequence_number":11,"item_id":"fc_e2e_0001","output_index":1,"delta":"{{OCID|2}} on {{HOST}}\"}","obfuscation":"f3"}
+
+event: response.function_call_arguments.done
+data: {"type":"response.function_call_arguments.done","sequence_number":12,"item_id":"fc_e2e_0001","output_index":1,"arguments":"{\"cmd\":\"ssh ops@{{IP}} oci describe {{OCID}} on {{HOST}}\"}"}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","sequence_number":13,"output_index":1,"item":{"type":"function_call","id":"fc_e2e_0001","status":"completed","name":"exec_command","call_id":"call_e2e_0001","arguments":"{\"cmd\":\"ssh ops@{{IP}} oci describe {{OCID}} on {{HOST}}\"}"}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","sequence_number":14,"output_index":2,"item":{"type":"message","id":"msg_e2e_0001","status":"in_progress","role":"assistant","content":[]}}
+
+event: response.content_part.added
+data: {"type":"response.content_part.added","sequence_number":15,"item_id":"msg_e2e_0001","output_index":2,"content_index":0,"part":{"type":"output_text","text":""}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":16,"item_id":"msg_e2e_0001","output_index":2,"content_index":0,"delta":"Host {{HOST|1}}","obfuscation":"t1"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":17,"item_id":"msg_e2e_0001","output_index":2,"content_index":0,"delta":"{{HOST|2}} is owned by {{EMAIL}}.","obfuscation":"t2"}
+
+event: response.output_text.done
+data: {"type":"response.output_text.done","sequence_number":18,"item_id":"msg_e2e_0001","output_index":2,"content_index":0,"text":"Host {{HOST}} is owned by {{EMAIL}}."}
+
+event: response.content_part.done
+data: {"type":"response.content_part.done","sequence_number":19,"item_id":"msg_e2e_0001","output_index":2,"content_index":0,"part":{"type":"output_text","text":"Host {{HOST}} is owned by {{EMAIL}}."}}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","sequence_number":20,"output_index":2,"item":{"type":"message","id":"msg_e2e_0001","status":"completed","role":"assistant","content":[{"type":"output_text","text":"Host {{HOST}} is owned by {{EMAIL}}."}]}}
+
+event: response.completed
+data: {"type":"response.completed","sequence_number":21,"response":{"id":"resp_e2e_0001","object":"response","status":"completed","model":"gpt-5-codex","output":[{"type":"reasoning","id":"rs_e2e_0001","summary":[{"type":"summary_text","text":"**Checking {{IP}}** reachability"}],"encrypted_content":"gAAAAB-e2e-opaque-blob=="},{"type":"function_call","id":"fc_e2e_0001","status":"completed","name":"exec_command","call_id":"call_e2e_0001","arguments":"{\"cmd\":\"ssh ops@{{IP}} oci describe {{OCID}} on {{HOST}}\"}"},{"type":"message","id":"msg_e2e_0001","status":"completed","role":"assistant","content":[{"type":"output_text","text":"Host {{HOST}} is owned by {{EMAIL}}."}]}],"usage":{"input_tokens":120,"output_tokens":40,"total_tokens":160}}}
+
