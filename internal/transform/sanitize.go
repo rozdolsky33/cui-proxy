@@ -60,6 +60,19 @@ func (s *Sanitizer) WithSink(sink Sink) *Sanitizer {
 	return &c
 }
 
+// Detect returns the detected spans of in whose text is not already a vault
+// synthetic. It neither replaces nor records anything; use it to check text
+// that must be blocked rather than rewritten (e.g. request headers).
+func (s *Sanitizer) Detect(in string) []detect.Span {
+	var out []detect.Span
+	for _, sp := range detect.Scan(s.ds, in) {
+		if !s.v.IsSynthetic(in[sp.Start:sp.End]) {
+			out = append(out, sp)
+		}
+	}
+	return out
+}
+
 // Text returns in with every detected value replaced by its synthetic.
 // Spans whose text already is a vault synthetic (from earlier turns) are left
 // alone, so sanitizing is idempotent. On error the returned text is empty and

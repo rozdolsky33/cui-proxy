@@ -263,3 +263,29 @@ func TestReadBOMOnlyAtStreamStart(t *testing.T) {
 		t.Fatalf("%+v", evs)
 	}
 }
+
+func TestUnterminated(t *testing.T) {
+	for _, tc := range []struct {
+		in   string
+		want []bool // Unterminated after each event
+	}{
+		{"data: a\n\ndata: b\n\n", []bool{false, false}},
+		{"data: a\n\ndata: wor", []bool{false, true}},
+		{"data: a\n\ndata: b\n", []bool{false, true}},
+		{"data: a\r\n\r\nevent: x\r\ndata: b", []bool{false, true}},
+		{"data: a\n\n", []bool{false}},
+	} {
+		r := NewReader(strings.NewReader(tc.in))
+		for i, want := range tc.want {
+			if _, err := r.Next(); err != nil {
+				t.Fatalf("%q event %d: %v", tc.in, i, err)
+			}
+			if got := r.Unterminated(); got != want {
+				t.Errorf("%q event %d: Unterminated = %v, want %v", tc.in, i, got, want)
+			}
+		}
+		if _, err := r.Next(); err != io.EOF {
+			t.Errorf("%q: want EOF, got %v", tc.in, err)
+		}
+	}
+}

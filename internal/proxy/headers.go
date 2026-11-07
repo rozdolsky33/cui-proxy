@@ -2,7 +2,10 @@ package proxy
 
 import (
 	"net/http"
+	"net/url"
 	"strings"
+
+	"cui-proxy/internal/transform"
 )
 
 // hopByHop are the RFC 9110 section 7.6.1 connection-specific headers plus
@@ -46,11 +49,46 @@ func upstreamHeader(in http.Header) http.Header {
 	removeHopByHop(h)
 	h.Del("Content-Length")
 	h.Del("Host")
+	h.Del("Expect") // the body is already buffered; 100-continue is per hop
 	h.Set("Accept-Encoding", "identity")
 	if _, ok := h["User-Agent"]; !ok {
 		h["User-Agent"] = []string{""} // keep Go's default User-Agent out
 	}
 	return h
+}
+
+// credentialHeaders are forwarded untouched and never scanned: their values
+// are tokens (a bearer token is itself a "secret" detection).
+var credentialHeaders = map[string]bool{
+	"Authorization": true, "Proxy-Authorization": true, "Cookie": true, "Chatgpt-Account-Id": true,
+}
+
+// requestMetaSensitive reports whether any request header name, any value of
+// a non-credential header, or the (percent-decoded) query string contains a
+// value the detectors find. Headers and query are never rewritten.
+func requestMetaSensitive(r *http.Request, s *transform.Sanitizer) bool {
+	for k, vs := range r.Header {
+		if len(s.Detect(k)) > 0 {
+			return true
+		}
+		if credentialHeaders[http.CanonicalHeaderKey(k)] {
+			continue
+		}
+		for _, v := range vs {
+			if len(s.Detect(v)) > 0 {
+				return true
+			}
+		}
+	}
+	if q := r.URL.RawQuery; q != "" {
+		if len(s.Detect(q)) > 0 {
+			return true
+		}
+		if d, err := url.QueryUnescape(q); err == nil && d != q && len(s.Detect(d)) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // copyResponseHeader copies the upstream response headers to dst, without

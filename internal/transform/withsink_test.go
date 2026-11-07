@@ -51,3 +51,25 @@ func TestWithSinkNilSafe(t *testing.T) {
 		t.Error("nil sanitizer WithSink should return nil")
 	}
 }
+
+// Detect reports detected values without replacing or recording them, and
+// skips values that already are vault synthetics.
+func TestDetect(t *testing.T) {
+	v := vault.New(testKey)
+	sink := &recSink{}
+	s := NewSanitizer(builtins(t), v, sink)
+	sp := s.Detect("host 10.20.30.15 mail bob@corp-internal.com")
+	if len(sp) != 2 || sp[0].Class != "ipv4" || sp[1].Class != "email" {
+		t.Errorf("spans = %+v", sp)
+	}
+	if len(s.Detect("plain text, model gpt-5.5")) != 0 {
+		t.Error("false positive on plain text")
+	}
+	syn := pseudo(t, v, "ipv4", "10.20.30.16")
+	if sp := s.Detect("host " + syn); len(sp) != 0 {
+		t.Errorf("synthetic reported: %+v", sp)
+	}
+	if len(sink.evs) != 0 || v.Len() != 1 {
+		t.Errorf("Detect had side effects: events %d, vault %d", len(sink.evs), v.Len())
+	}
+}

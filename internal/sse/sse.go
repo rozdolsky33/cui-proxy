@@ -32,7 +32,13 @@ type Reader struct {
 	br     *bufio.Reader
 	skipLF bool // previous line ended in \r; drop a leading \n
 	n      int  // bytes consumed, saturating at 4 (for BOM detection)
+	unterm bool // the last event returned ended at EOF without a blank line
 }
+
+// Unterminated reports whether the event just returned by Next ended at EOF
+// without a terminating blank line (a stream cut mid-event). Callers that
+// must not mistake truncation for a clean end treat such an event as broken.
+func (r *Reader) Unterminated() bool { return r.unterm }
 
 var bom = []byte{0xEF, 0xBB, 0xBF}
 
@@ -89,10 +95,12 @@ func (r *Reader) Next() (Event, error) {
 		started bool
 	)
 	budget := MaxEventSize
+	r.unterm = false
 	for {
 		line, err := r.readLine(&budget)
 		if err != nil {
 			if err == io.EOF && started {
+				r.unterm = true
 				return Event{Name: name, Data: data}, nil
 			}
 			return Event{}, err

@@ -175,7 +175,9 @@ func newHarness(t *testing.T, handle func(w http.ResponseWriter, r *http.Request
 	}
 	h.px = httptest.NewServer(New(d))
 	h.cliTr = &http.Transport{DisableCompression: true}
-	h.client = &http.Client{Transport: h.cliTr}
+	h.client = &http.Client{Transport: h.cliTr, CheckRedirect: func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse // observe what the proxy relays
+	}}
 	t.Cleanup(func() { h.close(); cancel() })
 	return h
 }

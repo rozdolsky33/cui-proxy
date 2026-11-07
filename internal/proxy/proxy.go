@@ -60,10 +60,18 @@ const (
 	reasonUnrestorable = "unrestorable"
 	reasonBadRequest   = "bad_request"
 	reasonInternal     = "internal"
+	// reasonHeader: a request header or the query string holds a detected
+	// value. Headers are never rewritten, so this always blocks, whatever
+	// policy.on_error says.
+	reasonHeader = "header"
 	// reasonStreamRewrite marks a response stream cut because it could not be
 	// rewritten. It is counted with Metrics.IncError, not IncBlocked: the
 	// request was already forwarded.
 	reasonStreamRewrite = "stream_rewrite"
+	// reasonUpstreamRedirect: the upstream answered with a 3xx (other than
+	// 304). Relaying it would let a redirect-following client re-send the
+	// original, unsanitized request elsewhere. Counted with IncError.
+	reasonUpstreamRedirect = "upstream_redirect"
 )
 
 var blockStatus = map[string]int{
@@ -74,6 +82,7 @@ var blockStatus = map[string]int{
 	reasonUnrestorable:  http.StatusUnprocessableEntity,
 	reasonBadRequest:    http.StatusBadRequest,
 	reasonInternal:      http.StatusInternalServerError,
+	reasonHeader:        http.StatusUnprocessableEntity,
 	reasonStreamRewrite: http.StatusBadGateway,
 }
 
@@ -85,6 +94,7 @@ var blockMessage = map[string]string{
 	reasonUnrestorable:  "request could not be sanitized reversibly",
 	reasonBadRequest:    "malformed request",
 	reasonInternal:      "internal error",
+	reasonHeader:        "a request header or the query string contains a sensitive value",
 	reasonStreamRewrite: "response could not be restored",
 }
 
@@ -139,7 +149,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	x := &exchange{
 		w:     &countingWriter{rw: w},
-		entry: audit.Entry{Time: start, Adapter: h.d.Adapter.Name(), Method: r.Method, Path: r.URL.Path},
+		entry: audit.Entry{Time: start, Adapter: h.d.Adapter.Name(), Method: auditMethod(r.Method), Path: r.URL.Path},
 	}
 	h.d.Metrics.IncRequest()
 	abort := h.serveSafe(x, w, r)
@@ -203,6 +213,15 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 	if encoded(r.Header) {
 		return h.block(x, reasonCompressed)
 	}
+	san, rest := h.d.Current()
+	if san == nil || rest == nil {
+		return h.block(x, reasonInternal)
+	}
+	// Before reading the body: headers and query are never rewritten, so a
+	// detected value blocks outright (on_error: passthrough does not apply).
+	if requestMetaSensitive(r, san) {
+		return h.block(x, reasonHeader)
+	}
 	limit := cfg.Policy.MaxBodyBytes
 	if limit <= 0 {
 		limit = defaultMaxBody
@@ -217,10 +236,6 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 	}
 	x.entry.BytesIn = len(body)
 
-	san, rest := h.d.Current()
-	if san == nil || rest == nil {
-		return h.block(x, reasonInternal)
-	}
 	switch route.Kind {
 	case adapter.KindPassthrough:
 		if len(body) > 0 {
@@ -311,6 +326,14 @@ func (h *handler) forward(x *exchange, r *http.Request, route adapter.Route, bod
 	}
 	defer res.Body.Close()
 
+	if res.StatusCode >= 300 && res.StatusCode < 400 && res.StatusCode != http.StatusNotModified {
+		// Never relay Location or the redirect body.
+		h.d.Metrics.IncError()
+		x.entry.Blocked = reasonUpstreamRedirect
+		h.d.Logf("cui-proxy: upstream answered with a redirect (%d); response blocked", res.StatusCode)
+		writeError(x.w, http.StatusBadGateway, reasonUpstreamRedirect, "cui_proxy_error", "upstream redirected the request")
+		return false
+	}
 	if !isSSE(res.Header) {
 		copyResponseHeader(x.w.Header(), res.Header)
 		x.w.WriteHeader(res.StatusCode)
@@ -394,6 +417,13 @@ func (h *handler) stream(x *exchange, r *http.Request, body io.Reader, rest *tra
 			h.d.Logf("cui-proxy: upstream stream read failed (%s); connection aborted", errKind(err))
 			return true
 		}
+		if rd.Unterminated() {
+			// The upstream closed mid-event: drop the partial event and
+			// abort so the client never mistakes truncation for a clean end.
+			h.d.Metrics.IncError()
+			h.d.Logf("cui-proxy: upstream stream ended mid-event; connection aborted")
+			return true
+		}
 		t0 := time.Now()
 		evs, err := rw.Event(ev)
 		x.overhead += time.Since(t0)
@@ -438,6 +468,19 @@ func errKind(err error) string {
 		return "unexpected eof"
 	}
 	return "connection error"
+}
+
+// auditMethods is the closed set of methods recorded as is; any other
+// (client-chosen) method token is audited as "(other)".
+var auditMethods = map[string]bool{
+	"GET": true, "POST": true, "HEAD": true, "OPTIONS": true, "PUT": true, "DELETE": true, "PATCH": true,
+}
+
+func auditMethod(m string) string {
+	if auditMethods[m] {
+		return m
+	}
+	return "(other)"
 }
 
 // countingWriter records the status and body bytes sent to the client.
