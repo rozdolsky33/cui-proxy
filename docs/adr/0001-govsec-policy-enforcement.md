@@ -68,6 +68,8 @@ and is useful on its own.
 - Each rule may set `action: block | sanitize` to override the profile for that rule, never to weaken `strict` unless an approval covers it.
 - `policy.unsupported: block` is explicit and listed in the mapping document: images, files, audio, compressed bodies, unknown routes, over-deep or oversized bodies, unparseable bodies. (Behavior today; this makes it a visible, documented setting rather than an implementation detail.)
 - A blocked response is a 422 with a stable reason code and rule ID, never request data (as today).
+- A policy block is a decision, not a failure: `policy.on_error: passthrough` never forwards it, and the config is refused when any rule blocks and `on_error` is `passthrough` (a failure can hit before the blocking rule's value is scanned). The proxy enforces the same at runtime. Unsupported content is refused even under passthrough, so `policy.unsupported: block` is true without exceptions.
+- When any rule blocks, fields normally passed through unscanned (protocol identifiers, `include` entries) and every number literal are checked, not rewritten; `encrypted_content` (vendor ciphertext) and the credential headers are the documented exceptions.
 
 **Default profile (decided 2026-11-07).** `sanitize` stays the default while the version is 0.x so existing users are not surprised, and `strict` ships as a named profile (`cui-proxy policy init --profile strict`). The default is revisited at 1.0 (open question 5). The CLI and dashboard always show which profile is active, and `policy check` says plainly what `sanitize` does not do.
 
@@ -168,6 +170,7 @@ not a compliance control and does not replace the approving authorities.
 | Trusted key rotated | Old approvals stop verifying | Distribute the new key, re-issue approvals |
 | Clock wrong | Expiry misjudged | Fix time sync; `policy check` shows the clock it used |
 | `lock` engaged | Everything blocked until `unlock` | Intentional; the decision log records lock and unlock |
+| Reload lowers the policy (strict to sanitize, or fewer blocking rules) | Allowed (a local operator action) | Logged as `WARN policy weakened by reload: ...`; the active profile is logged on every start and reload and shown in the dashboard |
 
 **Routine tasks (runbook)**: renew the approval before its expiry (warning starts 14 days out); rotate trusted keys; export or ship the decision log; archive by retention; verify the chain on a schedule; tune rules from `explain` output using synthetic data only; review blocks weekly.
 
@@ -202,4 +205,4 @@ Each phase is a release with its own tests and review.
 |---|---|---|
 | 2026-11-07 | Proposed | Drafted from the review of the masking-only behavior; approval format pending |
 | 2026-11-07 | Accepted | Maintainer accepted the plan, the `sanitize` default for 0.x with `strict` as a named profile, and the defaults table. Approval format split out to ADR 0002 (deferred); phase 3 stays blocked on it. Phase 1 build started. |
-| 2026-11-07 | Phase 1 delivered | `policy.profile` (sanitize default, strict), per-rule `action`, `policy.unsupported`, reason code `policy` / kind `rule_match` (never forwarded by `on_error: passthrough`), `policy init` and `policy check` (`-require-strict`), `init -profile`, profile and per-rule action in the dashboard. Strict requires `on_error: block` and forbids `action: sanitize` until an approval can allow it. Phases 2-5 pending; phase 3 blocked on ADR 0002. |
+| 2026-11-07 | Phase 1 delivered | `policy.profile` (sanitize default, strict), per-rule `action`, `policy.unsupported`, reason code `policy` / kind `rule_match` (never forwarded by `on_error: passthrough`), `policy init` and `policy check` (`-require-strict`), `init -profile`, profile and per-rule action in the dashboard. Strict requires `on_error: block` and forbids `action: sanitize` until an approval can allow it. Hardened after an independent review: any blocking rule refuses `on_error: passthrough` (config and runtime), passthrough never forwards unsupported content, opaque protocol fields and all number literals are checked when a rule blocks, reloads log the profile and WARN when the policy is weakened. Phases 2-5 pending; phase 3 blocked on ADR 0002. |

@@ -340,20 +340,40 @@ Any rule can also set `action: block` to refuse a request that matches it
 even under `sanitize` (for example a dictionary of names that must never
 leave). Under `strict` every rule blocks and a rule may not set
 `action: sanitize` (a verified approval may allow that in a later release; see
-[docs/adr](docs/adr/)). `strict` also requires `policy.on_error: block`: the
-config is refused otherwise.
+[docs/adr](docs/adr/)). **Any blocking rule (the strict profile or an
+`action: block`) also requires `policy.on_error: block`**: the config is
+refused otherwise, because `passthrough` forwards the original request when it
+cannot be inspected, and a failure can hit before the blocking rule is checked.
+The proxy enforces the same thing at runtime, whatever the config says.
 
 - A policy block is a **decision, not a failure**: `policy.on_error:
   passthrough` never forwards it. The error code is `policy` (HTTP 422) and
   the message names the rule, never the value:
   `cui-proxy: request blocked (reason=policy kind=rule_match rule=builtin.ipv4)`.
+- When any rule blocks, fields that are normally passed through unscanned so
+  the protocol keeps working (`model`, ids, `role`, `status`, tool names and
+  types, `include` entries) are **checked, not rewritten**, and so is every
+  number in the request, not just text. The one exception is
+  `encrypted_content` (the vendor's encrypted reasoning blobs, resent as
+  received).
+- The `Authorization`, `Cookie` and `Chatgpt-Account-Id` headers are
+  credentials and are forwarded as they are; every other header and the query
+  string are scanned and a match blocks.
 - The profile applies on reload (SIGHUP, the dashboard button or the
-  menu-bar item); the running profile is shown in the dashboard header.
-  Switching to `strict` mid-session is safe: values the vault already issued
-  as synthetics, which Codex resends in history, do not block.
+  menu-bar item); the running profile is shown in the dashboard header and
+  logged on every start and reload. **A reload can lower the policy** (this is
+  a local operator action): it is logged as
+  `WARN policy weakened by reload: ...` when the profile goes from `strict` to
+  anything else or fewer rules block.
+  Switching to `strict` mid-session is safe for values the vault already
+  issued as synthetics, which Codex resends in history: they do not block.
+  One exception: an address from the `198.18.0.0/15` overflow pool can be a
+  real address, so it does block, and because history is resent, so does every
+  later turn of that conversation; start a new session.
 - `policy.unsupported: block` is the only value and is the default: content
   the proxy cannot inspect (images, files, compressed bodies, unknown routes,
-  oversized, too deeply nested or unparseable bodies) is always refused.
+  oversized, too deeply nested or unparseable bodies) is always refused,
+  **even under `policy.on_error: passthrough`**.
 - `policy check` prints the effective action of every rule and states plainly
   what is enforced, what is not implemented yet (verified approvals, a
   persisted decision log, account allowlists) and what no local tool can do.
@@ -428,16 +448,20 @@ blocked: it is masked as a `REDACTED-<8hex>` token instead and counted as
   block Codex sends: cwd, shell, home directory) are not detected by the
   builtin set. Put the ones that matter in a dictionary.
 - Memory-mode restarts lose all mappings (see Vault).
-- `tools[].name` and some protocol identifier fields are not scanned, so
-  that the protocol keeps working; unknown `include` values are scanned, not
-  skipped.
+- Without a blocking rule, `tools[].name` and some protocol identifier fields
+  are passed through unscanned so that the protocol keeps working (unknown
+  `include` values are scanned, not skipped). When any rule blocks they are
+  checked too (see Policy profiles), except `encrypted_content`.
 - The builtin set has no AWS access key detector; `examples/config.yaml`
   adds one as a regex rule (`aws-keys`, `\b(?:AKIA|ASIA)[0-9A-Z]{16}\b`).
 - Upstream 3xx responses other than 304 become 502: a redirect (and its
   `Location`) is never relayed to the client.
 - Any sanitize failure blocks the request (fail closed) unless
-  `policy.on_error: passthrough`, which forwards the ORIGINAL request and is
-  logged as UNSAFE at startup (and by `check-config`).
+  `policy.on_error: passthrough`, which forwards the ORIGINAL request only for
+  a failure of the sanitizer itself (for example no synthetic left for a
+  class). It never forwards unsupported content or a policy block, it is
+  refused in the config next to any blocking rule, and it is logged as UNSAFE
+  at startup (and by `check-config`).
 - Listeners are loopback-only unless `allow_non_loopback: true`; the bound
   address is checked after binding.
 - The dashboard is localhost-only and never shows real values: only rule
