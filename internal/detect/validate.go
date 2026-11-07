@@ -196,12 +196,16 @@ func luhnRefine(text string, s, e int) (int, int, bool) { return s, e, luhnOK(te
 
 // cardFind takes a run of digit groups separated by single spaces/dashes.
 //
-// A single unbroken digit run is tested at every 13-19 digit sub-window, but
-// only windows whose first digit is 3, 4, 5 or 6 (issuer prefixes) are kept, to
-// limit noise from timestamps and IDs. A multi-group run is tested at windows
-// that start and end at group boundaries (at most 19 digits): for each start
-// group the longest Luhn-valid window is emitted. Windows may overlap; resolve
-// merges them, so a spurious window never hides the rest of a real card.
+// Every group of 13+ digits is tested at all 13-19 digit sub-windows (longest
+// valid window per start). A strict sub-window is kept only if its first digit
+// is 3, 4, 5 or 6 (issuer prefixes), limiting noise from timestamps and IDs.
+// The window spanning the whole group is exempt from that filter when the
+// group has 14-19 digits, so PANs such as 2-series Mastercards are still
+// caught; a 13-digit whole group still needs a 3-6 first digit (a Luhn-valid
+// millisecond timestamp must not be masked). When there are several groups,
+// windows that start and end at group boundaries (at most 19 digits) are also
+// tested without a prefix filter. Windows may overlap; resolve merges them, so
+// a spurious window never hides the rest of a real card.
 func cardFind(text string, s, e int) [][2]int {
 	type grp struct{ st, en int }
 	var gs []grp
@@ -214,18 +218,26 @@ func cardFind(text string, s, e int) [][2]int {
 		i = j + 1 // skip the single separator
 	}
 	var out [][2]int
-	if len(gs) == 1 {
-		for st := gs[0].st; st+13 <= gs[0].en; st++ {
-			if c := text[st]; c < '3' || c > '6' {
-				continue
-			}
+	for _, g := range gs {
+		glen := g.en - g.st
+		for st := g.st; st+13 <= g.en; st++ {
+			issuer := text[st] >= '3' && text[st] <= '6'
 			for n := 19; n >= 13; n-- {
-				if st+n <= gs[0].en && luhnOK(text[st:st+n]) {
+				if st+n > g.en {
+					continue
+				}
+				whole := st == g.st && n == glen
+				if !issuer && !(whole && glen >= 14) {
+					continue
+				}
+				if luhnOK(text[st : st+n]) {
 					out = append(out, [2]int{st, st + n})
 					break
 				}
 			}
 		}
+	}
+	if len(gs) == 1 {
 		return out
 	}
 	for i := range gs {

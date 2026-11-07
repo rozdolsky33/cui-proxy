@@ -326,3 +326,24 @@ func TestCardFindLongRunBounded(t *testing.T) {
 		}
 	}
 }
+
+// Fix round 3. Behavior chosen: in every digit group of 13+ digits all 13-19
+// digit sub-windows are Luhn-tested. A strict sub-window needs a first digit
+// of 3-6. The window spanning the whole group is exempt from that filter only
+// when the group has 14-19 digits (so 2-series PANs like 2223000048400011 are
+// caught); a 13-digit whole group still needs a 3-6 first digit, which keeps
+// Luhn-valid millisecond timestamps (1700000000004) unmasked.
+func TestCardSubWindowsInEveryLongGroup(t *testing.T) {
+	for _, in := range []string{"94111111111111111 5", "94111111111111111 5 items"} {
+		g := builtinScan(t, in)
+		if len(g) == 0 || g[0].Class != "card" || !strings.Contains(g[0].Text, "411111111111111") {
+			t.Errorf("%q: %v", in, g)
+		}
+	}
+	if g := builtinScan(t, "2223000048400011"); len(g) != 1 || g[0].Text != "2223000048400011" {
+		t.Errorf("2-series PAN: %v", g)
+	}
+	if g := builtinScan(t, "ts=1700000000004"); g != nil {
+		t.Errorf("timestamp masked: %v", g)
+	}
+}
