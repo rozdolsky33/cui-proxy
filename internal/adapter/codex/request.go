@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 
@@ -27,6 +28,7 @@ const (
 	posTools        // top.tools
 	posTool         // an element of top.tools
 	posIncludes     // top.include
+	posInclude      // a direct element of top.include
 	posText         // top.text
 )
 
@@ -63,30 +65,35 @@ func elemPos(p pos) pos {
 	case posTools:
 		return posTool
 	case posIncludes:
-		return posIncludes
+		return posInclude
 	}
 	return posOther
 }
 
-// opaqueAt reports whether the STRING value of member key of object obj at
-// p is a protocol value passed byte-identical (never scanned). Only these
+// opaqueAt reports whether the STRING value v of member key of object obj
+// at p is a protocol value passed byte-identical (never scanned). Only these
 // protocol positions are opaque; everywhere else (schemas, client_metadata,
 // tool results, unknown keys) every string is scanned, and objects or arrays
 // under these names are always walked.
-func opaqueAt(p pos, key string, obj *node) bool {
-	if key == "encrypted_content" {
-		return true
-	}
+func opaqueAt(p pos, key string, obj, v *node) bool {
 	switch p {
 	case posTop:
-		return key == "model" || key == "prompt_cache_key" || key == "tool_choice"
+		switch key {
+		case "model", "prompt_cache_key":
+			return true
+		case "tool_choice":
+			return v.str == "auto" || v.str == "none" || v.str == "required"
+		}
 	case posItem:
 		switch key {
 		case "id", "call_id", "type", "role", "status":
 			return true
 		case "name":
-			t, _ := obj.getString("type")
+			t := itemType(obj)
 			return t == "function_call" || t == "custom_tool_call"
+		case "encrypted_content":
+			t := itemType(obj)
+			return t == "reasoning" || t == "compaction"
 		}
 	case posPart:
 		return key == "type" || key == "id" || key == "status"
@@ -95,6 +102,41 @@ func opaqueAt(p pos, key string, obj *node) bool {
 	}
 	return false
 }
+
+// itemType returns the item's type if every "type" member is the same
+// string, else "" (a duplicate key cannot borrow another type's opacity).
+func itemType(obj *node) string {
+	t := ""
+	for i, k := range obj.keys {
+		if k != "type" {
+			continue
+		}
+		v := obj.kids[i]
+		if v.kind != '"' || t != "" && v.str != t || v.str == "" {
+			return ""
+		}
+		t = v.str
+	}
+	return t
+}
+
+// An include entry is opaque only if it is a dotted identifier AND a known
+// Responses API include value: the pattern alone would also admit an OCID
+// ("ocid1.instance.oc1...."). Any other include string is scanned.
+var includeEntry = regexp.MustCompile(`^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)*$`)
+
+var knownIncludes = map[string]bool{
+	"reasoning.encrypted_content":           true,
+	"message.output_text.logprobs":          true,
+	"message.input_image.image_url":         true,
+	"computer_call_output.output.image_url": true,
+	"file_search_call.results":              true,
+	"web_search_call.action.sources":        true,
+	"web_search_call.results":               true,
+	"code_interpreter_call.outputs":         true,
+}
+
+func protocolInclude(s string) bool { return knownIncludes[s] && includeEntry.MatchString(s) }
 
 // protocolKeys are field names that are not scanned as keys (any other key
 // is: a key can carry a value, e.g. a host name used as a map key). They are
@@ -152,6 +194,7 @@ type scope struct {
 	pos    pos
 	inner  bool // inside JSON carried in a string: nothing opaque, no binary checks
 	schema bool // inside a tool/format schema: no binary checks
+	tools  bool // under top-level tools
 	depth  int  // containers enclosing the value
 }
 
@@ -171,10 +214,10 @@ func (w reqWalker) walk(n *node, sc scope) error {
 	case '[':
 		ep := elemPos(sc.pos)
 		for _, kid := range n.kids {
-			if !sc.inner && ep == posIncludes && kid.kind == '"' {
+			if !sc.inner && ep == posInclude && kid.kind == '"' && protocolInclude(kid.str) {
 				continue // include entries are protocol values
 			}
-			if err := w.walk(kid, scope{pos: ep, inner: sc.inner, schema: sc.schema, depth: sc.depth + 1}); err != nil {
+			if err := w.walk(kid, scope{pos: ep, inner: sc.inner, schema: sc.schema, tools: sc.tools, depth: sc.depth + 1}); err != nil {
 				return err
 			}
 			n.dirty = n.dirty || kid.dirty
@@ -204,12 +247,13 @@ func (w reqWalker) object(n *node, sc scope) error {
 			}
 		}
 		kid := n.kids[i]
-		if !sc.inner && kid.kind == '"' && opaqueAt(sc.pos, k, n) {
+		if !sc.inner && kid.kind == '"' && opaqueAt(sc.pos, k, n, kid) {
 			continue
 		}
-		schema := sc.schema || !sc.inner &&
-			(sc.pos == posTool && (k == "parameters" || k == "format") || sc.pos == posText && (k == "format" || k == "schema"))
-		if err := w.walk(kid, scope{pos: childPos(sc.pos, k), inner: sc.inner, schema: schema, depth: sc.depth + 1}); err != nil {
+		tools := sc.tools || sc.pos == posTop && k == "tools"
+		schema := sc.schema || !sc.inner && (k == "parameters" || k == "format" || k == "schema") &&
+			(sc.tools || sc.pos == posText)
+		if err := w.walk(kid, scope{pos: childPos(sc.pos, k), inner: sc.inner, schema: schema, tools: tools, depth: sc.depth + 1}); err != nil {
 			return err
 		}
 		n.dirty = n.dirty || kid.dirty

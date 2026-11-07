@@ -201,8 +201,8 @@ func TestSanitizeTurn1Fixture(t *testing.T) {
 func TestOpaqueKeysUntouched(t *testing.T) {
 	e := newEnv(t)
 	ip := "10.20.30.15"
-	body := `{"model":"model-` + ip + `","prompt_cache_key":"pck ` + ip + `","tool_choice":"tc ` + ip + `",` +
-		`"include":["inc ` + ip + `"],` +
+	body := `{"model":"model-` + ip + `","prompt_cache_key":"pck ` + ip + `","tool_choice":"auto",` +
+		`"include":["reasoning.encrypted_content"],` +
 		`"input":[` +
 		`{"type":"function_call","id":"fc_` + ip + `","call_id":"call_` + ip + `","status":"st ` + ip + `","name":"fn_` + ip + `","arguments":"{}"},` +
 		`{"type":"message","role":"user","content":[{"type":"input_text","id":"part_` + ip + `","status":"ps ` + ip + `","text":"real ` + ip + `"}]},` +
@@ -210,8 +210,8 @@ func TestOpaqueKeysUntouched(t *testing.T) {
 		`"tools":[{"type":"function","name":"tool_` + ip + `"}]}`
 	out := mustSanitize(t, e, []byte(body))
 	for _, keep := range []string{
-		`"model":"model-` + ip + `"`, `"prompt_cache_key":"pck ` + ip + `"`, `"tool_choice":"tc ` + ip + `"`,
-		`["inc ` + ip + `"]`, `"id":"fc_` + ip + `"`, `"call_id":"call_` + ip + `"`, `"status":"st ` + ip + `"`,
+		`"model":"model-` + ip + `"`, `"prompt_cache_key":"pck ` + ip + `"`, `"tool_choice":"auto"`,
+		`["reasoning.encrypted_content"]`, `"id":"fc_` + ip + `"`, `"call_id":"call_` + ip + `"`, `"status":"st ` + ip + `"`,
 		`"name":"fn_` + ip + `"`, `"id":"part_` + ip + `"`, `"status":"ps ` + ip + `"`,
 		`"encrypted_content":"gAAAA` + ip + `\u002b=="`, `"name":"tool_` + ip + `"`,
 	} {
@@ -865,5 +865,61 @@ func TestMalformedKnownDeltaBlocked(t *testing.T) {
 		if _, err := New().NewResponseRewriter(e.r).Event(ev("x", data)); err == nil {
 			t.Errorf("malformed delta not rejected: %s", data)
 		}
+	}
+}
+
+// Fix round 2: remaining opacity gaps.
+func TestFixRound2OpacityGaps(t *testing.T) {
+	e := newEnv(t)
+	for _, body := range []string{
+		`{"include":[["10.20.30.15"]]}`,                                                                                               // 1: nested include array
+		`{"include":["a",["10.20.30.15"],[{"k":"10.20.30.15"}]]}`,                                                                     // 1
+		`{"include":["reasoning.encrypted_content","ssh 10.20.30.15"]}`,                                                               // 1: not a dotted identifier
+		`{"include":["10.20.30.15"]}`,                                                                                                 // 1: dotted digits are not identifiers
+		`{"include":["ocid1.instance.oc1.phx.anyhqljrabcdefghijklmnop"]}`,                                                             // 1: dotted identifier, not a known include value
+		`{"include":[["ocid1.instance.oc1.phx.anyhqljrabcdefghijklmnop"]]}`,                                                           // 1: nested
+		`{"client_metadata":{"encrypted_content":"10.20.30.15"}}`,                                                                     // 2
+		`{"input":[{"type":"message","role":"user","encrypted_content":"10.20.30.15","content":[]}]}`,                                 // 2
+		`{"input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"x","encrypted_content":"10.20.30.15"}]}]}`, // 2
+		`{"input":[{"type":"function_call_output","call_id":"c","output":[{"type":"input_text","text":"x","encrypted_content":"10.20.30.15"}]}]}`,
+		`{"input":[{"type":"reasoning","type":"message","encrypted_content":"10.20.30.15","summary":[]}]}`, // 2+4: types disagree
+		`{"input":[{"type":"function_call","name":"ssh 10.20.30.15","type":"message","content":[]}]}`,      // 4
+		`{"tool_choice":"10.20.30.15"}`,                                                                    // 5
+	} {
+		out := mustSanitize(t, e, []byte(body))
+		assertAbsent(t, out, "10.20.30.15", "ocid1.instance.oc1.phx.anyhqljrabcdefghijklmnop")
+	}
+	// Protocol positions stay byte-identical.
+	for _, keep := range []string{
+		`{"include":["reasoning.encrypted_content"],"input":[{"type":"reasoning","id":"rs_1","summary":[],"encrypted_content":"gAAAA10.20.30.15=="},{"type":"compaction","encrypted_content":"cAAAA10.20.30.15=="},{"type":"message","role":"user","content":[{"type":"input_text","text":"x 10.20.30.15"}]}],"tool_choice":"required"}`,
+	} {
+		out := mustSanitize(t, e, []byte(keep))
+		for _, frag := range []string{`"encrypted_content":"gAAAA10.20.30.15=="`, `"encrypted_content":"cAAAA10.20.30.15=="`, `["reasoning.encrypted_content"]`, `"tool_choice":"required"`} {
+			if !bytes.Contains(out, []byte(frag)) {
+				t.Errorf("protocol value changed: %s", frag)
+			}
+		}
+		if bytes.Contains(out, []byte(`"x 10.20.30.15"`)) {
+			t.Errorf("message text not sanitized")
+		}
+	}
+	for _, tc := range []string{"auto", "none", "required"} {
+		body := []byte(`{"tool_choice":"` + tc + `"}`)
+		if out := mustSanitize(t, e, body); !bytes.Equal(out, body) {
+			t.Errorf("tool_choice %q changed", tc)
+		}
+	}
+}
+
+// Fix round 2, item 3: schema subtrees at any depth under top-level tools.
+func TestNestedToolSchemasNotBlocked(t *testing.T) {
+	e := newEnv(t)
+	body := `{"tools":[{"type":"namespace","name":"mcp","tools":[{"type":"function","name":"read","description":"reads from 10.20.30.15","parameters":{"type":"object","properties":{"file_id":{"type":"string","description":"id on 10.20.30.16"},"image_url":{"type":"string"}}}}]}],"input":[]}`
+	out := mustSanitize(t, e, []byte(body))
+	assertAbsent(t, out, "10.20.30.15", "10.20.30.16")
+	// Binary keys outside the schema in a nested tool still block.
+	bad := `{"tools":[{"type":"namespace","name":"mcp","tools":[{"type":"function","name":"f","image_url":"data:,"}]}],"input":[]}`
+	if out, err := New().SanitizeRequest([]byte(bad), e.s); err == nil || out != nil {
+		t.Errorf("nested tool binary key not blocked")
 	}
 }
