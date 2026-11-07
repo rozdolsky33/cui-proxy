@@ -67,7 +67,7 @@
   // Config panel
   function renderConfig(c) {
     $("version").textContent = c.version || "";
-    var pol = c.policy || {};
+    var pol = c.policy || {}, vlt = c.vault || {};
     $("profile").textContent = "profile: " + (pol.profile || "unknown");
     $("upstreams").textContent = Object.keys(c.upstreams || {}).sort().map(function (k) { return k + " -> " + c.upstreams[k]; }).join("  ");
     var kv = $("config");
@@ -76,7 +76,7 @@
       ["listen", c.listen], ["ui listen", c.ui_listen],
       ["profile", pol.profile], ["unsupported", pol.unsupported],
       ["on_error", pol.on_error], ["max_body_bytes", pol.max_body_bytes],
-      ["vault mode", c.vault.mode], ["vault key file", c.vault.key_file || "-"], ["vault file", c.vault.file || "-"]
+      ["vault mode", vlt.mode], ["vault key file", vlt.key_file || "-"], ["vault file", vlt.file || "-"]
     ].forEach(function (p) { kv.appendChild(el("dt", null, p[0])); kv.appendChild(el("dd", null, p[1])); });
     var tb = $("rules").tBodies[0];
     clear(tb);

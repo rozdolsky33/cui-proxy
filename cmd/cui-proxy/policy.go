@@ -98,7 +98,7 @@ func runPolicyCheck(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stdout, "  - Every detection blocks the request before anything is forwarded.")
 	}
 	if anyBlock {
-		fmt.Fprintln(stdout, "  - Because a rule blocks, protocol identifiers (model, ids, role, tool names, include entries) and every number in the request are checked too, not just text.")
+		fmt.Fprintln(stdout, "  - Because a rule blocks, protocol identifiers (model, ids, role, tool names, include entries) are checked too, and every number in the request is checked, not just text.")
 	}
 	fmt.Fprintln(stdout, "  - Content the proxy cannot inspect is refused, even under on_error: passthrough: images, files, compressed bodies, unknown routes, oversized, too deeply nested or unparseable bodies.")
 	fmt.Fprintln(stdout, "  - Request headers and the query string are scanned; a match blocks the request.")
@@ -106,7 +106,7 @@ func runPolicyCheck(args []string, stdout, stderr io.Writer) int {
 
 	fmt.Fprintln(stdout, "\nNot scanned, by design:")
 	fmt.Fprintln(stdout, "  - The Authorization, Cookie and Chatgpt-Account-Id headers: they are credentials and are forwarded as they are.")
-	fmt.Fprintln(stdout, "  - encrypted_content (the vendor's encrypted reasoning blobs, resent as received).")
+	fmt.Fprintln(stdout, "  - The content of encrypted_content (the vendor's encrypted reasoning blobs, resent as received); while a rule blocks it must still look like base64 ciphertext, so text cannot ride in it.")
 
 	fmt.Fprintln(stdout, "\nNot implemented yet (see docs/adr):")
 	fmt.Fprintln(stdout, "  - Verified approval records (ADR 0002 is waiting on the approving authority).")

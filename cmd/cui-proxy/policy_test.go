@@ -77,6 +77,7 @@ func TestPolicyCheckStrict(t *testing.T) {
 		"even under on_error: passthrough",
 		"Not scanned, by design",
 		"Authorization", "encrypted_content",
+		"every number in the request is checked",
 		"Not implemented yet",
 		"approval", "decision log",
 		"Not something this tool can do",
@@ -212,8 +213,24 @@ func TestStartupAndReloadLogThePolicy(t *testing.T) {
 	if err := a.Reload(); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(logs.String(), "WARN policy weakened by reload: blocking rules 1 -> 0") {
-		t.Errorf("removing a blocking rule is not reported:\n%s", logs.String())
+	if !strings.Contains(logs.String(), "WARN policy weakened by reload: no longer blocking: hosts-a") {
+		t.Errorf("removing a blocking rule is not reported by name:\n%s", logs.String())
+	}
+
+	// Swapping WHICH rule blocks, at an equal count, is a weakening too.
+	writeFile(t, cfg, cfgSpec{Upstream: up.url(), Rules: rulesBlockHosts}.render())
+	if err := a.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	before := strings.Count(logs.String(), "no longer blocking: hosts-a") // the earlier step logged it once
+	swapped := strings.Replace(strings.Replace(rulesBlockHosts, "    action: block\n", "", 1),
+		"  - name: builtin\n    type: builtin\n", "  - name: builtin\n    type: builtin\n    action: block\n", 1)
+	writeFile(t, cfg, cfgSpec{Upstream: up.url(), Rules: swapped}.render())
+	if err := a.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Count(logs.String(), "no longer blocking: hosts-a"); got != before+1 {
+		t.Errorf("swapping the blocking rule at an equal count is not reported (%d -> %d warnings):\n%s", before, got, logs.String())
 	}
 }
 
@@ -230,5 +247,14 @@ func TestPolicyCheckAndTestRulesCleanRuleNames(t *testing.T) {
 	code, _, errOut := runCLI("ssh 10.20.30.15\n", "test-rules", "-config", cfg)
 	if code != 1 || strings.Contains(errOut, "\x1b") {
 		t.Errorf("test-rules printed a control character: code %d %q", code, errOut)
+	}
+}
+
+func TestPolicyCheckRefusesStrictWithoutRules(t *testing.T) {
+	cfg := filepath.Join(t.TempDir(), "c.yaml")
+	writeFile(t, cfg, "upstreams: {codex: 'https://chatgpt.com/backend-api/codex'}\npolicy: { profile: strict }\nrules: []\n")
+	code, _, errOut := runCLI("", "policy", "check", "-config", cfg, "-require-strict")
+	if code != 1 || !strings.Contains(errOut, "rule") {
+		t.Errorf("strict with no rules: code %d, stderr %q; want it refused", code, errOut)
 	}
 }

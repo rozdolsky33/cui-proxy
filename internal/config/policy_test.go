@@ -36,7 +36,10 @@ func TestPolicyProfileAndUnsupportedValidation(t *testing.T) {
 	// A hand-built config without the new fields means the defaults.
 	ok(func(c *Config) {})
 	ok(func(c *Config) { c.Policy.Profile = "sanitize"; c.Policy.Unsupported = "block" })
-	ok(func(c *Config) { c.Policy.Profile = "strict" })
+	ok(func(c *Config) {
+		c.Policy.Profile = "strict"
+		c.Rules = []Rule{{Name: "r", Type: "regex", Pattern: "x", Synth: "secret"}}
+	})
 	bad("policy.profile", func(c *Config) { c.Policy.Profile = "lenient" })
 	bad("policy.unsupported", func(c *Config) { c.Policy.Unsupported = "allow" })
 
@@ -115,5 +118,19 @@ func TestEffectiveActionUnknownProfileIsStrict(t *testing.T) {
 		if got := EffectiveAction(profile, Rule{Action: "sanitize"}); got != "block" {
 			t.Errorf("EffectiveAction(%q) = %q; want block", profile, got)
 		}
+	}
+}
+
+// Strict with no rules detects nothing: refusing it keeps "strict" honest.
+func TestStrictNeedsAtLeastOneRule(t *testing.T) {
+	c := base()
+	c.Policy.Profile = "strict"
+	err := c.Validate()
+	if err == nil || !strings.Contains(err.Error(), "strict") || !strings.Contains(err.Error(), "rule") {
+		t.Errorf("error = %v; want strict without rules refused", err)
+	}
+	c.Policy.Profile = "sanitize" // no rules under sanitize: allowed (policy check warns)
+	if err := c.Validate(); err != nil {
+		t.Errorf("sanitize with no rules: %v", err)
 	}
 }

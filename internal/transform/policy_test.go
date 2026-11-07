@@ -208,3 +208,17 @@ func TestBlockingSpanAfterManyPlainSpans(t *testing.T) {
 		t.Errorf("err = %v; want ErrBlocked from the last span", err)
 	}
 }
+
+func TestWithSinkKeepsTheBlockingFlag(t *testing.T) {
+	s := NewSanitizer(policyDetectors(t, "strict", "", ""), vault.New(testKey), nil)
+	c := s.WithSink(&recSink{})
+	if !c.HasBlockingRules() {
+		t.Error("WithSink dropped the blocking flag")
+	}
+	if err := c.BlockedBy("host 10.20.30.15"); !errors.Is(err, ErrBlocked) {
+		t.Errorf("BlockedBy on the copy = %v; want ErrBlocked", err)
+	}
+	if (*Sanitizer)(nil).HasBlockingRules() {
+		t.Error("a nil sanitizer must not claim to block")
+	}
+}

@@ -448,16 +448,36 @@ func (a *App) logPolicy(cfg *config.Config) {
 	a.logf("policy: profile=%s blocking_rules=%d of %d", profileOf(cfg), blockingRules(cfg), len(cfg.Rules))
 }
 
+// blockingNames is the set of rule names whose effective action is block.
+func blockingNames(cfg *config.Config) map[string]bool {
+	m := map[string]bool{}
+	for _, r := range cfg.Rules {
+		if config.EffectiveAction(cfg.Policy.Profile, r) == config.ActionBlock {
+			m[r.Name] = true
+		}
+	}
+	return m
+}
+
 // warnIfWeakened logs an explicit WARN when a reload lowers the policy: the
-// profile goes from strict to anything else, or fewer rules block. A reload
-// is a local operator action and may do this; it must not be silent.
+// profile goes from strict to anything else, or a rule that blocked no longer
+// does (relaxed or removed), whatever the counts. A reload is a local operator
+// action and may do this; it must not be silent.
 func (a *App) warnIfWeakened(old, next *config.Config) {
 	if op, np := profileOf(old), profileOf(next); op == config.ProfileStrict && np != config.ProfileStrict {
 		a.logf("WARN policy weakened by reload: profile %s -> %s", op, np)
 		return
 	}
-	if ob, nb := blockingRules(old), blockingRules(next); nb < ob {
-		a.logf("WARN policy weakened by reload: blocking rules %d -> %d", ob, nb)
+	was, now := blockingNames(old), blockingNames(next)
+	var gone []string
+	for name := range was {
+		if !now[name] {
+			gone = append(gone, cleanName(name))
+		}
+	}
+	if len(gone) > 0 {
+		slices.Sort(gone)
+		a.logf("WARN policy weakened by reload: no longer blocking: %s", strings.Join(gone, ", "))
 	}
 }
 

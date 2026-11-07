@@ -3,7 +3,6 @@ package codex
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -261,13 +260,16 @@ func (w reqWalker) object(n *node, sc scope) error {
 		kid := n.kids[i]
 		if !sc.inner && kid.kind == '"' && opaqueAt(sc.pos, k, n, kid) {
 			// Passed byte for byte, but never past a blocking rule. The one
-			// exception is encrypted_content: vendor ciphertext resent as
-			// received, never a place for user text, and megabytes of base64
-			// invite false positives.
-			if k != "encrypted_content" {
-				if err := w.checkBlocked(kid.str); err != nil {
-					return err
+			// exception is the CONTENT of encrypted_content: vendor ciphertext
+			// resent as received, never a place for user text, and megabytes
+			// of base64 invite false positives. While any rule blocks it must
+			// still be shaped like ciphertext, so text cannot ride in it.
+			if k == "encrypted_content" {
+				if w.s.HasBlockingRules() && !cipherShaped(kid.str) {
+					return fmt.Errorf("%w: encrypted_content is not base64 ciphertext", ErrBadBody)
 				}
+			} else if err := w.checkBlocked(kid.str); err != nil {
+				return err
 			}
 			continue
 		}
@@ -316,10 +318,14 @@ func (w reqWalker) number(n *node) error {
 	}
 	if strings.ContainsAny(lit, ".eE") {
 		// 4.111111111111111e15 is the integer 4111111111111111 in another
-		// spelling: check the plain-digit form of a whole-valued literal too.
+		// spelling: check the plain-digit form too, expanded exactly.
 		if w.s.HasBlockingRules() {
-			if f, err := strconv.ParseFloat(lit, 64); err == nil && !math.IsInf(f, 0) && f == math.Trunc(f) && math.Abs(f) < 1e30 {
-				if err := w.checkBlocked(strconv.FormatFloat(f, 'f', 0, 64)); err != nil {
+			plain, ok := expandNumber(lit)
+			if !ok {
+				return fmt.Errorf("%w: number literal exponent out of range", ErrBadBody)
+			}
+			if plain != "" {
+				if err := w.checkBlocked(plain); err != nil {
 					return err
 				}
 			}
@@ -399,4 +405,48 @@ func first[T string | []byte](b T) byte {
 		}
 	}
 	return 0
+}
+
+// maxExponent bounds the exponent of a number literal that is expanded for
+// scanning; beyond it no real number is being written and the literal is
+// refused (while a rule blocks).
+const maxExponent = 400
+
+// expandNumber returns the decimal digits of the integer part of a JSON number
+// literal, expanded exactly from its digits and exponent (never through
+// float64, which would corrupt a 17 to 19 digit number). The result is empty
+// when the literal has no integer digits (0.5, 1e-5). ok is false when the
+// exponent is out of range.
+func expandNumber(lit string) (string, bool) {
+	s := strings.TrimPrefix(lit, "-")
+	exp := 0
+	if i := strings.IndexAny(s, "eE"); i >= 0 {
+		e, err := strconv.Atoi(s[i+1:])
+		if err != nil || e > maxExponent || e < -maxExponent {
+			return "", false
+		}
+		exp, s = e, s[:i]
+	}
+	intPart, frac, _ := strings.Cut(s, ".")
+	digits := intPart + frac
+	point := len(intPart) + exp
+	if point <= 0 {
+		return "", true
+	}
+	if point > len(digits) {
+		digits += strings.Repeat("0", point-len(digits))
+	}
+	return strings.TrimLeft(digits[:point], "0"), true
+}
+
+// cipherShaped reports whether v consists only of base64 or base64url
+// characters (empty is fine): the shape of the vendor's encrypted_content.
+func cipherShaped(v string) bool {
+	for i := 0; i < len(v); i++ {
+		c := v[i]
+		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '+' || c == '/' || c == '=' || c == '_' || c == '-') {
+			return false
+		}
+	}
+	return true
 }

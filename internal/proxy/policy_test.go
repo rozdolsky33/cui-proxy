@@ -187,3 +187,36 @@ func TestPassthroughRefusedWhileAnyRuleBlocks(t *testing.T) {
 		t.Errorf("without blocking rules: status %d; want the forward", res.StatusCode)
 	}
 }
+
+// The adapter receives a per-request copy of the sanitizer (WithSink); it must
+// keep knowing that rules block, or every opaque-field and number check would
+// silently switch off in production. End to end through the real adapter.
+func TestStrictChecksOpaqueFieldsThroughTheProxy(t *testing.T) {
+	h := newHarness(t, nil)
+	useProfile(t, h, "strict", "")
+	for name, body := range map[string]string{
+		"model":            `{"model":"` + realIP + `","stream":true,"input":[]}`,
+		"number":           `{"model":"m","input":[],"client_metadata":{"n":6.011000990139424124e18}}`,
+		"function name":    `{"model":"m","input":[{"type":"function_call","call_id":"c","name":"` + realIP + `","arguments":"{}"}]}`,
+		"cipher shape":     `{"model":"m","input":[{"type":"reasoning","id":"r","summary":[],"encrypted_content":"ssn 123-45-6789"}]}`,
+		"last of 3 leaves": `{"model":"m","input":[{"type":"function_call_output","call_id":"a","output":"fine"},{"type":"function_call_output","call_id":"b","output":"fine"},{"type":"function_call_output","call_id":"c","output":"` + realIP + `"}]}`,
+	} {
+		res, b := h.post(body)
+		if res.StatusCode != http.StatusUnprocessableEntity {
+			t.Errorf("%s: status %d body %s; want a block", name, res.StatusCode, b)
+		}
+		h.noUpstreamCall()
+		h.nextAudit()
+	}
+}
+
+func TestPassthroughRefusesOverDeepJSON(t *testing.T) {
+	h := newHarness(t, nil)
+	h.cfg.Policy.OnError = "passthrough"
+	deep := `{"model":"m","input":[],"x":` + strings.Repeat("[", 80) + strings.Repeat("]", 80) + `}`
+	res, _ := h.post(deep)
+	if res.StatusCode != http.StatusUnprocessableEntity {
+		t.Errorf("status %d; want a block (unsupported content is never passed through)", res.StatusCode)
+	}
+	h.noUpstreamCall()
+}

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"cui-proxy/internal/adapter"
 	"cui-proxy/internal/config"
 	"cui-proxy/internal/detect"
 	"cui-proxy/internal/transform"
@@ -132,10 +133,81 @@ func TestStrictForwardsARealisticCleanRequestUnchanged(t *testing.T) {
 
 // encrypted_content is vendor ciphertext resent as received: it is never a
 // place the user's text goes, and scanning megabytes of base64 invites false
-// positives. It is the one opaque field strict does not check.
+// positives, so its CONTENT is not scanned. Under a blocking rule it must
+// still be shaped like ciphertext (base64 or base64url characters only).
 func TestStrictDoesNotScanEncryptedContent(t *testing.T) {
-	body := `{"model":"m","input":[{"type":"reasoning","id":"rs_1","summary":[],"encrypted_content":"AAAA 10.20.30.15 AAAA"}]}`
+	// A Luhn-valid card number inside base64-looking text would be detected
+	// if the field were scanned.
+	body := `{"model":"m","input":[{"type":"reasoning","id":"rs_1","summary":[],"encrypted_content":"AAAA4111111111111111AAAA"}]}`
 	if _, err := New().SanitizeRequest([]byte(body), strictSanitizer(t)); err != nil {
 		t.Errorf("encrypted_content was scanned: %v", err)
+	}
+}
+
+func TestStrictRequiresEncryptedContentToLookLikeCiphertext(t *testing.T) {
+	item := func(v string) string {
+		return `{"model":"m","input":[{"type":"reasoning","id":"rs_1","summary":[],"encrypted_content":"` + v + `"}]}`
+	}
+	for _, v := range []string{"ssn 123-45-6789 host", "10.20.30.15", "admin@corp.example", "line one\nline two", "a b", "ok;rm"} {
+		out, err := New().SanitizeRequest([]byte(item(v)), strictSanitizer(t))
+		if err == nil || out != nil || !errors.Is(err, adapter.ErrBadBody) {
+			t.Errorf("%q: err=%v out=%q; want a refusal (ErrBadBody)", v, err, out)
+		}
+	}
+	for _, v := range []string{"", "gAAAAABm_-+/=AbC123", strings.Repeat("Zm9vYmFy", 500)} {
+		if _, err := New().SanitizeRequest([]byte(item(v)), strictSanitizer(t)); err != nil {
+			t.Errorf("%.20q: ciphertext-shaped value refused: %v", v, err)
+		}
+	}
+	// Without a blocking rule the field is passed through as before.
+	ds, _ := detect.BuildForProfile([]config.Rule{{Name: "builtin", Type: "builtin"}}, "", "sanitize")
+	san := transform.NewSanitizer(ds, vault.New([]byte("0123456789abcdef0123456789abcdef")), nil)
+	if _, err := New().SanitizeRequest([]byte(item("not base64 at all")), san); err != nil {
+		t.Errorf("sanitize profile: the field was checked: %v", err)
+	}
+}
+
+// Whole-valued exponent and float literals are expanded EXACTLY (as decimal
+// digits, not through float64), so a long card number cannot hide in one.
+func TestExpandNumber(t *testing.T) {
+	for lit, want := range map[string]string{
+		"4.111111111111111e15":    "4111111111111111",
+		"6.011000990139424124e18": "6011000990139424124", // beyond 2^53: float64 would corrupt it
+		"6011000990139424124.0":   "6011000990139424124",
+		"6011000990139424124.5":   "6011000990139424124",
+		"1e3":                     "1000",
+		"-4.1e2":                  "410",
+		"12.5":                    "12",
+		"0.5e1":                   "5",
+		"4111111111111111000e-3":  "4111111111111111",
+		"00012e1":                 "120",
+	} {
+		got, ok := expandNumber(lit)
+		if !ok || got != want {
+			t.Errorf("expandNumber(%q) = %q, %v; want %q", lit, got, ok, want)
+		}
+	}
+	for _, lit := range []string{"0.5", "0.001", "1e-5", "0", "-0"} {
+		if got, ok := expandNumber(lit); ok && strings.Trim(got, "0") != "" {
+			t.Errorf("expandNumber(%q) = %q; want no integer digits", lit, got)
+		}
+	}
+	for _, lit := range []string{"1e999999", "1e-999999", "5e401"} {
+		if _, ok := expandNumber(lit); ok {
+			t.Errorf("expandNumber(%q) expanded an out-of-range exponent", lit)
+		}
+	}
+}
+
+func TestStrictBlocksCardsHiddenInExponentForms(t *testing.T) {
+	for _, n := range []string{"6.011000990139424124e18", "4.111111111111111e15", "6011000990139424124.0", "60110009901394241240e-1", "-4.111111111111111E+15"} {
+		body := `{"model":"m","input":[],"client_metadata":{"n":` + n + `}}`
+		if _, err := New().SanitizeRequest([]byte(body), strictSanitizer(t)); !errors.Is(err, transform.ErrBlocked) {
+			t.Errorf("%s: err = %v; want ErrBlocked", n, err)
+		}
+	}
+	// An exponent no real number carries is refused outright, not expanded.
+	if _, err := New().SanitizeRequest([]byte(`{"model":"m","input":[],"client_metadata":{"n":1e999999}}`), strictSanitizer(t)); err == nil {
+		t.Error("an absurd exponent was forwarded under strict")
 	}
 }

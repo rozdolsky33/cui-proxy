@@ -189,6 +189,9 @@ func (c *Config) ValidateWith(known func(class string) bool) error {
 	default:
 		return fmt.Errorf("config: vault.mode %q must be memory or file", c.Vault.Mode)
 	}
+	if c.Policy.Profile == ProfileStrict && len(c.Rules) == 0 {
+		return errors.New(`config: policy.profile "strict" needs at least one rule: with none it would detect, and so block, nothing`)
+	}
 	seen := make(map[string]bool, len(c.Rules))
 	for i, r := range c.Rules {
 		if err := validateRule(r, known); err != nil {
