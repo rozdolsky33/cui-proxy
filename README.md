@@ -127,6 +127,31 @@ a second signal closes at once.
   startup; it is never silently replaced. To start over, remove the vault
   file yourself.
 
+### Synthetic address pool
+
+IPv4 (and CIDR) synthetics come from the 762 RFC 5737 documentation
+addresses (`192.0.2.x`, `198.51.100.x`, `203.0.113.x`). When those are
+used up, the vault falls back to an overflow pool of 130,048 addresses in
+`198.18.0.0/15` (RFC 2544 benchmarking).
+
+- Exhaustion: when no synthetic is left, the request is blocked (HTTP 422,
+  code `sanitize`; nothing is forwarded). Mappings are never
+  freed: the vault keeps growing for the life of the process (and of the
+  vault file in file mode), and even a blocked request may have used up
+  addresses.
+- Under `policy.on_error: passthrough`, exhaustion is a sanitize failure, so
+  the ORIGINAL request, with its real IPs, would be forwarded.
+- `198.18.0.0/15` can carry real traffic (lab and benchmark networks, and
+  proxies or VPNs with a "fake-IP" mode). To keep a real address there from
+  being confused with a synthetic: once the vault has seen any real address
+  in that range, it stops coining overflow addresses (it then fails closed
+  after the 762 RFC 5737 addresses); and a request containing an address
+  that equals an existing overflow synthetic is blocked, because the proxy
+  cannot tell whether it is real. Residual risk: if your real traffic uses
+  that range, expect blocks. A model reply that names a real
+  `198.18.0.0/15` address the proxy has issued as a synthetic is restored to
+  the wrong value.
+
 ## Known limitations / behavior
 
 - Credential headers (`Authorization`, `Chatgpt-Account-Id`, cookies) are
@@ -141,6 +166,8 @@ a second signal closes at once.
 - `tools[].name` and some protocol identifier fields are not scanned, so
   that the protocol keeps working; unknown `include` values are scanned, not
   skipped.
+- The builtin set has no AWS access key detector; `examples/config.yaml`
+  adds one as a regex rule (`aws-keys`, `\b(?:AKIA|ASIA)[0-9A-Z]{16}\b`).
 - Upstream 3xx responses other than 304 become 502: a redirect (and its
   `Location`) is never relayed to the client.
 - Any sanitize failure blocks the request (fail closed) unless

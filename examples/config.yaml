@@ -32,6 +32,13 @@ rules:
     file: hosts.txt
     synth: hostname
 
+  # AWS access key ids (long-term AKIA..., temporary ASIA...). The builtin
+  # set has no AWS key detector.
+  - name: aws-keys
+    type: regex
+    pattern: '\b(?:AKIA|ASIA)[0-9A-Z]{16}\b'
+    synth: secret
+
   # A regex rule example:
   # - name: ticket-ids
   #   type: regex

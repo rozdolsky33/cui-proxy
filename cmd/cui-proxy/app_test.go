@@ -669,8 +669,24 @@ func TestExamplesConfigValid(t *testing.T) {
 	if err := cfg.ValidateWith(synth.Known); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := detect.Build(cfg.Rules, filepath.Dir(path)); err != nil {
+	ds, err := detect.Build(cfg.Rules, filepath.Dir(path))
+	if err != nil {
 		t.Fatal(err)
+	}
+	// The builtin set has no AWS key detector; the example adds one.
+	for text, want := range map[string]int{
+		"key AKIAIOSFODNN7EXAMPLE end": 1, "ASIAIOSFODNN7EXAMPLE": 1,
+		"xAKIAIOSFODNN7EXAMPLE": 0, "AKIAIOSFODNN7EXAMPLE9": 0,
+	} {
+		n := 0
+		for _, sp := range detect.Scan(ds, text) {
+			if sp.Rule == "aws-keys" && sp.Class == "secret" {
+				n++
+			}
+		}
+		if n != want {
+			t.Errorf("aws-keys on %q: %d matches, want %d", text, n, want)
+		}
 	}
 	if cfg.Listen != "127.0.0.1:8787" || cfg.UI.Listen != "127.0.0.1:8788" ||
 		cfg.Upstreams["codex"] != "https://chatgpt.com/backend-api/codex" ||
