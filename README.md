@@ -20,7 +20,7 @@ and it never stores or alters your upstream credentials.
 
 **Jump to:** [Quick start (macOS)](#quick-start-macos-menu-bar) ·
 [Quick start (terminal)](#quick-start-terminal-linux-or-no-menu-bar) ·
-[Everyday use](#everyday-use) · [Menu-bar details](#menu-bar-app-details) ·
+[Everyday use](#everyday-use) · [How it works](#how-it-works) · [Menu-bar details](#menu-bar-app-details) ·
 [Install options](#install-all-options) · [Commands](#commands) ·
 [Policy profiles](#policy-profiles-sanitize-or-strict) ·
 [Block diagnostics](#block-diagnostics) · [Known limitations](#known-limitations--behavior) ·
@@ -111,6 +111,61 @@ Look at the dashboard's *Blocked* column and the `cui-proxy` terminal (or
 | `403 route` or a 404 | The upstream path guess is wrong (it has not been tested against the real ChatGPT backend). See the symptom table in [docs/verification.md](docs/verification.md#5-what-to-look-for-first-prompt). |
 | `422 request blocked ...` | A safety check refused the request; the message names the rule and kind, never the value. See [Block diagnostics](#block-diagnostics). |
 
+
+## How it works
+
+```mermaid
+flowchart LR
+    subgraph local["Your machine (everything here stays local)"]
+        codex["Codex CLI"]
+        subgraph proxy["cui-proxy  127.0.0.1:8787"]
+            checks["Fail-closed checks<br/>route, size, headers,<br/>compression"]
+            adapter["Codex adapter<br/>parses request JSON"]
+            detect["Detectors<br/>built-in rules +<br/>your dictionary"]
+            policy{"Policy profile<br/>sanitize or strict"}
+            synth["Synthetic values<br/>RFC 5737 / 3849 ranges,<br/>.example names"]
+            restore["Streaming restorer<br/>synthetic to real"]
+        end
+        vault[("Vault<br/>real to synthetic map<br/>AES-GCM file")]
+        cfg[/"config.yaml<br/>hosts.txt"/]
+        dash["Dashboard 127.0.0.1:8788<br/>live feed, metrics, config"]
+        menu["Menu-bar app<br/>start, stop, open dashboard"]
+    end
+    up["Model backend<br/>HTTPS upstream"]
+
+    codex -- "1 request with real values" --> checks
+    checks --> adapter --> detect
+    cfg -. "rules, loaded and hot-reloaded" .-> detect
+    detect --> policy
+    policy -- "strict: any match" --> block["422 blocked<br/>names rule, never the value"]
+    block --> codex
+    policy -- "sanitize" --> synth
+    synth <--> vault
+    synth -- "2 request with fake values only" --> up
+    up -- "3 streamed response" --> restore
+    restore <--> vault
+    restore -- "4 response with real values" --> codex
+    proxy -. "metadata only: rule names, counts" .-> dash
+    menu -. "supervises" .-> proxy
+    menu -. "opens" .-> dash
+```
+
+In words:
+
+1. Codex sends its request to the proxy instead of the model backend. The
+   proxy refuses anything it cannot inspect safely (unknown route, oversize or
+   compressed body, bad headers) rather than forwarding it.
+2. The detectors find sensitive values using the built-in rules and your own
+   dictionary. Under the `strict` profile any match blocks the request.
+   Under `sanitize` (the default) each value is swapped for a realistic
+   synthetic one, and the pair is stored in the vault.
+3. Only the sanitized request leaves your machine, over HTTPS.
+4. As the response streams back, the restorer replaces synthetic values with
+   the real ones from the vault, so tool calls run against your real systems.
+
+The dashboard and the menu-bar app only ever see metadata (rule names and
+counts), never real values. Your upstream credentials pass through unchanged
+and are never stored.
 
 ## Everyday use
 
