@@ -1,0 +1,5 @@
+# Sensitive host names, one per line; matching is case-insensitive.
+# Lines starting with '#' and blank lines are ignored.
+# REPLACE the placeholder below with your own hosts. A dictionary with no
+# entries is a config error.
+prod-db.agency.example

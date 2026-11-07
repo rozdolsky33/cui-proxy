@@ -1,0 +1,39 @@
+# cui-proxy example config. Validate with: cui-proxy check-config -config examples/config.yaml
+# Relative paths (dictionary files, vault files) resolve against this file's directory.
+
+listen: 127.0.0.1:8787          # point Codex at http://127.0.0.1:8787/v1
+ui:
+  listen: 127.0.0.1:8788        # dashboard: http://127.0.0.1:8788/
+
+upstreams:
+  codex: https://chatgpt.com/backend-api/codex   # ChatGPT-login Codex backend
+
+policy:
+  on_error: block               # block (fail closed) | passthrough (UNSAFE)
+  max_body_bytes: 20971520      # 20 MiB, as an integer
+
+vault:
+  mode: memory                  # memory | file
+  # Encrypted file vault (mappings survive restarts). "~" is not expanded:
+  # use absolute paths or paths relative to this file.
+  # mode: file
+  # key_file: /Users/you/.config/cui-proxy/vault.key   # created 0600 on first run
+  # file: /Users/you/.config/cui-proxy/vault.bin
+
+rules:
+  # The v1 detector set: OCIDs, IPv4/IPv6/CIDR, emails, SSNs, card numbers,
+  # bearer tokens, JWTs and private-key blocks.
+  - name: builtin
+    type: builtin
+
+  # Your own sensitive names, one per line, in hosts.txt.
+  - name: customer-hosts
+    type: dictionary
+    file: hosts.txt
+    synth: hostname
+
+  # A regex rule example:
+  # - name: ticket-ids
+  #   type: regex
+  #   pattern: 'CUI-[0-9]{6}'
+  #   synth: secret
