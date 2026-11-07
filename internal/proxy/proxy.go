@@ -1,0 +1,469 @@
+// Package proxy is the fail-closed sanitizing reverse proxy: it checks each
+// request against the adapter's routes, sanitizes the body, forwards it
+// upstream with the client's headers, and restores synthetic values in the
+// SSE response stream.
+//
+// The handler is written by hand rather than with httputil.ReverseProxy so
+// that every failure path is explicit: ReverseProxy's default error handler
+// logs transport errors (which carry the upstream URL and query string), and
+// rewriting the stream in ModifyResponse would need a pipe and a second
+// goroutine per response. Here the response is read, rewritten and written
+// on the handler's own goroutine, so a client disconnect ends everything.
+//
+// Nothing here logs or audits request or response bodies, headers, tokens or
+// query strings; log lines carry only fixed text, reason codes and type names.
+package proxy
+
+import (
+	"bytes"
+	"errors"
+	"io"
+	"log"
+	"net"
+	"net/http"
+	"net/url"
+	"strings"
+	"sync"
+	"time"
+
+	"cui-proxy/internal/adapter"
+	"cui-proxy/internal/audit"
+	"cui-proxy/internal/config"
+	"cui-proxy/internal/metrics"
+	"cui-proxy/internal/sse"
+	"cui-proxy/internal/transform"
+)
+
+// Deps are the proxy's collaborators. Cfg, Adapter, Upstream, Current,
+// Metrics and Audit are required.
+type Deps struct {
+	Cfg      func() *config.Config // read once per request
+	Adapter  adapter.Adapter
+	Upstream *url.URL // base, e.g. https://chatgpt.com/backend-api/codex
+	// Current returns the sanitizer and restorer; it is evaluated once per
+	// request, so a reload never changes an in-flight request's set.
+	Current   func() (*transform.Sanitizer, *transform.Restorer)
+	VaultLen  func() int // reported via Metrics.SetVaultSize after each request; nil ok
+	Metrics   *metrics.Registry
+	Audit     *audit.Log
+	Transport http.RoundTripper                // nil: newTransport()
+	Logf      func(format string, args ...any) // nil: log.Printf; never given values, headers or bodies
+}
+
+// Block reasons: a closed set, used as metrics.IncBlocked keys, the JSON
+// error code and audit.Entry.Blocked.
+const (
+	reasonRoute        = "route"
+	reasonTooLarge     = "body_too_large"
+	reasonCompressed   = "compressed"
+	reasonSanitize     = "sanitize"
+	reasonUnrestorable = "unrestorable"
+	reasonBadRequest   = "bad_request"
+	reasonInternal     = "internal"
+	// reasonStreamRewrite marks a response stream cut because it could not be
+	// rewritten. It is counted with Metrics.IncError, not IncBlocked: the
+	// request was already forwarded.
+	reasonStreamRewrite = "stream_rewrite"
+)
+
+var blockStatus = map[string]int{
+	reasonRoute:         http.StatusForbidden,
+	reasonTooLarge:      http.StatusRequestEntityTooLarge,
+	reasonCompressed:    http.StatusUnsupportedMediaType,
+	reasonSanitize:      http.StatusUnprocessableEntity,
+	reasonUnrestorable:  http.StatusUnprocessableEntity,
+	reasonBadRequest:    http.StatusBadRequest,
+	reasonInternal:      http.StatusInternalServerError,
+	reasonStreamRewrite: http.StatusBadGateway,
+}
+
+var blockMessage = map[string]string{
+	reasonRoute:         "unsupported route",
+	reasonTooLarge:      "request body too large",
+	reasonCompressed:    "compressed request bodies are not supported",
+	reasonSanitize:      "request could not be sanitized",
+	reasonUnrestorable:  "request could not be sanitized reversibly",
+	reasonBadRequest:    "malformed request",
+	reasonInternal:      "internal error",
+	reasonStreamRewrite: "response could not be restored",
+}
+
+// defaultMaxBody applies when the config carries no positive limit.
+const defaultMaxBody = 20 << 20
+
+// New returns the proxy handler. It panics if a required dependency is nil.
+func New(d Deps) http.Handler {
+	if d.Cfg == nil || d.Adapter == nil || d.Upstream == nil || d.Current == nil || d.Metrics == nil || d.Audit == nil {
+		panic("proxy: Cfg, Adapter, Upstream, Current, Metrics and Audit are required")
+	}
+	if d.Transport == nil {
+		d.Transport = newTransport()
+	}
+	if d.Logf == nil {
+		d.Logf = log.Printf
+	}
+	return &handler{d: d}
+}
+
+// newTransport is the upstream transport: bounded connection setup and time
+// to first response byte, but no overall timeout (streams are long).
+func newTransport() *http.Transport {
+	return &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		DialContext:           (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: time.Second,
+		ResponseHeaderTimeout: 10 * time.Minute,
+		DisableCompression:    true, // Accept-Encoding is set explicitly
+	}
+}
+
+type handler struct{ d Deps }
+
+// exchange is the state of one request.
+type exchange struct {
+	w     *countingWriter
+	entry audit.Entry
+	// overhead is the time the proxy itself added: sanitizing the request
+	// plus all rewriter.Event and rewriter.Flush calls on the response. It
+	// excludes reading the body and waiting on upstream or client I/O. It is
+	// observed only for sanitize routes that were forwarded.
+	overhead time.Duration
+	observe  bool
+}
+
+func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	x := &exchange{
+		w:     &countingWriter{rw: w},
+		entry: audit.Entry{Time: start, Adapter: h.d.Adapter.Name(), Method: r.Method, Path: r.URL.Path},
+	}
+	h.d.Metrics.IncRequest()
+	abort := h.serveSafe(x, w, r)
+
+	x.entry.Status = x.w.status
+	x.entry.BytesOut = x.w.n
+	x.entry.LatencyMS = float64(time.Since(start)) / float64(time.Millisecond)
+	if x.observe {
+		h.d.Metrics.ObserveOverhead(x.overhead)
+	}
+	if h.d.VaultLen != nil {
+		h.d.Metrics.SetVaultSize(h.d.VaultLen())
+	}
+	h.d.Audit.Add(x.entry)
+	if abort {
+		// Cut the client connection so a broken stream never looks complete.
+		panic(http.ErrAbortHandler)
+	}
+}
+
+// serveSafe runs serve and turns a panic into a blocked 500 (or, when the
+// response has started, an aborted connection). Only the panic's type is
+// logged: its value may hold request data.
+func (h *handler) serveSafe(x *exchange, w http.ResponseWriter, r *http.Request) (abort bool) {
+	defer func() {
+		p := recover()
+		if p == nil {
+			return
+		}
+		if p == http.ErrAbortHandler {
+			abort = true
+			return
+		}
+		h.d.Logf("cui-proxy: panic (%T) while serving a request; request blocked", p)
+		if x.w.status != 0 {
+			x.entry.Blocked = reasonInternal
+			h.d.Metrics.IncBlocked(reasonInternal)
+			abort = true
+			return
+		}
+		clear(x.w.Header())
+		h.block(x, reasonInternal)
+	}()
+	return h.serve(x, w, r)
+}
+
+// serve applies the checks in order (route, compression, size, route kind,
+// sanitizing) and forwards the request. It reports whether the client
+// connection must be aborted.
+func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) bool {
+	cfg := h.d.Cfg()
+	if cfg == nil {
+		return h.block(x, reasonInternal)
+	}
+	route, ok := h.d.Adapter.Match(r.Method, r.URL.Path)
+	if !ok {
+		// The path is client-chosen and unscanned: keep it out of the audit log.
+		x.entry.Path = "(unmatched)"
+		return h.block(x, reasonRoute)
+	}
+	if encoded(r.Header) {
+		return h.block(x, reasonCompressed)
+	}
+	limit := cfg.Policy.MaxBodyBytes
+	if limit <= 0 {
+		limit = defaultMaxBody
+	}
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, limit))
+	if err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			return h.block(x, reasonTooLarge)
+		}
+		return h.block(x, reasonBadRequest)
+	}
+	x.entry.BytesIn = len(body)
+
+	san, rest := h.d.Current()
+	if san == nil || rest == nil {
+		return h.block(x, reasonInternal)
+	}
+	switch route.Kind {
+	case adapter.KindPassthrough:
+		if len(body) > 0 {
+			return h.block(x, reasonBadRequest) // a passthrough route is never scanned
+		}
+	case adapter.KindSanitize:
+		out, reason := h.sanitize(x, san, body)
+		if reason != "" {
+			if cfg.Policy.OnError != "passthrough" {
+				return h.block(x, reason)
+			}
+			h.d.Metrics.IncPassthrough()
+			x.entry.Rules = map[string]int{"passthrough:" + reason: 1}
+			h.d.Logf("cui-proxy: forwarding an unsanitized request (policy.on_error=passthrough, reason=%s)", reason)
+			out = body
+		}
+		body = out
+	default:
+		return h.block(x, reasonInternal)
+	}
+	return h.forward(x, r, route, body, rest)
+}
+
+// collector gathers one request's sanitizer events.
+type collector struct {
+	mu  sync.Mutex
+	evs []transform.Event
+}
+
+func (c *collector) Record(e transform.Event) {
+	c.mu.Lock()
+	c.evs = append(c.evs, e)
+	c.mu.Unlock()
+}
+
+// sanitize runs the adapter with a per-request sink. Events reach Metrics
+// and the audit entry only when the whole request sanitized, so a blocked
+// request counts no replacements. On failure it returns a reason code.
+func (h *handler) sanitize(x *exchange, san *transform.Sanitizer, body []byte) ([]byte, string) {
+	c := &collector{}
+	t0 := time.Now()
+	out, err := h.d.Adapter.SanitizeRequest(body, san.WithSink(c))
+	x.overhead += time.Since(t0)
+	x.observe = true
+	if err != nil {
+		if errors.Is(err, transform.ErrUnrestorable) {
+			return nil, reasonUnrestorable
+		}
+		return nil, reasonSanitize
+	}
+	if len(c.evs) > 0 {
+		x.entry.Rules = map[string]int{}
+		for _, e := range c.evs {
+			h.d.Metrics.Record(e)
+			x.entry.Rules[e.Rule] += e.Count
+		}
+	}
+	return out, ""
+}
+
+// forward sends the request upstream and relays the response.
+func (h *handler) forward(x *exchange, r *http.Request, route adapter.Route, body []byte, rest *transform.Restorer) bool {
+	u := *h.d.Upstream
+	u.Path = strings.TrimRight(u.Path, "/") + route.UpstreamPath
+	u.RawPath = ""
+	u.RawQuery = r.URL.RawQuery
+	u.Fragment = ""
+	var rd io.Reader
+	if len(body) > 0 {
+		rd = bytes.NewReader(body)
+	}
+	out, err := http.NewRequestWithContext(r.Context(), r.Method, u.String(), rd)
+	if err != nil {
+		return h.block(x, reasonInternal)
+	}
+	out.Header = upstreamHeader(r.Header)
+
+	res, err := h.d.Transport.RoundTrip(out)
+	if err != nil {
+		if r.Context().Err() != nil {
+			return false // client went away; nobody to answer
+		}
+		// err carries the URL and query string: log only its kind.
+		h.d.Metrics.IncError()
+		h.d.Logf("cui-proxy: upstream request failed (%s)", errKind(err))
+		writeError(x.w, http.StatusBadGateway, "upstream", "cui_proxy_error", "upstream unavailable")
+		return false
+	}
+	defer res.Body.Close()
+
+	if !isSSE(res.Header) {
+		copyResponseHeader(x.w.Header(), res.Header)
+		x.w.WriteHeader(res.StatusCode)
+		if _, err := io.Copy(x.w, res.Body); err != nil && r.Context().Err() == nil {
+			h.d.Metrics.IncError()
+			h.d.Logf("cui-proxy: response copy failed; connection aborted")
+			return true
+		}
+		return false
+	}
+	if encoded(res.Header) {
+		// Identity was requested; an encoded stream cannot be restored.
+		h.d.Metrics.IncError()
+		x.entry.Blocked = reasonStreamRewrite
+		h.d.Logf("cui-proxy: upstream sent an encoded event stream; response blocked")
+		writeError(x.w, blockStatus[reasonStreamRewrite], reasonStreamRewrite, "cui_proxy_blocked", blockMessage[reasonStreamRewrite])
+		return false
+	}
+	copyResponseHeader(x.w.Header(), res.Header)
+	x.w.Header().Del("Content-Length")
+	x.w.WriteHeader(res.StatusCode)
+	return h.stream(x, r, res.Body, rest)
+}
+
+// stream restores the event stream body into the client, flushing after
+// every event. It reports whether the client connection must be aborted.
+// The caller closes body.
+func (h *handler) stream(x *exchange, r *http.Request, body io.Reader, rest *transform.Restorer) bool {
+	rw := h.d.Adapter.NewResponseRewriter(rest)
+	rc := http.NewResponseController(x.w)
+	rd := sse.NewReader(body)
+	// changed counts output events whose payload differs from their input
+	// event (including re-chunked held-back deltas): an approximation of
+	// restored events, reported via Metrics.IncRestore.
+	changed := 0
+	emit := func(evs []sse.Event, in []byte, fromFlush bool) error {
+		for _, e := range evs {
+			if fromFlush || !bytes.Equal(e.Data, in) {
+				changed++
+			}
+			if err := sse.Write(x.w, e); err != nil {
+				return err
+			}
+			if err := rc.Flush(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	defer func() { h.d.Metrics.IncRestore(changed) }()
+
+	fail := func(what string) bool {
+		if r.Context().Err() != nil {
+			return false // the client went away: not an error
+		}
+		h.d.Metrics.IncError()
+		x.entry.Blocked = reasonStreamRewrite
+		h.d.Logf("cui-proxy: response stream cut (%s); connection aborted", what)
+		return true
+	}
+	for {
+		ev, err := rd.Next()
+		if errors.Is(err, io.EOF) {
+			t0 := time.Now()
+			evs := rw.Flush()
+			x.overhead += time.Since(t0)
+			if err := emit(evs, nil, true); err != nil {
+				return fail("write")
+			}
+			return false
+		}
+		if errors.Is(err, sse.ErrEventTooLarge) {
+			return fail("event too large")
+		}
+		if err != nil {
+			if r.Context().Err() != nil {
+				return false
+			}
+			// The upstream broke the stream: abort so the client sees it broken.
+			h.d.Metrics.IncError()
+			h.d.Logf("cui-proxy: upstream stream read failed (%s); connection aborted", errKind(err))
+			return true
+		}
+		t0 := time.Now()
+		evs, err := rw.Event(ev)
+		x.overhead += time.Since(t0)
+		if err != nil {
+			return fail("rewrite")
+		}
+		if err := emit(evs, ev.Data, false); err != nil {
+			return fail("write")
+		}
+	}
+}
+
+// block answers with the reason's error and counts it.
+func (h *handler) block(x *exchange, reason string) bool {
+	x.entry.Blocked = reason
+	h.d.Metrics.IncBlocked(reason)
+	h.d.Logf("cui-proxy: request blocked (reason=%s)", reason)
+	writeError(x.w, blockStatus[reason], reason, "cui_proxy_blocked", blockMessage[reason])
+	return false
+}
+
+// writeError writes an OpenAI-style JSON error. Its text is fixed per code
+// and never contains request data.
+func writeError(w http.ResponseWriter, status int, code, typ, msg string) {
+	h := w.Header()
+	h.Set("Content-Type", "application/json")
+	h.Set("Cache-Control", "no-store")
+	h.Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(status)
+	// The values are constants without characters that need escaping.
+	_, _ = io.WriteString(w, `{"error":{"message":"cui-proxy: `+msg+`","type":"`+typ+`","code":"`+code+`"}}`)
+}
+
+// errKind names an error's category without its text (which may carry the
+// URL or query string).
+func errKind(err error) string {
+	var ne net.Error
+	switch {
+	case errors.As(err, &ne) && ne.Timeout():
+		return "timeout"
+	case errors.Is(err, io.ErrUnexpectedEOF), errors.Is(err, io.EOF):
+		return "unexpected eof"
+	}
+	return "connection error"
+}
+
+// countingWriter records the status and body bytes sent to the client.
+type countingWriter struct {
+	rw     http.ResponseWriter
+	status int
+	n      int
+}
+
+func (c *countingWriter) Header() http.Header { return c.rw.Header() }
+
+func (c *countingWriter) WriteHeader(code int) {
+	if c.status == 0 {
+		c.status = code
+	}
+	c.rw.WriteHeader(code)
+}
+
+func (c *countingWriter) Write(b []byte) (int, error) {
+	if c.status == 0 {
+		c.status = http.StatusOK
+	}
+	n, err := c.rw.Write(b)
+	c.n += n
+	return n, err
+}
+
+// Unwrap lets http.ResponseController reach the underlying Flusher.
+func (c *countingWriter) Unwrap() http.ResponseWriter { return c.rw }
