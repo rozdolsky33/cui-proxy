@@ -316,6 +316,35 @@ func TestStartupRejectsBadUpstream(t *testing.T) {
 	}
 }
 
+// TestStartupValidatesEveryUpstream: serve checks unused upstreams the way
+// check-config does, so a bad entry is never loaded (or shown by
+// /api/config) just because no adapter uses it.
+func TestStartupValidatesEveryUpstream(t *testing.T) {
+	for _, tc := range []struct{ name, other, want string }{
+		{"userinfo", "https://u:p@x.example/v1", "credentials"},
+		{"plain http", "http://x.example/v1", "https"},
+		{"query", "https://x.example/v1?k=secretq", "query"},
+		{"fragment", "https://x.example/v1#secretf", "fragment"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, cfg := testDir(t, cfgSpec{})
+			b, _ := os.ReadFile(cfg)
+			s := strings.Replace(string(b), "upstreams:\n  codex: http://127.0.0.1:1/codex",
+				"upstreams:\n  codex: http://127.0.0.1:1/codex\n  other: "+tc.other, 1)
+			writeFile(t, cfg, s)
+			a, err := NewApp(AppOptions{ConfigPath: cfg, Logf: (&logBuf{}).logf})
+			if err == nil {
+				a.Close()
+				t.Fatal("NewApp accepted an invalid unused upstream")
+			}
+			if !strings.Contains(err.Error(), tc.want) || !strings.Contains(err.Error(), `"other"`) {
+				t.Fatalf("err = %v, want %q for \"other\"", err, tc.want)
+			}
+			assertNoValues(t, "error", err.Error(), "u:p", "x.example", "secretq", "secretf")
+		})
+	}
+}
+
 func TestUnknownAdapter(t *testing.T) {
 	_, cfg := testDir(t, cfgSpec{})
 	if _, err := NewApp(AppOptions{ConfigPath: cfg, Adapter: "nope", Logf: (&logBuf{}).logf}); err == nil || !strings.Contains(err.Error(), `unknown adapter "nope"`) {
@@ -369,6 +398,68 @@ func TestVaultFileWrongKeyOrVersionIsStartupError(t *testing.T) {
 	check("missing key")
 	if _, err := os.Stat(keyPath); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("a new key file was created for an existing vault")
+	}
+}
+
+// TestVaultFileCorruptIsStartupError: a CUIV2 file with a damaged body is
+// rejected and left untouched, and errors name the vault path once.
+func TestVaultFileCorruptIsStartupError(t *testing.T) {
+	dir, cfg := testDir(t, cfgSpec{Vault: fileVault})
+	vaultPath := filepath.Join(dir, "vault.bin")
+	keyPath := filepath.Join(dir, "keys", "vault.key")
+	key := bytes.Repeat([]byte{9}, 32)
+	if err := os.MkdirAll(filepath.Dir(keyPath), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, keyPath, string(key))
+	v := vault.New(key)
+	if _, err := v.Pseudonym("ipv4", realIP); err != nil {
+		t.Fatal(err)
+	}
+	if err := v.Save(vaultPath); err != nil {
+		t.Fatal(err)
+	}
+	good, _ := os.ReadFile(vaultPath)
+
+	for _, tc := range []struct {
+		name string
+		blob []byte
+	}{
+		{"flipped byte", append(append([]byte{}, good[:len(good)-1]...), good[len(good)-1]^0xff)},
+		{"truncated", good[:len("CUIV2")+3]},
+		{"magic only", []byte("CUIV2")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := os.WriteFile(vaultPath, tc.blob, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			a, err := NewApp(AppOptions{ConfigPath: cfg, Logf: (&logBuf{}).logf})
+			if err == nil {
+				a.Close()
+				t.Fatal("NewApp accepted a corrupt vault file")
+			}
+			if n := strings.Count(err.Error(), vaultPath); n != 1 {
+				t.Errorf("error names the vault path %d times: %v", n, err)
+			}
+			if now, _ := os.ReadFile(vaultPath); !bytes.Equal(now, tc.blob) {
+				t.Error("corrupt vault file was modified")
+			}
+		})
+	}
+
+	// An unreadable vault path (a directory): the OS error already names
+	// the path; it must not be repeated.
+	os.Remove(vaultPath)
+	if err := os.Mkdir(vaultPath, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	a, err := NewApp(AppOptions{ConfigPath: cfg, Logf: (&logBuf{}).logf})
+	if err == nil {
+		a.Close()
+		t.Fatal("NewApp accepted a directory as the vault file")
+	}
+	if n := strings.Count(err.Error(), vaultPath); n != 1 {
+		t.Errorf("error names the vault path %d times: %v", n, err)
 	}
 }
 

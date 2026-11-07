@@ -30,7 +30,8 @@ go build -ldflags "-X main.version=v0.1.0" -o bin/cui-proxy ./cmd/cui-proxy
 ## Run
 
 ```sh
-cp -r examples ~/.config/cui-proxy        # then edit config.yaml and hosts.txt
+mkdir -p ~/.config/cui-proxy && cp examples/config.yaml examples/hosts.txt ~/.config/cui-proxy/
+# then edit ~/.config/cui-proxy/config.yaml and hosts.txt
 bin/cui-proxy check-config -config ~/.config/cui-proxy/config.yaml
 bin/cui-proxy serve -config ~/.config/cui-proxy/config.yaml
 ```
@@ -134,7 +135,8 @@ a second signal closes at once.
 - `tools[].name` and some protocol identifier fields are not scanned, so
   that the protocol keeps working; unknown `include` values are scanned, not
   skipped.
-- Upstream redirects (3xx) are never relayed; the client gets a 502.
+- Upstream 3xx responses other than 304 become 502: a redirect (and its
+  `Location`) is never relayed to the client.
 - Any sanitize failure blocks the request (fail closed) unless
   `policy.on_error: passthrough`, which forwards the ORIGINAL request and is
   logged as UNSAFE at startup.

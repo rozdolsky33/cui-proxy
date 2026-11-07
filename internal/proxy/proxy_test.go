@@ -107,20 +107,20 @@ func (l *logBuf) String() string {
 }
 
 type harness struct {
-	t        *testing.T
-	cfg      *config.Config
-	cur      atomic.Pointer[set]
-	curCalls atomic.Int64
-	reg      *metrics.Registry
-	aud      *audit.Log
-	auditCh  <-chan audit.Entry
-	logs     *logBuf
-	reqs     chan capture
-	handle   func(w http.ResponseWriter, r *http.Request)
-	up, px   *httptest.Server
-	upTr     *http.Transport // proxy -> upstream
-	cliTr    *http.Transport // test client -> proxy
-	client   *http.Client
+	t         *testing.T
+	cfg       *config.Config
+	cur       atomic.Pointer[set]
+	snapCalls atomic.Int64
+	reg       *metrics.Registry
+	aud       *audit.Log
+	auditCh   <-chan audit.Entry
+	logs      *logBuf
+	reqs      chan capture
+	handle    func(w http.ResponseWriter, r *http.Request)
+	up, px    *httptest.Server
+	upTr      *http.Transport // proxy -> upstream
+	cliTr     *http.Transport // test client -> proxy
+	client    *http.Client
 }
 
 type option func(*harness, *Deps)
@@ -156,13 +156,12 @@ func newHarness(t *testing.T, handle func(w http.ResponseWriter, r *http.Request
 	}
 	h.upTr = &http.Transport{}
 	d := Deps{
-		Cfg:      func() *config.Config { return h.cfg },
 		Adapter:  codex.New(),
 		Upstream: base,
-		Current: func() (*transform.Sanitizer, *transform.Restorer) {
-			h.curCalls.Add(1)
+		Snapshot: func() Snapshot {
+			h.snapCalls.Add(1)
 			s := h.cur.Load()
-			return s.s, s.r
+			return Snapshot{Cfg: h.cfg, Sanitizer: s.s, Restorer: s.r}
 		},
 		VaultLen:  func() int { return h.cur.Load().v.Len() },
 		Metrics:   h.reg,
@@ -995,7 +994,7 @@ func TestConcurrentRequestsKeepRuleCountsSeparate(t *testing.T) {
 	}
 }
 
-func TestCurrentEvaluatedOncePerRequest(t *testing.T) {
+func TestSnapshotEvaluatedOncePerRequest(t *testing.T) {
 	swapped := make(chan struct{})
 	var syn string
 	h := newHarness(t, func(w http.ResponseWriter, r *http.Request) {
@@ -1027,8 +1026,57 @@ func TestCurrentEvaluatedOncePerRequest(t *testing.T) {
 	if got := deltas(t, readEvents(t, rest), "response.output_text.delta"); got != "host "+realIP+" ok" {
 		t.Errorf("in-flight request lost its restorer: %q", got)
 	}
-	if n := h.curCalls.Load(); n != 1 {
-		t.Errorf("Current called %d times, want 1", n)
+	if n := h.snapCalls.Load(); n != 1 {
+		t.Errorf("Snapshot called %d times, want 1", n)
+	}
+}
+
+// TestSnapshotKeepsPolicyAndRulesTogether swaps the whole snapshot (policy
+// and rules) while a request is being sanitized: the request finishes with
+// the old policy (passthrough) and the old restorer, and the next request
+// gets the new policy (block).
+func TestSnapshotKeepsPolicyAndRulesTogether(t *testing.T) {
+	oldSet, nextSet := newSet(t), newSet(t)
+	oldCfg := &config.Config{Policy: config.Policy{OnError: "passthrough", MaxBodyBytes: 1 << 20}}
+	newCfg := &config.Config{Policy: config.Policy{OnError: "block", MaxBodyBytes: 1 << 20}}
+	var snap atomic.Pointer[Snapshot]
+	snap.Store(&Snapshot{Cfg: oldCfg, Sanitizer: oldSet.s, Restorer: oldSet.r})
+	var calls atomic.Int64
+	var once sync.Once
+	fa := &fakeAdapter{Adapter: codex.New(), sanitize: func([]byte, *transform.Sanitizer) ([]byte, error) {
+		// A reload lands mid-request: new policy and new rules at once.
+		once.Do(func() { snap.Store(&Snapshot{Cfg: newCfg, Sanitizer: nextSet.s, Restorer: nextSet.r}) })
+		return nil, errors.New("sanitize failed")
+	}}
+	syn := oldSet.pseudo(t, "ipv4", realIP)
+	h := newHarness(t, func(w http.ResponseWriter, r *http.Request) {
+		sseHeaders(w)
+		writeEvent(w, "response.output_text.delta", textDelta("host "+syn))
+		writeEvent(w, "response.completed", evCompleted)
+	}, withAdapter(fa), func(_ *harness, d *Deps) {
+		d.Snapshot = func() Snapshot { calls.Add(1); return *snap.Load() }
+	})
+	orig := userBody("hi")
+	res, body := h.post(orig)
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status %d: in-flight request lost its passthrough policy", res.StatusCode)
+	}
+	if got := h.upstreamGot(); string(got.Body) != orig {
+		t.Errorf("upstream body = %q", got.Body)
+	}
+	if got := deltas(t, readEvents(t, body), "response.output_text.delta"); got != "host "+realIP {
+		t.Errorf("in-flight request lost its restorer: %q", got)
+	}
+	if n := calls.Load(); n != 1 {
+		t.Errorf("Snapshot called %d times for one request, want 1", n)
+	}
+	if a := h.nextAudit(); a.Rules["passthrough:sanitize"] != 1 {
+		t.Errorf("audit = %+v", a)
+	}
+	res, body = h.post(orig)
+	assertBlocked(t, h, res, body, http.StatusUnprocessableEntity, "sanitize")
+	if n := calls.Load(); n != 2 {
+		t.Errorf("Snapshot called %d times for two requests, want 2", n)
 	}
 }
 

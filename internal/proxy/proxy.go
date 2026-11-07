@@ -34,15 +34,23 @@ import (
 	"cui-proxy/internal/transform"
 )
 
-// Deps are the proxy's collaborators. Cfg, Adapter, Upstream, Current,
-// Metrics and Audit are required.
+// Snapshot is the hot-reloadable state one request runs with: the policy
+// and the rules come from the same reload, so a request can never combine
+// new rules with an old policy (or the reverse).
+type Snapshot struct {
+	Cfg       *config.Config
+	Sanitizer *transform.Sanitizer
+	Restorer  *transform.Restorer
+}
+
+// Deps are the proxy's collaborators. Adapter, Upstream, Snapshot, Metrics
+// and Audit are required.
 type Deps struct {
-	Cfg      func() *config.Config // read once per request
 	Adapter  adapter.Adapter
 	Upstream *url.URL // base, e.g. https://chatgpt.com/backend-api/codex
-	// Current returns the sanitizer and restorer; it is evaluated once per
-	// request, so a reload never changes an in-flight request's set.
-	Current   func() (*transform.Sanitizer, *transform.Restorer)
+	// Snapshot is evaluated exactly once per request, so a reload never
+	// changes an in-flight request's policy or rules.
+	Snapshot  func() Snapshot
 	VaultLen  func() int // reported via Metrics.SetVaultSize after each request; nil ok
 	Metrics   *metrics.Registry
 	Audit     *audit.Log
@@ -103,8 +111,8 @@ const defaultMaxBody = 20 << 20
 
 // New returns the proxy handler. It panics if a required dependency is nil.
 func New(d Deps) http.Handler {
-	if d.Cfg == nil || d.Adapter == nil || d.Upstream == nil || d.Current == nil || d.Metrics == nil || d.Audit == nil {
-		panic("proxy: Cfg, Adapter, Upstream, Current, Metrics and Audit are required")
+	if d.Adapter == nil || d.Upstream == nil || d.Snapshot == nil || d.Metrics == nil || d.Audit == nil {
+		panic("proxy: Adapter, Upstream, Snapshot, Metrics and Audit are required")
 	}
 	if d.Transport == nil {
 		d.Transport = newTransport()
@@ -200,8 +208,9 @@ func (h *handler) serveSafe(x *exchange, w http.ResponseWriter, r *http.Request)
 // sanitizing) and forwards the request. It reports whether the client
 // connection must be aborted.
 func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) bool {
-	cfg := h.d.Cfg()
-	if cfg == nil {
+	snap := h.d.Snapshot()
+	cfg, san, rest := snap.Cfg, snap.Sanitizer, snap.Restorer
+	if cfg == nil || san == nil || rest == nil {
 		return h.block(x, reasonInternal)
 	}
 	route, ok := h.d.Adapter.Match(r.Method, r.URL.Path)
@@ -212,10 +221,6 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 	}
 	if encoded(r.Header) {
 		return h.block(x, reasonCompressed)
-	}
-	san, rest := h.d.Current()
-	if san == nil || rest == nil {
-		return h.block(x, reasonInternal)
 	}
 	// Before reading the body: headers and query are never rewritten, so a
 	// detected value blocks outright (on_error: passthrough does not apply).

@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -119,13 +120,16 @@ func NewApp(opts AppOptions) (*App, error) {
 		return nil, fmt.Errorf("unknown adapter %q", opts.Adapter)
 	}
 	a.adapter = ad
-	raw, ok := cfg.Upstreams[ad.Name()]
-	if !ok || raw == "" {
+	// Every upstream is checked, not only the selected adapter's: a bad
+	// unused entry must not be loaded (and shown) just because it is unused.
+	if cfg.Upstreams[ad.Name()] == "" {
 		return nil, fmt.Errorf("no upstream configured for adapter %q", ad.Name())
 	}
-	if a.upstream, err = parseUpstream(ad.Name(), raw); err != nil {
+	ups, err := parseUpstreams(cfg.Upstreams)
+	if err != nil {
 		return nil, err
 	}
+	a.upstream = ups[ad.Name()]
 	if err := a.openVault(cfg.Vault); err != nil {
 		return nil, err
 	}
@@ -157,6 +161,20 @@ func (a *App) newRuleset(cfg *config.Config, ds []detect.Detector) *ruleset {
 		sanitizer: transform.NewSanitizer(ds, a.vault, nil),
 		restorer:  transform.NewRestorer(a.vault),
 	}
+}
+
+// parseUpstreams checks every configured upstream, in name order; serve and
+// check-config share it.
+func parseUpstreams(raw map[string]string) (map[string]*url.URL, error) {
+	out := make(map[string]*url.URL, len(raw))
+	for _, name := range slices.Sorted(maps.Keys(raw)) {
+		u, err := parseUpstream(name, raw[name])
+		if err != nil {
+			return nil, err
+		}
+		out[name] = u
+	}
+	return out, nil
 }
 
 // parseUpstream checks an upstream base URL: absolute, https (plain http
@@ -231,6 +249,10 @@ func (a *App) openVault(vc config.VaultConfig) error {
 	}
 	if exists {
 		if a.vault, err = vault.Open(path, key); err != nil {
+			var pe *fs.PathError
+			if errors.As(err, &pe) {
+				return err // the OS error already names the path
+			}
 			return fmt.Errorf("%w (%s)", err, path)
 		}
 	} else {
@@ -261,12 +283,11 @@ func (a *App) Start() error {
 	errLog := log.New(suppressed{a.logf}, "", 0)
 	a.proxySrv = &http.Server{
 		Handler: proxy.New(proxy.Deps{
-			Cfg:      func() *config.Config { return a.cur.Load().cfg },
 			Adapter:  a.adapter,
 			Upstream: a.upstream,
-			Current: func() (*transform.Sanitizer, *transform.Restorer) {
-				rs := a.cur.Load()
-				return rs.sanitizer, rs.restorer
+			Snapshot: func() proxy.Snapshot {
+				rs := a.cur.Load() // one load: policy and rules from the same reload
+				return proxy.Snapshot{Cfg: rs.cfg, Sanitizer: rs.sanitizer, Restorer: rs.restorer}
 			},
 			VaultLen: a.vault.Len,
 			Metrics:  a.metrics,

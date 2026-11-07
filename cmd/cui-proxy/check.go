@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"sort"
 )
 
 // runCheck validates a config the way serve would: schema, synth classes,
@@ -24,15 +23,8 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return fail(stderr, err)
 	}
-	names := make([]string, 0, len(cfg.Upstreams))
-	for name := range cfg.Upstreams {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		if _, err := parseUpstream(name, cfg.Upstreams[name]); err != nil {
-			return fail(stderr, err)
-		}
+	if _, err := parseUpstreams(cfg.Upstreams); err != nil {
+		return fail(stderr, err)
 	}
 	fmt.Fprintf(stdout, "ok: %d rules\n", len(cfg.Rules))
 	return exitOK

@@ -153,3 +153,35 @@ func TestServeSignals(t *testing.T) {
 		t.Fatalf("logs:\n%s", logs)
 	}
 }
+
+func TestFlagErrorsArePrefixed(t *testing.T) {
+	for _, args := range [][]string{
+		{"check-config", "-nope"},
+		{"serve", "-config"}, // flag needs an argument
+		{"test-rules", "-bogus=1"},
+	} {
+		code, out, errOut := runCLI("", args...)
+		if code != 2 {
+			t.Errorf("%q: exit %d, want 2", args, code)
+		}
+		if out != "" {
+			t.Errorf("%q: stdout %q", args, out)
+		}
+		first, _, _ := strings.Cut(errOut, "\n")
+		if !strings.HasPrefix(first, "cui-proxy: "+args[0]+": ") {
+			t.Errorf("%q: first stderr line %q lacks the cui-proxy prefix", args, first)
+		}
+		if !strings.Contains(errOut, "-config") {
+			t.Errorf("%q: no flag usage in %q", args, errOut)
+		}
+	}
+	for _, cmd := range []string{"serve", "check-config", "test-rules"} {
+		code, _, errOut := runCLI("", cmd, "-h")
+		if code != 0 {
+			t.Errorf("%s -h: exit %d, want 0", cmd, code)
+		}
+		if !strings.Contains(errOut, "-config") {
+			t.Errorf("%s -h: no usage in %q", cmd, errOut)
+		}
+	}
+}

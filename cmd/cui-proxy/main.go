@@ -76,11 +76,23 @@ func fail(stderr io.Writer, err error) int {
 // parseFlags parses a subcommand's flags. It returns ok=false with the exit
 // code when the command must stop (usage error or -h).
 func parseFlags(fs *flag.FlagSet, args []string, stderr io.Writer, needConfig *string) (int, bool) {
-	fs.SetOutput(stderr)
+	// The flag package's own messages lack the cui-proxy prefix: discard
+	// them and print our own instead.
+	fs.SetOutput(io.Discard)
+	fs.Usage = func() {}
+	printDefaults := func() {
+		fmt.Fprintf(stderr, "usage of %s:\n", fs.Name())
+		fs.SetOutput(stderr)
+		fs.PrintDefaults()
+		fs.SetOutput(io.Discard)
+	}
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
+			printDefaults()
 			return exitOK, false
 		}
+		fmt.Fprintf(stderr, "cui-proxy: %s: %v\n", fs.Name(), err)
+		printDefaults()
 		return exitUsage, false
 	}
 	if fs.NArg() != 0 {
