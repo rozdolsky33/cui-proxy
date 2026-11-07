@@ -749,7 +749,13 @@ func TestFailClosedOnSanitizerError(t *testing.T) {
 }
 
 func TestPassthroughModeForwardsOriginal(t *testing.T) {
-	h := newHarness(t, nil)
+	// A sanitizer failure (no synthetic available): the one case passthrough
+	// forwards. Unparseable bodies and other unsupported content never are
+	// (see TestPassthroughNeverForwardsUnsupportedContent).
+	fa := &fakeAdapter{Adapter: codex.New(), sanitize: func([]byte, *transform.Sanitizer) ([]byte, error) {
+		return nil, fmt.Errorf("x: %w: rule=builtin.ipv4 class=ipv4", transform.ErrPseudonym)
+	}}
+	h := newHarness(t, nil, withAdapter(fa))
 	h.cfg.Policy.OnError = "passthrough"
 	orig := "not json " + realIP
 	res, _ := h.post(orig)

@@ -375,6 +375,7 @@ func (a *App) logStartup(rs *ruleset) {
 	} else {
 		a.logf("vault: memory (mappings are lost on restart)")
 	}
+	a.logPolicy(cfg)
 	a.policyWarnings(cfg)
 	if cfg.AllowNonLoopback {
 		a.logf("WARN allow_non_loopback=true: listeners may bind non-loopback addresses")
@@ -417,8 +418,47 @@ func (a *App) Reload() error {
 	}
 	a.cur.Store(a.newRuleset(cfg, ds))
 	a.logf("reload ok: %d rules (%d detectors)", len(cfg.Rules), len(ds))
+	a.logPolicy(cfg)
+	a.warnIfWeakened(old.cfg, cfg)
 	a.policyWarnings(cfg)
 	return nil
+}
+
+func profileOf(cfg *config.Config) string {
+	if cfg.Policy.Profile == "" {
+		return config.ProfileSanitize
+	}
+	return cfg.Policy.Profile
+}
+
+// blockingRules counts the rules whose effective action is block.
+func blockingRules(cfg *config.Config) int {
+	n := 0
+	for _, r := range cfg.Rules {
+		if config.EffectiveAction(cfg.Policy.Profile, r) == config.ActionBlock {
+			n++
+		}
+	}
+	return n
+}
+
+// logPolicy states the active profile and how many rules block, at every
+// start and reload, so a weaker policy is never silent.
+func (a *App) logPolicy(cfg *config.Config) {
+	a.logf("policy: profile=%s blocking_rules=%d of %d", profileOf(cfg), blockingRules(cfg), len(cfg.Rules))
+}
+
+// warnIfWeakened logs an explicit WARN when a reload lowers the policy: the
+// profile goes from strict to anything else, or fewer rules block. A reload
+// is a local operator action and may do this; it must not be silent.
+func (a *App) warnIfWeakened(old, next *config.Config) {
+	if op, np := profileOf(old), profileOf(next); op == config.ProfileStrict && np != config.ProfileStrict {
+		a.logf("WARN policy weakened by reload: profile %s -> %s", op, np)
+		return
+	}
+	if ob, nb := blockingRules(old), blockingRules(next); nb < ob {
+		a.logf("WARN policy weakened by reload: blocking rules %d -> %d", ob, nb)
+	}
 }
 
 // pinRestartOnly copies the settings that cannot change at runtime from cur

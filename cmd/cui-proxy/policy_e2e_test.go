@@ -112,3 +112,18 @@ func TestReloadRefusesToWeakenStrict(t *testing.T) {
 		t.Error("a request reached the upstream under the (still active) strict policy")
 	}
 }
+
+// The dashboard's test box uses the rules the proxy runs, including the
+// profile: under strict it says the text would be blocked.
+func TestDashboardTestBoxFollowsTheActiveProfile(t *testing.T) {
+	e := newE2E(t)
+	code, b := e.ui("POST", "/api/test", `{"text":"ssh admin@10.20.30.15"}`)
+	if code != 200 || strings.Contains(string(b), "10.20.30.15") {
+		t.Fatalf("sanitize: %d %s", code, b)
+	}
+	e.reloadWith(strictConfig(e, "strict"))
+	code, b = e.ui("POST", "/api/test", `{"text":"ssh admin@10.20.30.15"}`)
+	if code != http.StatusUnprocessableEntity || !strings.Contains(string(b), "blocked by policy") {
+		t.Errorf("strict: %d %s; want 422 blocked by policy", code, b)
+	}
+}

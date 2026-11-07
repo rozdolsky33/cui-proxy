@@ -44,6 +44,12 @@ func (b blocking) Find(s string) []Span {
 	return sp
 }
 
+// IsBlocking reports whether d was built with an effective action of block.
+func IsBlocking(d Detector) bool {
+	_, ok := d.(blocking)
+	return ok
+}
+
 // Build turns config rules into detectors under the default ("sanitize")
 // profile: see BuildForProfile.
 func Build(rules []config.Rule, baseDir string) ([]Detector, error) {

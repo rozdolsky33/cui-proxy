@@ -3,7 +3,9 @@ package codex
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -199,6 +201,15 @@ type scope struct {
 	depth  int  // containers enclosing the value
 }
 
+// checkBlocked refuses text that a blocking rule matches, without rewriting
+// it. It is how fields passed through unscanned are still held to the policy.
+func (w reqWalker) checkBlocked(s string) error {
+	if err := w.s.BlockedBy(s); err != nil {
+		return fmt.Errorf("codex: sanitize request: %w", err)
+	}
+	return nil
+}
+
 func (w reqWalker) text(s string) (string, error) {
 	out, err := w.s.Text(s)
 	if err != nil {
@@ -249,6 +260,15 @@ func (w reqWalker) object(n *node, sc scope) error {
 		}
 		kid := n.kids[i]
 		if !sc.inner && kid.kind == '"' && opaqueAt(sc.pos, k, n, kid) {
+			// Passed byte for byte, but never past a blocking rule. The one
+			// exception is encrypted_content: vendor ciphertext resent as
+			// received, never a place for user text, and megabytes of base64
+			// invite false positives.
+			if k != "encrypted_content" {
+				if err := w.checkBlocked(kid.str); err != nil {
+					return err
+				}
+			}
 			continue
 		}
 		tools := sc.tools || sc.pos == posTop && k == "tools"
@@ -289,7 +309,24 @@ func checkBinary(n *node, toolEntry bool) error {
 // account id sent as a number); a changed value becomes a JSON string.
 func (w reqWalker) number(n *node) error {
 	lit := n.str
-	if strings.ContainsAny(lit, ".eE") || len(strings.TrimPrefix(lit, "-")) < 13 {
+	// Under a blocking rule every number literal is checked, floats, exponents
+	// and short integers included (a custom rule may match a 6-digit id).
+	if err := w.checkBlocked(lit); err != nil {
+		return err
+	}
+	if strings.ContainsAny(lit, ".eE") {
+		// 4.111111111111111e15 is the integer 4111111111111111 in another
+		// spelling: check the plain-digit form of a whole-valued literal too.
+		if w.s.HasBlockingRules() {
+			if f, err := strconv.ParseFloat(lit, 64); err == nil && !math.IsInf(f, 0) && f == math.Trunc(f) && math.Abs(f) < 1e30 {
+				if err := w.checkBlocked(strconv.FormatFloat(f, 'f', 0, 64)); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	if len(strings.TrimPrefix(lit, "-")) < 13 {
 		return nil
 	}
 	out, err := w.text(lit)

@@ -35,6 +35,21 @@ func runPolicy(args []string, stdout, stderr io.Writer) int {
 // runPolicyCheck validates the config the way serve would, then prints the
 // effective policy and a plain statement of what is enforced, what is not
 // implemented yet, and what no local tool can do. It changes nothing.
+// cleanName makes a config-supplied name safe to print to a terminal: bytes
+// outside [A-Za-z0-9._-] become '_' and the result is cut to 64 bytes.
+func cleanName(s string) string {
+	if len(s) > 64 {
+		s = s[:64]
+	}
+	b := []byte(s)
+	for i, c := range b {
+		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '.' || c == '_' || c == '-') {
+			b[i] = '_'
+		}
+	}
+	return string(b)
+}
+
 func runPolicyCheck(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("policy check", flag.ContinueOnError)
 	cfgPath := fs.String("config", "", "path to the YAML config")
@@ -63,13 +78,15 @@ func runPolicyCheck(args []string, stdout, stderr io.Writer) int {
 
 	tw := tabwriter.NewWriter(stdout, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "RULE\tTYPE\tACTION")
-	anySanitize := false
+	anySanitize, anyBlock := false, false
 	for _, r := range cfg.Rules {
 		a := config.EffectiveAction(profile, r)
 		if a == config.ActionSanitize {
 			anySanitize = true
+		} else {
+			anyBlock = true
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\n", r.Name, r.Type, a)
+		fmt.Fprintf(tw, "%s\t%s\t%s\n", cleanName(r.Name), cleanName(r.Type), a)
 	}
 	tw.Flush()
 
@@ -80,9 +97,16 @@ func runPolicyCheck(args []string, stdout, stderr io.Writer) int {
 	if profile == config.ProfileStrict || !anySanitize {
 		fmt.Fprintln(stdout, "  - Every detection blocks the request before anything is forwarded.")
 	}
-	fmt.Fprintln(stdout, "  - Content the proxy cannot inspect is refused: images, files, compressed bodies, unknown routes, oversized, too deeply nested or unparseable bodies.")
+	if anyBlock {
+		fmt.Fprintln(stdout, "  - Because a rule blocks, protocol identifiers (model, ids, role, tool names, include entries) and every number in the request are checked too, not just text.")
+	}
+	fmt.Fprintln(stdout, "  - Content the proxy cannot inspect is refused, even under on_error: passthrough: images, files, compressed bodies, unknown routes, oversized, too deeply nested or unparseable bodies.")
 	fmt.Fprintln(stdout, "  - Request headers and the query string are scanned; a match blocks the request.")
 	fmt.Fprintln(stdout, "  - The upstream must be https (loopback excepted); redirects from it are never relayed.")
+
+	fmt.Fprintln(stdout, "\nNot scanned, by design:")
+	fmt.Fprintln(stdout, "  - The Authorization, Cookie and Chatgpt-Account-Id headers: they are credentials and are forwarded as they are.")
+	fmt.Fprintln(stdout, "  - encrypted_content (the vendor's encrypted reasoning blobs, resent as received).")
 
 	fmt.Fprintln(stdout, "\nNot implemented yet (see docs/adr):")
 	fmt.Fprintln(stdout, "  - Verified approval records (ADR 0002 is waiting on the approving authority).")

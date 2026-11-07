@@ -73,6 +73,10 @@ func TestPolicyCheckStrict(t *testing.T) {
 		"Every detection blocks the request",
 		"Content the proxy cannot inspect is refused",
 		"Request headers and the query string are scanned",
+		"protocol identifiers", // strict also checks the fields normally passed through unscanned
+		"even under on_error: passthrough",
+		"Not scanned, by design",
+		"Authorization", "encrypted_content",
 		"Not implemented yet",
 		"approval", "decision log",
 		"Not something this tool can do",
@@ -156,5 +160,75 @@ func TestTestRulesReportsPolicyBlock(t *testing.T) {
 	}
 	if !strings.Contains(errOut, "policy") || !strings.Contains(errOut, "rule=") || strings.Contains(errOut, "10.20.30.15") {
 		t.Errorf("stderr must say it was blocked by policy and by which rule, without the value: %q", errOut)
+	}
+}
+
+// The active profile is logged on every start and reload; a reload that
+// weakens the policy is a loud, explicit WARN (ADR 0001: weaker is an
+// explicit, logged opt-in).
+func TestStartupAndReloadLogThePolicy(t *testing.T) {
+	up := newUpstream(t, nil)
+	strictSpec := cfgSpec{Upstream: up.url(), Profile: "strict"}
+	_, cfg := testDir(t, strictSpec)
+	logs := &logBuf{}
+	a := startApp(t, cfg, logs, nil)
+	if !strings.Contains(logs.String(), "policy: profile=strict blocking_rules=2 of 2") {
+		t.Errorf("startup does not log the profile:\n%s", logs.String())
+	}
+	if strings.Contains(logs.String(), "weakened") {
+		t.Errorf("a first start is not a weakening:\n%s", logs.String())
+	}
+
+	// strict -> sanitize
+	writeFile(t, cfg, cfgSpec{Upstream: up.url(), Profile: "sanitize"}.render())
+	if err := a.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"policy: profile=sanitize blocking_rules=0 of 2",
+		"WARN policy weakened by reload: profile strict -> sanitize",
+	} {
+		if !strings.Contains(logs.String(), want) {
+			t.Errorf("reload log lacks %q:\n%s", want, logs.String())
+		}
+	}
+
+	// sanitize -> strict is a tightening: no warning.
+	n := strings.Count(logs.String(), "weakened")
+	writeFile(t, cfg, strictSpec.render())
+	if err := a.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Count(logs.String(), "weakened"); got != n {
+		t.Errorf("tightening the policy logged a weakening:\n%s", logs.String())
+	}
+
+	// Staying on sanitize but dropping a rule's action: block is a weakening too.
+	writeFile(t, cfg, cfgSpec{Upstream: up.url(), Rules: rulesBlockHosts}.render())
+	if err := a.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, cfg, cfgSpec{Upstream: up.url()}.render())
+	if err := a.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(logs.String(), "WARN policy weakened by reload: blocking rules 1 -> 0") {
+		t.Errorf("removing a blocking rule is not reported:\n%s", logs.String())
+	}
+}
+
+// Rule names come from the user's own config but may hold control characters:
+// they must not reach the terminal raw.
+func TestPolicyCheckAndTestRulesCleanRuleNames(t *testing.T) {
+	_, cfg := testDir(t, cfgSpec{Profile: "strict"})
+	body := strings.Replace(readFile(t, cfg), "name: builtin", "name: \"bad\\e[31mname\\tx\"", 1)
+	writeFile(t, cfg, body)
+	code, out, _ := runCLI("ssh 10.20.30.15\n", "policy", "check", "-config", cfg)
+	if code != 0 || strings.Contains(out, "\x1b") {
+		t.Errorf("policy check printed a control character: code %d %q", code, out)
+	}
+	code, _, errOut := runCLI("ssh 10.20.30.15\n", "test-rules", "-config", cfg)
+	if code != 1 || strings.Contains(errOut, "\x1b") {
+		t.Errorf("test-rules printed a control character: code %d %q", code, errOut)
 	}
 }

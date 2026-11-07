@@ -107,6 +107,9 @@ func TestResolveBlockMergeCases(t *testing.T) {
 		"touching spans stay separate":       {[]Span{sanitize(0, 5), block(5, 10, "b")}, 2, []bool{false, true}, []string{"", "b"}},
 		"two blockers: the better one names": {[]Span{block(0, 4, "short"), block(2, 12, "long")}, 1, []bool{true}, []string{"long"}},
 		"no blockers":                        {[]Span{sanitize(0, 5), sanitize(3, 9)}, 1, []bool{false}, []string{""}},
+		// A blocking group must not leak its flag into the next group.
+		"blocking group then plain group": {[]Span{block(0, 5, "b"), sanitize(6, 10)}, 2, []bool{true, false}, []string{"b", ""}},
+		"plain, blocking, plain":          {[]Span{sanitize(0, 3), block(4, 8, "b"), sanitize(9, 12)}, 3, []bool{false, true, false}, []string{"", "b", ""}},
 	} {
 		got := resolve(tc.in)
 		if len(got) != tc.wantN {
@@ -118,5 +121,28 @@ func TestResolveBlockMergeCases(t *testing.T) {
 				t.Errorf("%s: span %d = %+v; want Block=%v BlockRule=%q", name, i, got[i], tc.wantBlock[i], tc.wantRule[i])
 			}
 		}
+	}
+}
+
+func TestIsBlocking(t *testing.T) {
+	rules, dir := rulesFor(t, "block", "")
+	ds, err := BuildForProfile(rules, dir, "sanitize")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var blockers, others int
+	for _, d := range ds {
+		if IsBlocking(d) {
+			blockers++
+		} else {
+			others++
+		}
+	}
+	if blockers == 0 || others == 0 {
+		t.Errorf("blockers=%d others=%d; want builtin detectors blocking and the dictionary not", blockers, others)
+	}
+	plain, _ := Build(rules[:0], dir)
+	if len(plain) != 0 {
+		t.Fatal("setup")
 	}
 }

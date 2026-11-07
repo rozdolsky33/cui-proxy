@@ -2,6 +2,7 @@ package transform
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -137,5 +138,73 @@ func TestSanitizeProfileUnchanged(t *testing.T) {
 	out, err := NewSanitizer(policyDetectors(t, "sanitize", "", ""), vault.New(testKey), nil).Text("ssh admin@10.20.30.15 and host1.corp")
 	if err != nil || strings.Contains(out, "10.20.30.15") || strings.Contains(out, "host1.corp") {
 		t.Errorf("sanitize profile: %q, %v", out, err)
+	}
+}
+
+func TestHasBlockingRulesAndBlockedBy(t *testing.T) {
+	for _, tc := range []struct {
+		profile, dictAction string
+		want                bool
+	}{
+		{"sanitize", "", false},
+		{"sanitize", "block", true},
+		{"strict", "", true},
+	} {
+		s := NewSanitizer(policyDetectors(t, tc.profile, "", tc.dictAction), vault.New(testKey), nil)
+		if got := s.HasBlockingRules(); got != tc.want {
+			t.Errorf("%s/%q: HasBlockingRules = %v; want %v", tc.profile, tc.dictAction, got, tc.want)
+		}
+	}
+	s := NewSanitizer(policyDetectors(t, "sanitize", "", "block"), vault.New(testKey), nil)
+	if err := s.BlockedBy("nothing here, and 10.20.30.15 only masks"); err != nil {
+		t.Errorf("a sanitize-only match blocked: %v", err)
+	}
+	err := s.BlockedBy("ping host1.corp")
+	var se *SpanError
+	if !errors.Is(err, ErrBlocked) || !errors.As(err, &se) || se.Rule != "hosts" {
+		t.Errorf("BlockedBy = %v; want ErrBlocked from rule hosts", err)
+	}
+	// It neither coins nor records.
+	v := vault.New(testKey)
+	sink := &recSink{}
+	_ = NewSanitizer(policyDetectors(t, "strict", "", ""), v, sink).BlockedBy("ssh 10.20.30.15")
+	if v.Len() != 0 || len(sink.evs) != 0 {
+		t.Errorf("BlockedBy coined %d mappings / recorded %d events", v.Len(), len(sink.evs))
+	}
+	// No blocking rules: always nil, even for a match.
+	if err := NewSanitizer(policyDetectors(t, "sanitize", "", ""), vault.New(testKey), nil).BlockedBy("host1.corp 10.20.30.15"); err != nil {
+		t.Errorf("no blocking rules, got %v", err)
+	}
+}
+
+// An IPv4 overflow synthetic (198.18.0.0/15) can be a real address, so under
+// strict it is not "already sanitized": it blocks, with reason policy.
+func TestStrictBlocksAnIssuedOverflowSynthetic(t *testing.T) {
+	v := vault.New(testKey)
+	var overflow string
+	for i := 0; i < 800 && overflow == ""; i++ {
+		syn, err := v.Pseudonym("ipv4", fmt.Sprintf("10.%d.%d.%d", i/250+1, i%250+1, 7))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.HasPrefix(syn, "198.18.") || strings.HasPrefix(syn, "198.19.") {
+			overflow = syn
+		}
+	}
+	if overflow == "" {
+		t.Fatal("setup: no overflow synthetic was issued")
+	}
+	_, err := NewSanitizer(policyDetectors(t, "strict", "", ""), v, nil).Text("host " + overflow)
+	if !errors.Is(err, ErrBlocked) {
+		t.Errorf("err = %v; want ErrBlocked for an overflow-range value", err)
+	}
+}
+
+// Only the LAST span blocks; earlier sanitize-only spans must not hide it.
+func TestBlockingSpanAfterManyPlainSpans(t *testing.T) {
+	s := NewSanitizer(policyDetectors(t, "sanitize", "", "block"), vault.New(testKey), nil)
+	_, err := s.Text("a 10.1.1.1 b 10.1.1.2 c admin@example.com d 10.1.1.3 e host1.corp")
+	if !errors.Is(err, ErrBlocked) {
+		t.Errorf("err = %v; want ErrBlocked from the last span", err)
 	}
 }

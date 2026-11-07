@@ -15,11 +15,11 @@ policy:
   #           Use this where a policy forbids sending restricted data at all:
   #           cui-proxy policy init --profile strict
   profile: sanitize
-  on_error: block               # block (fail closed) | passthrough (UNSAFE; not allowed with strict)
+  on_error: block               # block (fail closed) | passthrough (UNSAFE; refused next to any blocking rule)
   max_body_bytes: 20971520      # 20 MiB, as an integer
   # unsupported: block          # content the proxy cannot inspect (images, files, compressed
   #                             # bodies, unknown routes, oversized or unparseable bodies) is
-  #                             # always refused; block is the only value
+  #                             # always refused, even under passthrough; block is the only value
 
 vault:
   mode: memory                  # memory | file

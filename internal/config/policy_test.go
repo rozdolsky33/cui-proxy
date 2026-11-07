@@ -90,3 +90,30 @@ func TestEffectiveAction(t *testing.T) {
 		}
 	}
 }
+
+// Any blocking rule, not only the strict profile, refuses passthrough: a
+// failure that hits before the blocking rule is scanned must not forward.
+func TestBlockingRulesRefusePassthrough(t *testing.T) {
+	c := base()
+	c.Policy.OnError = "passthrough"
+	c.Rules = []Rule{{Name: "r", Type: "regex", Pattern: "x", Synth: "secret", Action: "block"}}
+	err := c.Validate()
+	if err == nil || !strings.Contains(err.Error(), "passthrough") || !strings.Contains(err.Error(), "block") {
+		t.Errorf("error = %v; want passthrough refused next to a blocking rule", err)
+	}
+	// Without a blocking rule, passthrough is still accepted (UNSAFE, but its own opt-in).
+	c.Rules[0].Action = ""
+	if err := c.Validate(); err != nil {
+		t.Errorf("sanitize rules with passthrough: %v", err)
+	}
+}
+
+// An unknown profile string, if validation were skipped, is treated as the
+// strictest: never weaker than asked.
+func TestEffectiveActionUnknownProfileIsStrict(t *testing.T) {
+	for _, profile := range []string{"STRICT", "Strict", "lenient", " strict"} {
+		if got := EffectiveAction(profile, Rule{Action: "sanitize"}); got != "block" {
+			t.Errorf("EffectiveAction(%q) = %q; want block", profile, got)
+		}
+	}
+}

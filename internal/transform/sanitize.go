@@ -93,15 +93,52 @@ var testHookBuilt func(string) string
 // Sanitizer replaces detected values with synthetics. Safe for concurrent use
 // if the sink is.
 type Sanitizer struct {
-	ds   []detect.Detector
-	v    *vault.Vault
-	sink Sink // may be nil
-	r    *Restorer
+	ds       []detect.Detector
+	v        *vault.Vault
+	sink     Sink // may be nil
+	r        *Restorer
+	blocking bool // some detector's effective action is block
 }
 
 // NewSanitizer returns a sanitizer; sink may be nil.
 func NewSanitizer(ds []detect.Detector, v *vault.Vault, sink Sink) *Sanitizer {
-	return &Sanitizer{ds: ds, v: v, sink: sink, r: NewRestorer(v)}
+	s := &Sanitizer{ds: ds, v: v, sink: sink, r: NewRestorer(v)}
+	for _, d := range ds {
+		if detect.IsBlocking(d) {
+			s.blocking = true
+			break
+		}
+	}
+	return s
+}
+
+// HasBlockingRules reports whether any rule blocks (the strict profile, or a
+// rule with action: block). Callers that must not forward on a failure, and
+// the adapter, which then also checks fields it would otherwise pass through
+// unscanned, use it.
+func (s *Sanitizer) HasBlockingRules() bool { return s != nil && s.blocking }
+
+// BlockedBy returns an ErrBlocked SpanError (rule and class, never the value)
+// if in contains a detection by a blocking rule, else nil. It rewrites, coins
+// and records nothing, so it can check text that must be passed byte for byte
+// (protocol identifiers, number literals) or refused.
+func (s *Sanitizer) BlockedBy(in string) error {
+	if !s.HasBlockingRules() {
+		return nil
+	}
+	return s.blockedSpan(detect.Scan(s.ds, in), in)
+}
+
+// blockedSpan returns the ErrBlocked error for the first span (of the scan of
+// in) that a blocking rule matched and whose text is not an already-issued
+// synthetic, else nil.
+func (s *Sanitizer) blockedSpan(spans []detect.Span, in string) error {
+	for _, sp := range spans {
+		if sp.Block && !s.passSynthetic(in[sp.Start:sp.End]) {
+			return &SpanError{Kind: ErrBlocked, Rule: sp.BlockRule, Class: sp.BlockClass}
+		}
+	}
+	return nil
 }
 
 // WithSink returns a shallow copy of s that shares its detectors, vault and
@@ -162,10 +199,8 @@ func (s *Sanitizer) Text(in string) (string, error) {
 	// Policy first, before anything is admitted to the vault, coined or
 	// recorded: a blocking rule's match refuses the whole text. Block survives
 	// span merging (detect.resolve), so a longer sanitize match cannot hide it.
-	for _, sp := range spans {
-		if sp.Block && !s.passSynthetic(in[sp.Start:sp.End]) {
-			return "", &SpanError{Kind: ErrBlocked, Rule: sp.BlockRule, Class: sp.BlockClass}
-		}
+	if err := s.blockedSpan(spans, in); err != nil {
+		return "", err
 	}
 	// Synthetics already present, found before any new one is coined.
 	pre, _ := s.r.snapshot().scan(in, 0, true)

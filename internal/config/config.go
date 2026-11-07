@@ -49,11 +49,12 @@ type Policy struct {
 }
 
 // EffectiveAction is what a detection by r does under profile: the rule's own
-// action if it has one, else the profile's. The result is never weaker than
-// the strict profile, even for a config that skipped validation. An empty
-// profile means the default ("sanitize").
+// action if it has one, else the profile's. It is never weaker than asked: the
+// empty profile and "sanitize" are the sanitize profile, and ANY other
+// profile string (validation rejects them, but a config may skip it) is
+// treated as strict.
 func EffectiveAction(profile string, r Rule) string {
-	if profile == ProfileStrict {
+	if profile != "" && profile != ProfileSanitize {
 		return ActionBlock
 	}
 	if r.Action == ActionBlock {
@@ -157,11 +158,21 @@ func (c *Config) ValidateWith(known func(class string) bool) error {
 	switch c.Policy.Profile {
 	case "", ProfileSanitize:
 	case ProfileStrict:
-		if c.Policy.OnError == "passthrough" {
-			return errors.New(`config: policy.profile "strict" requires policy.on_error "block": passthrough would forward the original request when it cannot be inspected`)
-		}
 	default:
 		return fmt.Errorf("config: policy.profile %q must be sanitize or strict", c.Policy.Profile)
+	}
+	// Passthrough forwards the original request when it cannot be sanitized.
+	// A failure can hit before a blocking rule's value is scanned, so any
+	// blocking rule (strict, or action: block) makes passthrough unsafe.
+	if c.Policy.OnError == "passthrough" {
+		if c.Policy.Profile == ProfileStrict {
+			return errors.New(`config: policy.profile "strict" cannot be combined with policy.on_error "passthrough": passthrough would forward the original request when it cannot be inspected`)
+		}
+		for i, r := range c.Rules {
+			if r.Action == ActionBlock {
+				return fmt.Errorf(`config: rules[%d]: action "block" cannot be combined with policy.on_error "passthrough": passthrough would forward the original request when it cannot be inspected before the rule is checked`, i)
+			}
+		}
 	}
 	if c.Policy.Unsupported != "" && c.Policy.Unsupported != "block" {
 		return fmt.Errorf("config: policy.unsupported %q must be block (content the proxy cannot inspect is always refused)", c.Policy.Unsupported)

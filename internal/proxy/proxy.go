@@ -330,9 +330,7 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 	case adapter.KindSanitize:
 		out, reason, d := h.sanitize(x, san, body)
 		if reason != "" {
-			// A policy block is a decision, not a failure: on_error only
-			// decides what a FAILURE to sanitize does.
-			if cfg.Policy.OnError != "passthrough" || reason == reasonPolicy {
+			if !passthroughEligible(cfg, san, reason, d) {
 				return h.blockDiag(x, reason, d)
 			}
 			h.d.Metrics.IncPassthrough()
@@ -388,6 +386,23 @@ func (h *handler) sanitize(x *exchange, san *transform.Sanitizer, body []byte) (
 		}
 	}
 	return out, "", diag{}
+}
+
+// passthroughEligible reports whether a failed sanitize may forward the
+// original request (policy.on_error: passthrough). It is the exception, not
+// the rule: never for a policy block (a decision, not a failure), never when
+// any rule blocks (a failure can hit before a blocking rule's value is
+// scanned), and never for content the proxy cannot inspect (policy.unsupported
+// is always block). Only a failure of the sanitizer itself qualifies.
+func passthroughEligible(cfg *config.Config, san *transform.Sanitizer, reason string, d diag) bool {
+	if cfg.Policy.OnError != "passthrough" || reason == reasonPolicy || san.HasBlockingRules() {
+		return false
+	}
+	switch d.kind {
+	case kindBadBody, kindDepth:
+		return false
+	}
+	return true
 }
 
 // forward sends the request upstream and relays the response.
