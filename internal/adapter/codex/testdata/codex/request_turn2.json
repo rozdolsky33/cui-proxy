@@ -1,0 +1,79 @@
+{
+  "model": "gpt-5-codex",
+  "input": [
+    {
+      "type": "message",
+      "id": "msg_fixture_0001",
+      "role": "developer",
+      "content": [
+        {"type": "input_text", "text": "You are a coding agent. Sandbox: workspace-write."}
+      ]
+    },
+    {
+      "type": "message",
+      "id": "msg_fixture_0003",
+      "role": "user",
+      "content": [
+        {"type": "input_text", "text": "Check whether 10.20.30.15 answers ping."}
+      ]
+    },
+    {
+      "type": "reasoning",
+      "id": "rs_fixture_0001",
+      "summary": [
+        {"type": "summary_text", "text": "**Pinging 10.20.30.15** to check reachability."}
+      ],
+      "encrypted_content": "gAAAAB-fixture-opaque-blob-zz=="
+    },
+    {
+      "type": "function_call",
+      "id": "fc_fixture_0001",
+      "name": "exec_command",
+      "arguments": "{\"cmd\":\"ping -c1 10.20.30.15\",\"workdir\":\"/home/alice/work\"}",
+      "call_id": "call_fixture_0001"
+    },
+    {
+      "type": "function_call_output",
+      "id": "fco_fixture_0001",
+      "call_id": "call_fixture_0001",
+      "output": "PING 10.20.30.15: 56 data bytes\n64 bytes from 10.20.30.15: icmp_seq=0 ttl=64\nlast login from fd00:1234:5678::1 by alice.smith@corp-internal.com"
+    },
+    {
+      "type": "message",
+      "id": "msg_fixture_0004",
+      "role": "assistant",
+      "content": [
+        {"type": "output_text", "text": "10.20.30.15 is reachable."}
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "name": "exec_command",
+      "description": "Runs a command in a PTY.",
+      "strict": false,
+      "parameters": {
+        "type": "object",
+        "properties": {"cmd": {"type": "string"}, "workdir": {"type": "string"}},
+        "required": ["cmd"],
+        "additionalProperties": false
+      }
+    },
+    {"type": "custom", "name": "apply_patch", "description": "Edit files.", "format": {"type": "grammar", "syntax": "lark", "definition": "start: begin_patch hunk+ end_patch"}},
+    {"type": "tool_search", "execution": "client", "description": "Search for more tools.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}}},
+    {"type": "web_search", "external_web_access": false}
+  ],
+  "tool_choice": "auto",
+  "parallel_tool_calls": true,
+  "reasoning": {"effort": "high"},
+  "store": false,
+  "stream": true,
+  "include": ["reasoning.encrypted_content"],
+  "prompt_cache_key": "00000000-0000-4000-8000-000000000001",
+  "text": {"verbosity": "low"},
+  "client_metadata": {
+    "session_id": "00000000-0000-4000-8000-000000000001",
+    "turn_id": "00000000-0000-4000-8000-000000000003"
+  }
+}

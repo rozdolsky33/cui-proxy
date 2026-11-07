@@ -1,0 +1,21 @@
+event: response.created
+data: {"type":"response.created","sequence_number":0,"response":{"id":"resp_fixture_0001","object":"response","status":"in_progress","model":"gpt-5-codex","output":[]}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","sequence_number":1,"output_index":0,"item":{"type":"function_call","id":"fc_fixture_0002","status":"in_progress","name":"exec_command","call_id":"call_fixture_0002","arguments":""}}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","sequence_number":2,"item_id":"fc_fixture_0002","output_index":0,"delta":"{\"cmd\":\"echo host={{A1}}","obfuscation":"q1"}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","sequence_number":3,"item_id":"fc_fixture_0002","output_index":0,"delta":"{{A2}} done\"}","obfuscation":"q2"}
+
+event: response.function_call_arguments.done
+data: {"type":"response.function_call_arguments.done","sequence_number":4,"item_id":"fc_fixture_0002","output_index":0,"arguments":"{\"cmd\":\"echo host={{IP}} done\"}"}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","sequence_number":5,"output_index":0,"item":{"type":"function_call","id":"fc_fixture_0002","status":"completed","name":"exec_command","call_id":"call_fixture_0002","arguments":"{\"cmd\":\"echo host={{IP}} done\"}"}}
+
+event: response.completed
+data: {"type":"response.completed","sequence_number":6,"response":{"id":"resp_fixture_0001","object":"response","status":"completed","model":"gpt-5-codex","output":[{"type":"function_call","id":"fc_fixture_0002","status":"completed","name":"exec_command","call_id":"call_fixture_0002","arguments":"{\"cmd\":\"echo host={{IP}} done\"}"}],"usage":{"input_tokens":10,"output_tokens":5,"total_tokens":15}}}
+
