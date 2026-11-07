@@ -200,7 +200,7 @@ func TestMenubarUninstallOnlyRemovesItsOwnLoginItem(t *testing.T) {
 	}
 
 	// A login item that launches THIS copy goes with it.
-	app = fakeApp(t, apps, menubarBundleID)
+	_ = fakeApp(t, apps, menubarBundleID)
 	_ = fakeLaunchAgent(t, home, exe)
 	if code, out, errOut := runCLI("", "menubar", "uninstall", "-dir", apps); code != 0 || !strings.Contains(out, "Start at Login") {
 		t.Fatalf("uninstall: code %d, out %q, stderr %q", code, out, errOut)
