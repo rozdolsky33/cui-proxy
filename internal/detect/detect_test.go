@@ -295,3 +295,34 @@ func TestDictionaryRetriesAfterRejectedLongestMatch(t *testing.T) {
 		t.Errorf("full entry: %v", sp)
 	}
 }
+
+// Fix round 2: card windows.
+func TestCardAllWindowsAndUnbrokenRuns(t *testing.T) {
+	// A spurious Luhn-valid window (1006 0000 0000 4111) overlaps the front of
+	// the real card; the union must leave no card digit visible.
+	in := "1006 0000 0000 4111 1111 1111 1111"
+	g := builtinScan(t, in)
+	if len(g) != 1 || g[0].Class != "card" || g[0].Text != in {
+		t.Errorf("overlapping windows: %v", g)
+	}
+	// Unbroken run with a leading extra digit: card sub-window is masked.
+	if g := builtinScan(t, "94111111111111111"); len(g) == 0 || g[0].Class != "card" || !strings.Contains(g[0].Text, "4111111111111111"[1:]) {
+		t.Errorf("unbroken run: %v", g)
+	}
+	// 1700000000004 is a Luhn-valid 13-digit millisecond timestamp starting
+	// with 1; the issuer-prefix filter must leave it alone.
+	if g := builtinScan(t, "ts=1700000000004"); g != nil {
+		t.Errorf("timestamp masked: %v", g)
+	}
+}
+
+func TestCardFindLongRunBounded(t *testing.T) {
+	// Behavioural bound (no wall clock): a very long digit run completes and
+	// every emitted window is 13-19 digits.
+	run := strings.Repeat("4", 200000)
+	for _, sp := range cardFind(run, 0, len(run)) {
+		if n := sp[1] - sp[0]; n < 13 || n > 19 {
+			t.Fatalf("window len %d", n)
+		}
+	}
+}

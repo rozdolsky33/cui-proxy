@@ -194,10 +194,14 @@ func luhnOK(c string) bool {
 
 func luhnRefine(text string, s, e int) (int, int, bool) { return s, e, luhnOK(text[s:e]) }
 
-// cardFind takes a run of digit groups separated by single spaces/dashes and
-// returns Luhn-valid 13-19 digit windows that start and end at group
-// boundaries, longest first from the earliest start. This finds a card that is
-// followed by a CVV or preceded by a year in the same run.
+// cardFind takes a run of digit groups separated by single spaces/dashes.
+//
+// A single unbroken digit run is tested at every 13-19 digit sub-window, but
+// only windows whose first digit is 3, 4, 5 or 6 (issuer prefixes) are kept, to
+// limit noise from timestamps and IDs. A multi-group run is tested at windows
+// that start and end at group boundaries (at most 19 digits): for each start
+// group the longest Luhn-valid window is emitted. Windows may overlap; resolve
+// merges them, so a spurious window never hides the rest of a real card.
 func cardFind(text string, s, e int) [][2]int {
 	type grp struct{ st, en int }
 	var gs []grp
@@ -210,7 +214,21 @@ func cardFind(text string, s, e int) [][2]int {
 		i = j + 1 // skip the single separator
 	}
 	var out [][2]int
-	for i := 0; i < len(gs); {
+	if len(gs) == 1 {
+		for st := gs[0].st; st+13 <= gs[0].en; st++ {
+			if c := text[st]; c < '3' || c > '6' {
+				continue
+			}
+			for n := 19; n >= 13; n-- {
+				if st+n <= gs[0].en && luhnOK(text[st:st+n]) {
+					out = append(out, [2]int{st, st + n})
+					break
+				}
+			}
+		}
+		return out
+	}
+	for i := range gs {
 		best, digits := -1, 0
 		for j := i; j < len(gs); j++ {
 			digits += gs[j].en - gs[j].st
@@ -221,12 +239,9 @@ func cardFind(text string, s, e int) [][2]int {
 				best = j
 			}
 		}
-		if best < 0 {
-			i++
-			continue
+		if best >= 0 {
+			out = append(out, [2]int{gs[i].st, gs[best].en})
 		}
-		out = append(out, [2]int{gs[i].st, gs[best].en})
-		i = best + 1
 	}
 	return out
 }
