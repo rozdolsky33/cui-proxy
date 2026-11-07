@@ -1,0 +1,22 @@
+listen: 127.0.0.1:8787
+ui: { listen: 127.0.0.1:8788 }
+upstreams:
+  codex: https://api.openai.com
+policy:
+  on_error: block
+  max_body_bytes: 20971520
+vault: { mode: memory }
+rules:
+  - name: oci-ocid
+    type: regex
+    pattern: 'ocid1\.[a-z0-9]+\.oc[0-9]\.[a-z0-9-]*\.[a-z0-9]+'
+    synth: ocid
+  - name: ipv4
+    type: regex
+    pattern: '\b(?:\d{1,3}\.){3}\d{1,3}\b'
+    validate: ipv4
+    synth: ipv4
+  - name: customer-hosts
+    type: dictionary
+    file: ./hosts.txt
+    synth: hostname
