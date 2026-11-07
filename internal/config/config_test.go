@@ -1,6 +1,7 @@
 package config
 
 import (
+	"cui-proxy/internal/synth"
 	"os"
 	"path/filepath"
 	"testing"
@@ -159,5 +160,20 @@ func TestBuiltinRuleNeedsNoSynth(t *testing.T) {
 	c.Rules = []Rule{{Name: "r", Type: "regex", Pattern: "x"}}
 	if err := c.Validate(); err == nil {
 		t.Error("regex without synth must still fail")
+	}
+}
+
+func TestValidateWithSynthKnown(t *testing.T) {
+	for _, class := range []string{"ipv4", "ipv6", "cidr", "hostname", "email", "ocid", "ssn", "card", "secret"} {
+		c := base()
+		c.Rules = []Rule{{Name: "a", Type: "regex", Pattern: "x", Synth: class}}
+		if err := c.ValidateWith(synth.Known); err != nil {
+			t.Errorf("%s: %v", class, err)
+		}
+	}
+	c := base()
+	c.Rules = []Rule{{Name: "a", Type: "regex", Pattern: "x", Synth: "bogus"}}
+	if err := c.ValidateWith(synth.Known); err == nil {
+		t.Error("bogus class should fail")
 	}
 }
