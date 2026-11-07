@@ -80,15 +80,68 @@ func requestMetaSensitive(r *http.Request, s *transform.Sanitizer) bool {
 			}
 		}
 	}
-	if q := r.URL.RawQuery; q != "" {
-		if len(s.Detect(q)) > 0 {
+	return querySensitive(r.URL.RawQuery, s)
+}
+
+// querySensitive scans the raw query, its strict decode when that succeeds,
+// and every component split on '&', ';' and '=', each both raw and
+// tolerantly decoded. A decode failure never skips a scan, and is not by
+// itself a reason to block. Decoding is applied once (no double decoding).
+func querySensitive(q string, s *transform.Sanitizer) bool {
+	if q == "" {
+		return false
+	}
+	hit := func(t string) bool { return len(s.Detect(t)) > 0 }
+	if hit(q) {
+		return true
+	}
+	if d, err := url.QueryUnescape(q); err == nil && d != q && hit(d) {
+		return true
+	}
+	for _, c := range strings.FieldsFunc(q, func(r rune) bool { return r == '&' || r == ';' || r == '=' }) {
+		if hit(c) {
 			return true
 		}
-		if d, err := url.QueryUnescape(q); err == nil && d != q && len(s.Detect(d)) > 0 {
+		if d := tolerantUnescape(c); d != c && hit(d) {
 			return true
 		}
 	}
 	return false
+}
+
+// tolerantUnescape decodes valid %XX escapes and '+' (as a space); invalid
+// escapes are kept literally.
+func tolerantUnescape(c string) string {
+	if !strings.ContainsAny(c, "%+") {
+		return c
+	}
+	b := make([]byte, 0, len(c))
+	for i := 0; i < len(c); i++ {
+		switch {
+		case c[i] == '+':
+			b = append(b, ' ')
+		case c[i] == '%' && i+2 < len(c) && isHex(c[i+1]) && isHex(c[i+2]):
+			b = append(b, unhex(c[i+1])<<4|unhex(c[i+2]))
+			i += 2
+		default:
+			b = append(b, c[i])
+		}
+	}
+	return string(b)
+}
+
+func isHex(c byte) bool {
+	return '0' <= c && c <= '9' || 'a' <= c && c <= 'f' || 'A' <= c && c <= 'F'
+}
+
+func unhex(c byte) byte {
+	switch {
+	case c <= '9':
+		return c - '0'
+	case c <= 'F':
+		return c - 'A' + 10
+	}
+	return c - 'a' + 10
 }
 
 // copyResponseHeader copies the upstream response headers to dst, without

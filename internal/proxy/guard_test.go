@@ -131,6 +131,11 @@ func TestSensitiveHeaderOrQueryBlocked(t *testing.T) {
 		{"encoded ip in query", "/v1/models?h=10%2E20%2E30%2E15", "", ""},
 		{"email in query (passthrough route)", "/v1/models?u=alice.smith%40corp-internal.com", "", ""},
 		{"ip in header name", "/v1/responses", "X-Host-" + realIP, "1"},
+		// A malformed escape elsewhere in the query must not stop the scan.
+		{"ip after bad escape", "/v1/responses?a=%zz&b=10%2E20%2E30%2E15", "", ""},
+		{"ocid after bad escape", "/v1/models?a=%zz&b=ocid1.instance.oc1..aaaa", "", ""},
+		{"ip in encoded key", "/v1/responses?k%3D10%2E20%2E30%2E15=v", "", ""},
+		{"ip after semicolon", "/v1/models?a=%zz;b=10.20.30.15", "", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			h := newHarness(t, nil)
@@ -145,6 +150,7 @@ func TestSensitiveHeaderOrQueryBlocked(t *testing.T) {
 			}
 			res, b := h.do(req)
 			assertBlocked(t, h, res, b, http.StatusUnprocessableEntity, "header")
+			h.noUpstreamCall() // explicit: nothing reached the upstream
 			for _, real := range []string{realIP, realOCID, realEmail, "corp-internal", "10%2E20"} {
 				if strings.Contains(string(b), real) || strings.Contains(h.logs.String(), real) {
 					t.Errorf("response or log echoes %q", real)
@@ -232,5 +238,44 @@ func TestPartialFinalEventAborts(t *testing.T) {
 	}
 	if s := h.reg.Snapshot(); s.Errors != 1 {
 		t.Errorf("errors = %d", s.Errors)
+	}
+}
+
+// Only a detector hit blocks: an undecodable but clean query passes.
+func TestCleanQueryNotBlocked(t *testing.T) {
+	for _, q := range []string{
+		"client_version=0.166.0",
+		"client_version=0.166.0&x=%zz",
+		// Double encoding: components are decoded once only (double decoding is
+		// not attempted), so "10%2E20%2E30%2E15" is what gets scanned and no
+		// detector fires on it. This test documents that behavior, nothing more.
+		"h=10%252E20%252E30%252E15",
+	} {
+		t.Run(q, func(t *testing.T) {
+			h := newHarness(t, nil)
+			if res, b := h.do(h.req("GET", "/v1/models?"+q, "")); res.StatusCode != 200 {
+				t.Errorf("status %d %s", res.StatusCode, b)
+			}
+			if got := h.upstreamGot(); got.URI != "/backend-api/codex/models?"+q {
+				t.Errorf("upstream URI = %q", got.URI)
+			}
+		})
+	}
+}
+
+func TestTolerantUnescape(t *testing.T) {
+	for in, want := range map[string]string{
+		"a%2Eb":   "a.b",
+		"a+b":     "a b",
+		"%zz%2E":  "%zz.",
+		"%":       "%",
+		"x%4":     "x%4",
+		"%252E":   "%2E",
+		"plain":   "plain",
+		"%41%42c": "ABc",
+	} {
+		if got := tolerantUnescape(in); got != want {
+			t.Errorf("tolerantUnescape(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
