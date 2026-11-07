@@ -168,6 +168,12 @@ func menubarInstall(appsDir, cfgFlag, binFlag string, launch bool, stdout, stder
 	if err := os.MkdirAll(appsDir, 0o755); err != nil {
 		return fail(stderr, fmt.Errorf("menubar: %w", err))
 	}
+	// Leftovers from an install that was interrupted (Ctrl-C skips cleanup).
+	if stale, _ := filepath.Glob(filepath.Join(appsDir, ".cuiproxy-build-*")); len(stale) > 0 {
+		for _, d := range stale {
+			_ = os.RemoveAll(d)
+		}
+	}
 	// Build next to the destination so the final rename stays on one volume.
 	work, err := os.MkdirTemp(appsDir, ".cuiproxy-build-")
 	if err != nil {
@@ -194,7 +200,7 @@ func menubarInstall(appsDir, cfgFlag, binFlag string, launch bool, stdout, stder
 		return fail(stderr, fmt.Errorf("menubar: swiftc failed: %w\n%s", err, out))
 	}
 	// An ad-hoc signature (no developer account needed) binds the Info.plist.
-	if out, err := runQuiet("codesign", "--force", "--sign", "-", "--identifier", menubarBundleID, app); err != nil {
+	if out, err := runQuiet("/usr/bin/codesign", "--force", "--sign", "-", "--identifier", menubarBundleID, app); err != nil {
 		fmt.Fprintf(stderr, "cui-proxy: warning: codesign failed (%v); continuing with the compiler's own signature\n%s\n", err, out)
 	}
 
@@ -202,10 +208,19 @@ func menubarInstall(appsDir, cfgFlag, binFlag string, launch bool, stdout, stder
 	if err := stopMenubarApp(dest); err != nil {
 		return fail(stderr, err)
 	}
-	if err := os.RemoveAll(dest); err != nil {
+	// Move the old copy aside, put the new one in, then delete the old one;
+	// if the rename fails, put the old copy back.
+	old := filepath.Join(work, "previous.app")
+	hadOld := false
+	if err := os.Rename(dest, old); err == nil {
+		hadOld = true
+	} else if !os.IsNotExist(err) {
 		return fail(stderr, fmt.Errorf("menubar: %w", err))
 	}
 	if err := os.Rename(app, dest); err != nil {
+		if hadOld {
+			_ = os.Rename(old, dest)
+		}
 		return fail(stderr, fmt.Errorf("menubar: %w", err))
 	}
 	fmt.Fprintf(stdout, "Installed: %s\n", dest)
@@ -227,11 +242,15 @@ Open Config Folder, Open Log, and Start at Login.
 	return exitOK
 }
 
-// appPIDs returns the PIDs of running copies of the installed app.
+// appPIDs returns the PIDs of this user's running copies of the app at app.
+// The pattern is anchored at the start of the command line and ends at the
+// executable's own name, so a copy in another directory (for example
+// ~/Applications when asked about /Applications) or a debugger that merely
+// mentions the path never matches.
 func appPIDs(app string) []int {
-	// pgrep -f takes a regular expression: match the app's path literally.
-	pattern := regexp.QuoteMeta(filepath.Join(app, "Contents", "MacOS", menubarExeName))
-	out, err := exec.Command("pgrep", "-f", "--", pattern).Output()
+	exe := filepath.Join(app, "Contents", "MacOS", menubarExeName)
+	pattern := "^" + regexp.QuoteMeta(exe) + "( |$)"
+	out, err := exec.Command("/usr/bin/pgrep", "-U", strconv.Itoa(os.Getuid()), "-f", "--", pattern).Output()
 	if err != nil {
 		return nil
 	}
@@ -261,20 +280,38 @@ func stopMenubarApp(app string) error {
 	return nil
 }
 
+// plistValue reads one value from a property list with plutil (built in to
+// macOS), e.g. keyPath "ProgramArguments.0".
+func plistValue(path, keyPath string) (string, error) {
+	out, err := exec.Command("/usr/bin/plutil", "-extract", keyPath, "raw", "-o", "-", path).Output()
+	return strings.TrimSpace(string(out)), err
+}
+
 func menubarUninstall(appsDir string, stdout, stderr io.Writer) int {
 	dest := filepath.Join(appsDir, menubarAppName)
+	exe := filepath.Join(dest, "Contents", "MacOS", menubarExeName)
+
+	// Never remove something that is not our app, even if it has our name.
+	if _, err := os.Stat(dest); err == nil {
+		id, err := plistValue(filepath.Join(dest, "Contents", "Info.plist"), "CFBundleIdentifier")
+		if err != nil || id != menubarBundleID {
+			return fail(stderr, fmt.Errorf("menubar: not removing %s: it is not the cui-proxy menu-bar app", dest))
+		}
+	}
 	if err := stopMenubarApp(dest); err != nil {
 		return fail(stderr, err)
 	}
+	// Drop the Start at Login item, but only if it launches THIS copy: it may
+	// belong to another install of the app.
 	if home, err := os.UserHomeDir(); err == nil {
 		plist := filepath.Join(home, "Library", "LaunchAgents", menubarBundleID+".plist")
 		if _, err := os.Stat(plist); err == nil {
-			// Best effort: drop the login item (and unload it if loaded).
-			_, _ = runQuiet("launchctl", "bootout", "gui/"+strconv.Itoa(os.Getuid())+"/"+menubarBundleID)
-			if err := os.Remove(plist); err != nil {
-				return fail(stderr, fmt.Errorf("menubar: %w", err))
+			if prog, err := plistValue(plist, "ProgramArguments.0"); err == nil && prog == exe {
+				if err := os.Remove(plist); err != nil {
+					return fail(stderr, fmt.Errorf("menubar: %w", err))
+				}
+				fmt.Fprintln(stdout, "Removed the Start at Login item.")
 			}
-			fmt.Fprintln(stdout, "Removed the Start at Login item.")
 		}
 	}
 	if _, err := os.Stat(dest); os.IsNotExist(err) {
