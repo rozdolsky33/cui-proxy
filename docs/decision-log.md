@@ -80,7 +80,7 @@ One JSON object per line, keys always in this order:
 | `adapter` | the adapter name (`codex`) |
 | `profile` | the active `policy.profile` (`sanitize` or `strict`) |
 | `decision` | `forwarded` (sent upstream unchanged), `sanitized` (sent with values masked) or `blocked` (never sent) |
-| `reason` | empty unless `blocked`; then one of `route`, `body_too_large`, `compressed`, `header`, `policy`, `sanitize`, `unrestorable`, `bad_request`, `internal` (the codes in the README's "Block diagnostics") |
+| `reason` | empty unless `blocked`; then one of `route`, `body_too_large`, `compressed`, `header`, `policy`, `sanitize`, `unrestorable`, `bad_request`, `internal` (the codes in [Block diagnostics](block-diagnostics.md)) |
 | `rule_ids` | sorted names of the rules that matched |
 | `counts` | per-rule match counts |
 | `approval_id` | always `""` for now (reserved for approvals, ADR 0001 phase 3) |
@@ -376,7 +376,7 @@ for that request names the kind. An unknown id exits 1.
   usually faster. (Batching the syncs of concurrent requests would raise
   the cap; it is not implemented.)
 - It records the proxy's decisions only. Traffic that does not go through
-  the proxy is not in it (see the README's limitations and ADR 0001).
+  the proxy is not in it (see [limitations](limitations.md) and ADR 0001).
 - The record holds no `kind` (for `sanitize` blocks), no schema version
   field and no approval yet (`approval_id` is always empty). The ADR's
   operability section plans a versioned `v` field. It is not in this

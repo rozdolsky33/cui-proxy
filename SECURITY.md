@@ -25,7 +25,7 @@ Only the latest release is supported.
 ## Scope notes
 
 - Detection is pattern-based; things the patterns do not cover are listed
-  under "Known limitations" in the README. A gap that is already listed is
+  under "Known limitations" ([docs/limitations.md](docs/limitations.md)). A gap that is already listed is
   still welcome as a feature request, but it is documented behavior.
 - The credential headers (`Authorization`, `Chatgpt-Account-Id`, cookies) are
   forwarded to the upstream unchanged by design.
