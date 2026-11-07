@@ -17,6 +17,84 @@ What it is not: not a DLP product, not a guarantee that nothing sensitive
 leaves the machine, not a MITM proxy (Codex is pointed at it explicitly),
 and it never stores or alters your upstream credentials.
 
+## Install
+
+### Homebrew (macOS and Linux)
+
+```sh
+brew tap rozdolsky33/tap
+brew install cui-proxy
+```
+
+(One line: `brew install rozdolsky33/tap/cui-proxy`.) Upgrade with
+`brew update && brew upgrade cui-proxy`.
+
+### curl
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/rozdolsky33/cui-proxy/main/install.sh | sh
+```
+
+The installer downloads the release archive for your OS and CPU, **verifies
+its sha256 against the release's `checksums.txt`**, and installs the single
+`cui-proxy` binary into `/usr/local/bin` if you can write there, otherwise
+`~/.local/bin`. It never uses `sudo` and touches nothing else. Options:
+`INSTALL_DIR=/some/dir` and `CUI_PROXY_VERSION=v0.1.0`.
+
+Prefer to read it first?
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/rozdolsky33/cui-proxy/main/install.sh -o install.sh
+less install.sh && sh install.sh
+```
+
+### Manual download or from source
+
+Download an archive and `checksums.txt` from the
+[releases page](https://github.com/rozdolsky33/cui-proxy/releases), check it
+with `shasum -a 256 -c --ignore-missing checksums.txt`, and put `cui-proxy` on
+your `PATH`. To build from source, see [Build](#build).
+
+Archives exist for macOS and Linux on amd64 and arm64. Check the install with
+`cui-proxy version`.
+
+## Quick start
+
+```sh
+cui-proxy init                                   # writes ~/.config/cui-proxy/{config.yaml,hosts.txt}
+$EDITOR ~/.config/cui-proxy/hosts.txt            # your own sensitive host names, one per line
+cui-proxy check-config -config ~/.config/cui-proxy/config.yaml
+cui-proxy serve -config ~/.config/cui-proxy/config.yaml
+```
+
+Then, in another terminal, point Codex at the proxy for one run (a permanent
+setup is in [Point Codex at the proxy](#point-codex-at-the-proxy)). Use a
+**synthetic prompt** the first time:
+
+```sh
+codex -c 'model_provider="cui-proxy"' \
+      -c 'model_providers.cui-proxy={name="cui-proxy",base_url="http://127.0.0.1:8787/v1",wire_api="responses",requires_openai_auth=true}'
+```
+
+- Dashboard: <http://127.0.0.1:8788/> (live feed, metrics, config; never shows
+  real values).
+- See what the rules do to some text without running Codex:
+  `echo 'ssh admin@10.20.30.15' | cui-proxy test-rules -config ~/.config/cui-proxy/config.yaml`
+- Stop the proxy with Ctrl-C.
+
+**Before you rely on it:** the upstream mapping has not been tested against the
+real ChatGPT backend yet. Run the manual smoke in
+[docs/verification.md](docs/verification.md), and read
+[Known limitations](#known-limitations--behavior).
+
+## Uninstall
+
+```sh
+brew uninstall cui-proxy && brew untap rozdolsky33/tap    # Homebrew
+rm "$(command -v cui-proxy)"                              # curl install
+rm -r ~/.config/cui-proxy                                 # config and dictionary, if you want them gone
+```
+
 ## Build
 
 Requires Go 1.26.
@@ -30,7 +108,7 @@ go build -ldflags "-X main.version=v0.1.0" -o bin/cui-proxy ./cmd/cui-proxy
 ## Run
 
 ```sh
-mkdir -p ~/.config/cui-proxy && cp examples/config.yaml examples/hosts.txt ~/.config/cui-proxy/
+bin/cui-proxy init            # or: cui-proxy init, when installed
 # then edit ~/.config/cui-proxy/config.yaml and hosts.txt
 bin/cui-proxy check-config -config ~/.config/cui-proxy/config.yaml
 bin/cui-proxy serve -config ~/.config/cui-proxy/config.yaml
@@ -40,6 +118,7 @@ Commands:
 
 | Command | Purpose |
 |---|---|
+| `init [-dir PATH] [-force]` | Write a starter `config.yaml` and `hosts.txt` (mode 0600) into `$XDG_CONFIG_HOME/cui-proxy`, else `~/.config/cui-proxy`. Never overwrites without `-force`. |
 | `serve -config PATH [-adapter codex]` | Run the proxy (default `127.0.0.1:8787`) and the dashboard (default `127.0.0.1:8788`). |
 | `check-config -config PATH` | Validate the config, rule files and upstream URLs; prints `ok: <N> rules`, exits 1 on error. |
 | `test-rules -config PATH` | Read stdin (max 8 MiB), print the sanitized text to stdout and a rule/class/count table to stderr. Uses a throwaway vault. |
@@ -235,3 +314,36 @@ blocked: it is masked as a `REDACTED-<8hex>` token instead and counted as
   address is checked after binding.
 - The dashboard is localhost-only and never shows real values: only rule
   names, counts, paths and block reasons.
+
+## Support
+
+- Questions, bugs and feature requests: open a
+  [GitHub issue](https://github.com/rozdolsky33/cui-proxy/issues). **Never paste
+  real sensitive data (CUI, customer identifiers, credentials, tokens) into an
+  issue or log excerpt;** use made-up values of the same shape.
+- Security problems (a way around the protections, a leak): report privately,
+  see [SECURITY.md](SECURITY.md).
+- This is best-effort, community-style software released under the
+  [MIT license](LICENSE), with no warranty. It is not an approved compliance
+  control.
+
+## Releasing (maintainers)
+
+```sh
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+`.github/workflows/release.yml` runs vet and the race tests, builds the four
+archives with `scripts/package.sh`, and publishes them with `checksums.txt` as
+a GitHub release. It then updates the Homebrew tap if the repository secret
+`TAP_GITHUB_TOKEN` exists (a fine-grained token with `contents: write` on
+`rozdolsky33/homebrew-tap`). Without that secret, update the tap yourself after
+the release is published:
+
+```sh
+scripts/update-tap.sh v0.1.0      # needs `gh` logged in with push access to the tap
+```
+
+`scripts/package.sh <version>` builds the same archives locally into `dist/`
+for a dry run. The formula is always generated from the checksums of the
+published release (`scripts/make-formula.sh`), never from a local build.
