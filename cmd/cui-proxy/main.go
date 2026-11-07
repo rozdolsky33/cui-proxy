@@ -27,7 +27,9 @@ commands:
   init [-dir PATH] [-force]            write a starter config and dictionary
   serve -config PATH [-adapter NAME]   run the proxy and the dashboard
   check-config -config PATH            validate a config and its rule files
+  info -config PATH                    print the proxy and dashboard URLs
   test-rules -config PATH              sanitize stdin with the rules (throwaway vault)
+  menubar install|uninstall|status     macOS: menu-bar app that runs the proxy in the background
   version                              print the version
 `
 
@@ -49,6 +51,10 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return runServe(rest, stderr)
 	case "check-config":
 		return runCheck(rest, stdout, stderr)
+	case "info":
+		return runInfo(rest, stdout, stderr)
+	case "menubar":
+		return runMenubar(rest, stdout, stderr)
 	case "test-rules":
 		return runTestRules(rest, stdin, stdout, stderr)
 	case "version":
