@@ -32,7 +32,6 @@ cat <<RUBY
 class CuiProxy < Formula
   desc "Fail-closed local proxy that masks sensitive data in Codex CLI traffic"
   homepage "https://github.com/${repo}"
-  version "${ver}"
   license "MIT"
 
   on_macos do

@@ -22,12 +22,21 @@ and it never stores or alters your upstream credentials.
 ### Homebrew (macOS and Linux)
 
 ```sh
-brew tap rozdolsky33/tap
-brew install cui-proxy
+brew install rozdolsky33/tap/cui-proxy
 ```
 
-(One line: `brew install rozdolsky33/tap/cui-proxy`.) Upgrade with
+That one command adds the tap and trusts only this formula. Upgrade with
 `brew update && brew upgrade cui-proxy`.
+
+Homebrew 6+ refuses to load formulae from a non-official tap until you trust
+them. If you would rather tap first and install by short name, trust the
+formula (or the whole tap) explicitly:
+
+```sh
+brew tap rozdolsky33/tap
+brew trust --formula rozdolsky33/tap/cui-proxy    # or: brew trust rozdolsky33/tap
+brew install cui-proxy
+```
 
 ### curl
 
@@ -90,7 +99,9 @@ real ChatGPT backend yet. Run the manual smoke in
 ## Uninstall
 
 ```sh
-brew uninstall cui-proxy && brew untap rozdolsky33/tap    # Homebrew
+brew uninstall cui-proxy                                  # Homebrew
+brew untrust --formula rozdolsky33/tap/cui-proxy          # optional: drop the trust entry
+brew untap rozdolsky33/tap                                # optional: drop the tap
 rm "$(command -v cui-proxy)"                              # curl install
 rm -r ~/.config/cui-proxy                                 # config and dictionary, if you want them gone
 ```
