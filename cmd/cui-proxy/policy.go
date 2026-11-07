@@ -1,9 +1,12 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"text/tabwriter"
 
@@ -50,6 +53,40 @@ func cleanName(s string) string {
 	return string(b)
 }
 
+// describeAudit is the one-line audit status for policy check. It only looks
+// at the path (Lstat): nothing is created or opened for writing. A path serve
+// would refuse is an error.
+func describeAudit(cfg *config.Config) (string, error) {
+	a := cfg.Audit
+	if !a.IsEnabled() {
+		return "disabled (no decision log)", nil
+	}
+	if a.File == "" {
+		return "", errors.New("audit.file is not set and no home directory was found")
+	}
+	state := "exists"
+	switch fi, err := os.Lstat(a.File); {
+	case errors.Is(err, fs.ErrNotExist):
+		state = "created by serve"
+	case err != nil:
+		return "", fmt.Errorf("audit.file: %w", err)
+	case fi.Mode()&fs.ModeSymlink != 0:
+		return "", fmt.Errorf("audit.file %s is a symlink; serve refuses it", a.File)
+	case !fi.Mode().IsRegular():
+		return "", fmt.Errorf("audit.file %s is not a regular file", a.File)
+	}
+	onError := config.AuditWarn
+	if cfg.AuditBlocks() {
+		onError = config.AuditBlock
+	}
+	retention := "rotated files kept forever"
+	if d := a.Retention(); d > 0 {
+		retention = fmt.Sprintf("rotated files kept %d days", d)
+	}
+	return fmt.Sprintf("enabled, %s (%s), on_error %s, rotated at %d MB, %s; tamper-evident, not tamper-proof",
+		a.File, state, onError, a.MaxBytes()>>20, retention), nil
+}
+
 func runPolicyCheck(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("policy check", flag.ContinueOnError)
 	cfgPath := fs.String("config", "", "path to the YAML config")
@@ -74,7 +111,12 @@ func runPolicyCheck(args []string, stdout, stderr io.Writer) int {
 	}
 
 	fmt.Fprintf(stdout, "cui-proxy policy check: %s\n\n", abs)
-	fmt.Fprintf(stdout, "Profile      %s\nunsupported  %s\non_error     %s\n\n", profile, cfg.Policy.Unsupported, cfg.Policy.OnError)
+	fmt.Fprintf(stdout, "Profile      %s\nunsupported  %s\non_error     %s\n", profile, cfg.Policy.Unsupported, cfg.Policy.OnError)
+	audit, err := describeAudit(cfg)
+	if err != nil {
+		return fail(stderr, fmt.Errorf("policy check: %w", err))
+	}
+	fmt.Fprintf(stdout, "audit        %s\n\n", audit)
 
 	tw := tabwriter.NewWriter(stdout, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "RULE\tTYPE\tACTION")
@@ -103,6 +145,14 @@ func runPolicyCheck(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintln(stdout, "  - Content the proxy cannot inspect is refused, even under on_error: passthrough: images, files, compressed bodies, unknown routes, oversized, too deeply nested or unparseable bodies.")
 	fmt.Fprintln(stdout, "  - Request headers and the query string are scanned; a match blocks the request.")
 	fmt.Fprintln(stdout, "  - The upstream must be https (loopback excepted); redirects from it are never relayed.")
+	if cfg.Audit.IsEnabled() {
+		onFail := "a decision that cannot be recorded blocks the request (audit.on_error: block)"
+		if !cfg.AuditBlocks() {
+			onFail = "a decision that cannot be recorded is logged as a WARN and the request still goes (audit.on_error: warn)"
+		}
+		fmt.Fprintf(stdout, "  - Every request's decision (forwarded, sanitized or blocked, with the reason and rule names, never values) is recorded before anything is forwarded, in a hash-chained decision log; %s. Check it with: cui-proxy audit verify -config %s\n", onFail, abs)
+		fmt.Fprintf(stdout, "    %s\n", tamperNote)
+	}
 
 	fmt.Fprintln(stdout, "\nNot scanned, by design:")
 	fmt.Fprintln(stdout, "  - The Authorization, Cookie and Chatgpt-Account-Id headers: they are credentials and are forwarded as they are.")
@@ -110,7 +160,7 @@ func runPolicyCheck(args []string, stdout, stderr io.Writer) int {
 
 	fmt.Fprintln(stdout, "\nNot implemented yet (see docs/adr):")
 	fmt.Fprintln(stdout, "  - Verified approval records (ADR 0002 is waiting on the approving authority).")
-	fmt.Fprintln(stdout, "  - A persisted, tamper-evident decision log (ADR 0001, phase 2).")
+	fmt.Fprintln(stdout, "  - Syslog output and an external anchor for the decision log's hash chain (ADR 0001, phase 2 follow-up); ship the file yourself for now.")
 	fmt.Fprintln(stdout, "  - Approved upstream and account allowlists, and a lock switch (ADR 0001, phase 4).")
 
 	fmt.Fprintln(stdout, "\nNot something this tool can do:")
@@ -134,6 +184,11 @@ func runPolicyCheck(args []string, stdout, stderr io.Writer) int {
 	}
 	if len(cfg.Rules) == 0 {
 		warn("there are no rules, so nothing is detected.")
+	}
+	if !cfg.Audit.IsEnabled() {
+		warn("audit.enabled is false: no decision log is kept.")
+	} else if !cfg.AuditBlocks() {
+		warn("audit.on_error is warn (UNSAFE): a request is forwarded even when its decision cannot be recorded.")
 	}
 	if warnings == 0 {
 		fmt.Fprintln(stdout, "\nResult: OK")

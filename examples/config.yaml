@@ -21,6 +21,22 @@ policy:
   #                             # bodies, unknown routes, oversized or unparseable bodies) is
   #                             # always refused, even under passthrough; block is the only value
 
+# Decision log (on by default): one value-free JSON line per request
+# (forwarded, sanitized or blocked, with the reason and rule names), written
+# before the request is forwarded and hash-chained so edits show up in
+# `cui-proxy audit verify`. `cui-proxy explain <request-id>` reads it.
+# Tamper-evident, not tamper-proof: see docs/decision-log.md. Restart to change.
+# audit:
+#   enabled: true               # false is refused under the strict profile
+#   file: /Users/you/.local/state/cui-proxy/decisions.jsonl
+#                               # default: $XDG_STATE_HOME/cui-proxy/decisions.jsonl,
+#                               # else ~/.local/state/cui-proxy/decisions.jsonl (0600, dir 0700)
+#   on_error: warn              # block | warn: what a failed write does. Default: block under
+#                               # strict (warn is refused there), warn under sanitize (UNSAFE:
+#                               # the request still goes, with a WARN)
+#   max_size_mb: 50             # rotate to <file>.<UTC timestamp> before passing this size
+#   retention_days: 90          # delete rotated files older than this; 0 keeps them forever
+
 vault:
   mode: memory                  # memory | file
   # Encrypted file vault (mappings survive restarts). "~" is not expanded:

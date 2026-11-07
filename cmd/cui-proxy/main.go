@@ -28,6 +28,8 @@ commands:
   policy init|check                    write or check a policy (sanitize or strict profile)
   serve -config PATH [-adapter NAME]   run the proxy and the dashboard
   check-config -config PATH            validate a config and its rule files
+  audit verify [-file P | -config P]   check the decision log's hash chain
+  explain [-config P] REQUEST-ID       say why a request was forwarded, sanitized or blocked
   info -config PATH                    print the proxy and dashboard URLs
   test-rules -config PATH              sanitize stdin with the rules (throwaway vault)
   menubar install|uninstall|status     macOS: menu-bar app that runs the proxy in the background
@@ -54,6 +56,10 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return runCheck(rest, stdout, stderr)
 	case "policy":
 		return runPolicy(rest, stdout, stderr)
+	case "audit":
+		return runAudit(rest, stdout, stderr)
+	case "explain":
+		return runExplain(rest, stdout, stderr)
 	case "info":
 		return runInfo(rest, stdout, stderr)
 	case "menubar":
@@ -88,6 +94,12 @@ func fail(stderr io.Writer, err error) int {
 // parseFlags parses a subcommand's flags. It returns ok=false with the exit
 // code when the command must stop (usage error or -h).
 func parseFlags(fs *flag.FlagSet, args []string, stderr io.Writer, needConfig *string) (int, bool) {
+	return parseFlagsN(fs, args, stderr, needConfig, 0)
+}
+
+// parseFlagsN is parseFlags for a command that takes exactly nargs
+// positional arguments after its flags.
+func parseFlagsN(fs *flag.FlagSet, args []string, stderr io.Writer, needConfig *string, nargs int) (int, bool) {
 	// The flag package's own messages lack the cui-proxy prefix: discard
 	// them and print our own instead.
 	fs.SetOutput(io.Discard)
@@ -107,8 +119,11 @@ func parseFlags(fs *flag.FlagSet, args []string, stderr io.Writer, needConfig *s
 		printDefaults()
 		return exitUsage, false
 	}
-	if fs.NArg() != 0 {
-		return usageError(stderr, fmt.Sprintf("%s: unexpected argument %q", fs.Name(), fs.Arg(0))), false
+	if fs.NArg() > nargs {
+		return usageError(stderr, fmt.Sprintf("%s: unexpected argument %q", fs.Name(), fs.Arg(nargs))), false
+	}
+	if fs.NArg() < nargs {
+		return usageError(stderr, fmt.Sprintf("%s: missing argument", fs.Name())), false
 	}
 	if needConfig != nil && *needConfig == "" {
 		return usageError(stderr, fs.Name()+": -config is required"), false
