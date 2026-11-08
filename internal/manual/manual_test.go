@@ -60,9 +60,12 @@ func TestSnapshotMatchesSources(t *testing.T) {
 			rel, _ := filepath.Rel(root, path)
 			rel = filepath.ToSlash(rel)
 			if d.IsDir() {
-				if rel == "docs/superpowers" || rel == "docs/adr" || rel == "docs/spikes" || rel == "docs/verification-results" {
+				if rel == "docs/superpowers" || rel == "docs/adr" || rel == "docs/spikes" || rel == "docs/verification-results" || strings.HasPrefix(d.Name(), ".") {
 					return filepath.SkipDir
 				}
+				return nil
+			}
+			if strings.HasPrefix(d.Name(), ".") { // .DS_Store and editor files are not sources
 				return nil
 			}
 			expected = append(expected, rel)

@@ -16,12 +16,18 @@ ROOT = Path(__file__).resolve().parents[1]
 EXCLUDED = {"superpowers", "adr", "spikes", "verification-results"}
 
 
+def hidden(p):
+    """Editor and Finder droppings (.DS_Store) are not manual sources."""
+    return any(part.startswith(".") for part in p.relative_to(ROOT).parts)
+
+
 def sources():
     paths = [ROOT / name for name in (
         "mkdocs.yml", "mkdocs-offline.yml", "requirements-docs.txt", "scripts/build-manual.py")]
     paths += [p for p in (ROOT / "docs").rglob("*")
-              if p.is_file() and not EXCLUDED.intersection(p.relative_to(ROOT / "docs").parts)]
-    paths += [p for p in (ROOT / "scripts/manual-assets").rglob("*") if p.is_file()]
+              if p.is_file() and not hidden(p)
+              and not EXCLUDED.intersection(p.relative_to(ROOT / "docs").parts)]
+    paths += [p for p in (ROOT / "scripts/manual-assets").rglob("*") if p.is_file() and not hidden(p)]
     return {p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
             for p in sorted(paths)}
 

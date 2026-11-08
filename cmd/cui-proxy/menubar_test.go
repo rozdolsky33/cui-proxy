@@ -33,11 +33,29 @@ func TestMenubarInfoPlist(t *testing.T) {
 		"<key>LSUIElement</key><true/>",
 		"<key>CFBundleShortVersionString</key><string>1.2.3</string>",
 		"<key>CUIProxyBinary</key><string>/opt/homebrew/bin/cui-proxy</string>",
+		"<key>CUIProxyOnlineDocs</key><string>https://rozdolsky33.github.io/cui-proxy/v1.2.3/</string>",
 		// XML metacharacters in paths must be escaped, not break the plist.
 		"<key>CUIProxyConfig</key><string>/Users/a&amp;b/&lt;x&gt;/config.yaml</string>",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("Info.plist missing %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestMenubarOnlineDocsURL(t *testing.T) {
+	const site = "https://rozdolsky33.github.io/cui-proxy/"
+	for ver, want := range map[string]string{
+		"v1.2.3":       site + "v1.2.3/",
+		"v0.5.0-rc.1":  site + "v0.5.0-rc.1/",
+		"dev":          site + "latest/",
+		"":             site + "latest/",
+		"1.2.3":        site + "latest/",
+		"v1.2.3/../x":  site + "latest/",
+		"v1.2.3 extra": site + "latest/",
+	} {
+		if got := menubarOnlineDocsURL(ver); got != want {
+			t.Errorf("menubarOnlineDocsURL(%q) = %q, want %q", ver, got, want)
 		}
 	}
 }
@@ -100,6 +118,11 @@ func TestMenubarInstallStatusUninstall(t *testing.T) {
 	o, _ := chk.CombinedOutput()
 	if !strings.Contains(string(o), "binary=/bin/echo\n") || !strings.Contains(string(o), "config="+cfg+"\n") {
 		t.Errorf("--check did not see the installed hints:\n%s", o)
+	}
+
+	// The online manual for this build (a dev build opens the latest release).
+	if !strings.Contains(string(o), "online_documentation_url=https://rozdolsky33.github.io/cui-proxy/latest/\n") {
+		t.Errorf("--check did not report the online manual:\n%s", o)
 	}
 
 	// The same local URL is available regardless of proxy/config availability.

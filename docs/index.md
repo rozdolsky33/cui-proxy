@@ -9,7 +9,7 @@ hide:
 
 # Real systems. Less exposure.
 
-<p class="lead">Put a local inspection step between Codex and the model backend. Replace detected sensitive values before a request leaves your machine, and restore them in supported responses.</p>
+<p class="lead">A local, fail-closed proxy for Codex CLI that replaces sensitive data with synthetic values before it reaches the model and restores the originals in streamed responses, so your coding agent's tool calls still run against real systems.</p>
 
 [Get started](quickstart.md){ .md-button .md-button--primary }
 [Follow a request](architecture.md){ .md-button }
@@ -98,8 +98,11 @@ can recognize; your dictionaries and regex rules extend their coverage.
 
 These guides describe **v0.4.0**, including [PDF/image text extraction](attachments.md)
 and the menu bar's [offline manual](menubar.md#offline-documentation).
-Commands use fabricated values and the default configuration directory unless
-stated otherwise. Downloadable recipes are checked by the real CLI on every
+Use the version selector in the header to read the guide for a different
+release: `latest` is the newest release and `dev` follows the main branch. The
+menu-bar app's **Online Documentation** item opens the pages for the version
+you installed. Commands use fabricated values and the default configuration
+directory unless stated otherwise. Downloadable recipes are checked by the real CLI on every
 documentation build. [Dated backend verification](verification.md) records the
 specific client and model tested; repeat the checks after upgrades.
 
