@@ -3,6 +3,12 @@ name: Documentation
 # Pull requests and pushes validate the manual. Pushes to main publish it as
 # the dev version; a release tag publishes its own version and moves the latest
 # alias. Run the workflow by hand to publish or republish any version.
+#
+# Versions are committed to the gh-pages branch by mike, then the whole branch
+# is uploaded as the Pages artifact. GitHub Pages serves only deployments made
+# from a branch ref (a deployment from a tag ref succeeds but never goes live),
+# so a tag run publishes the version and hands off to a main-ref run that only
+# uploads the branch (sync_only).
 on:
   push:
     branches: [main]
@@ -12,11 +18,15 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to publish (vX.Y.Z or dev). Empty: dev, or the tag being built.'
+        description: 'Version to publish (vX.Y.Z or dev). Empty: dev.'
         required: false
         default: ''
       latest:
         description: 'Also move the latest alias to this version'
+        type: boolean
+        default: false
+      sync_only:
+        description: 'Only upload the gh-pages branch to Pages; publish nothing'
         type: boolean
         default: false
 
@@ -25,6 +35,7 @@ permissions:
 
 jobs:
   build:
+    if: ${{ !inputs.sync_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -49,20 +60,16 @@ jobs:
         run: mkdocs build --strict
 
   publish:
-    if: github.event_name != 'pull_request'
+    # Build the requested version and commit it to the gh-pages branch.
+    if: github.event_name != 'pull_request' && !inputs.sync_only
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: write # mike commits each built version to the gh-pages branch
-      pages: write
-      id-token: write
     concurrency:
-      group: github-pages
+      group: gh-pages-branch
       cancel-in-progress: false
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -111,16 +118,50 @@ jobs:
           else
             mike deploy --push --alias-type copy "$VERSION"
           fi
-      - name: Collect every published version
-        # mike builds into site/, so the artifact is assembled elsewhere.
-        run: |
-          mkdir pages
-          git archive gh-pages | tar -x -C pages
+
+  deploy:
+    # Upload every published version to Pages. Runs only from a branch ref
+    # (see the note at the top); a skipped publish job (sync_only) is fine.
+    if: >-
+      github.event_name != 'pull_request' && github.ref_type == 'branch'
+      && !cancelled() && needs.publish.result != 'failure'
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: pages
+          path: .
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Deploy documentation
         id: deployment
         uses: actions/deploy-pages@v4
+
+  handoff:
+    # A tag run cannot deploy to Pages itself; ask a main-ref run to upload
+    # the gh-pages branch that publish just updated.
+    if: github.ref_type == 'tag'
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Start the Pages upload from main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run docs.yml --ref main -f sync_only=true
