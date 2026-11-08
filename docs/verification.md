@@ -8,7 +8,7 @@ the global Codex configuration was unchanged.
 
 ## Recorded results
 
-[Recorded run summary](verification-results/2026-11-07-live-smoke.json)
+[Recorded run summary](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/verification-results/2026-11-07-live-smoke.json)
 contains versions, case outcomes, metrics, and scope without session credentials.
 
 | Check | Observed result |
@@ -37,7 +37,7 @@ are outside this run's coverage. Existing content restrictions still apply.
 
 ## Workspace metadata smoke (2026-11-08)
 
-The [recorded metadata run](verification-results/2026-11-08-metadata-fix.json)
+The [recorded metadata run](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/verification-results/2026-11-08-metadata-fix.json)
 used a synthetic Git repository with an SSH remote and the saved default
 routing, without provider overrides. The installed v0.3.1 returned HTTP 422
 with reason `header`; the local v0.3.1+metadata.1 patch returned HTTP 200 and
@@ -54,7 +54,7 @@ matching remote. Never put real restricted values in a probe or its report.
 
 ## JSON escape dataflow regression (2026-11-08)
 
-The [dataflow report](verification-results/2026-11-08-json-escape-dataflow.md)
+The [dataflow report](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/verification-results/2026-11-08-json-escape-dataflow.md)
 covers the later `reason=sanitize kind=bad_body` failure after tool execution.
 The repair scans decoded JSON content, preserves structure, and restores
 function arguments using complete JSON tokens. Automated HTTP/SSE tests cover

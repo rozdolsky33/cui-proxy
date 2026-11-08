@@ -70,7 +70,7 @@ the synthetic live probe. Credentials remain an inspection exception.
 
 ## Demonstrated scope and remaining limits
 
-The [live evidence](verification-results/2026-11-07-live-smoke.json) records
+The [live evidence](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/verification-results/2026-11-07-live-smoke.json) records
 ChatGPT-authenticated Codex CLI 0.167.0 with `gpt-6-astra`, exact IP/OCID
 restoration, and a shell tool round trip using fabricated data. Local tests
 cover policy blocks, error handling, reloads, framing, concurrency and storage.

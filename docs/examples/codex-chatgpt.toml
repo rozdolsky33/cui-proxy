@@ -1,0 +1,10 @@
+# Merge into your USER configuration; do not overwrite unrelated settings.
+# Put this top-level key before any [table] header.
+model_provider = "cui-proxy"
+
+[model_providers.cui-proxy]
+name = "cui-proxy"
+base_url = "http://localhost:8787/v1"
+wire_api = "responses"
+requires_openai_auth = true
+supports_websockets = false

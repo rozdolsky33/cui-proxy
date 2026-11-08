@@ -32,3 +32,8 @@ scripts/update-tap.sh v0.3.3      # needs `gh` logged in with push access to the
 `scripts/package.sh <version>` builds the same archives locally into `dist/`
 for a dry run. The formula is always generated from the checksums of the
 published release (`scripts/make-formula.sh`), never from a local build.
+
+## Documentation site
+
+See [Maintain the documentation](contributing-docs.md) for preview, executable
+example validation, the strict site build, screenshots, and GitHub Pages publishing.
