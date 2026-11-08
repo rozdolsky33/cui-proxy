@@ -134,3 +134,16 @@ func TestStrictNeedsAtLeastOneRule(t *testing.T) {
 		t.Errorf("sanitize with no rules: %v", err)
 	}
 }
+
+func TestAttachmentSetting(t *testing.T) {
+	for _, mode := range []string{"block", "extract_text"} {
+		_, err := Load(writeTemp(t, "upstreams: {codex: 'https://api.openai.com'}\npolicy: {attachments: "+mode+"}\n"))
+		if err != nil {
+			t.Errorf("%s: %v", mode, err)
+		}
+	}
+	_, err := Load(writeTemp(t, "upstreams: {codex: 'https://api.openai.com'}\npolicy: {attachments: allow}\n"))
+	if err == nil {
+		t.Fatal("accepted unsafe attachment mode")
+	}
+}

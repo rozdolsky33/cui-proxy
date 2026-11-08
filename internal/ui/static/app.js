@@ -75,7 +75,7 @@
     clear(kv);
     [
       ["listen", c.listen], ["ui listen", c.ui_listen],
-      ["profile", pol.profile], ["unsupported", pol.unsupported],
+      ["profile", pol.profile], ["unsupported", pol.unsupported], ["attachments", pol.attachments],
       ["on_error", pol.on_error], ["max_body_bytes", pol.max_body_bytes],
       ["vault mode", vlt.mode], ["vault key file", vlt.key_file || "-"], ["vault file", vlt.file || "-"],
       ["decision log", aud.enabled ? (aud.file || "-") : "disabled"],

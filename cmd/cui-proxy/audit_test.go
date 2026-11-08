@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cui-proxy/internal/decisionlog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -415,5 +416,45 @@ func TestSharedAuditDirectoryIsRefused(t *testing.T) {
 	}
 	if code, _, errOut := runCLI("", "policy", "check", "-config", cfg); code != 1 || !strings.Contains(errOut, "writable by group or others") {
 		t.Errorf("policy check: %d %q", code, errOut)
+	}
+}
+
+func TestExplainAttachmentFailure(t *testing.T) {
+	path := t.TempDir() + "/decisions.jsonl"
+	l, err := decisionlog.Open(decisionlog.Options{Path: path})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := decisionlog.NewID()
+	err = l.Record(decisionlog.Entry{RequestID: id, Adapter: "codex", Profile: "sanitize", Decision: decisionlog.Blocked, Reason: "sanitize", Detail: "attachment_pdf_missing_tool"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = l.Close(); err != nil {
+		t.Fatal(err)
+	}
+	code, out, errOut := runCLI("", "explain", "-file", path, id.String())
+	if code != 0 || !strings.Contains(out, "attachment_pdf_missing_tool") || !strings.Contains(out, "Install Poppler") {
+		t.Fatalf("explain: %d %s %s", code, out, errOut)
+	}
+}
+
+func TestExplainConversionOnlyDoesNotInventRuleMatch(t *testing.T) {
+	path := t.TempDir() + "/decisions.jsonl"
+	l, err := decisionlog.Open(decisionlog.Options{Path: path})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := decisionlog.NewID()
+	err = l.Record(decisionlog.Entry{RequestID: id, Adapter: "codex", Profile: "sanitize", Decision: decisionlog.Sanitized})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = l.Close(); err != nil {
+		t.Fatal(err)
+	}
+	code, out, errOut := runCLI("", "explain", "-file", path, id.String())
+	if code != 0 || strings.Contains(out, "would have been blocked") || !strings.Contains(out, "no detector match") {
+		t.Fatalf("conversion explain: %d %s %s", code, out, errOut)
 	}
 }

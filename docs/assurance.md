@@ -47,6 +47,15 @@ even under passthrough. Regression and fuzz coverage lives in
 [verification](verification.md#workspace-metadata-smoke-2026-11-08) records
 the synthetic live probe. Credentials remain an inspection exception.
 
+## Optional local attachment processing
+
+The unreleased [attachment mode](attachments.md) requires maintained Poppler
+and Tesseract installations. Native parsers run as the proxy user with capped
+input/output, time and concurrency; they are not isolated by an OS sandbox or
+hard memory limit. They receive no inherited credentials and perform no remote
+fetches. Only extracted text enters the sanitizer and upstream request. OCR
+recognition can be incomplete or incorrect; detector coverage remains limited.
+
 ## Deployment and routine checks
 
 1. Build with the required patched Go toolchain. Run `make test`, `make lint`,

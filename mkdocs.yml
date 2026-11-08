@@ -4,7 +4,7 @@ site_url: https://rozdolsky33.github.io/cui-proxy/
 repo_url: https://github.com/rozdolsky33/cui-proxy
 repo_name: rozdolsky33/cui-proxy
 edit_uri: edit/main/docs/
-copyright: cui-proxy · MIT licensed · Documentation for v0.3.3
+copyright: cui-proxy · MIT licensed · v0.3.3 + unreleased main changes
 docs_dir: docs
 site_dir: site
 strict: true
@@ -92,6 +92,7 @@ nav:
       - Configuration walkthrough: configuration.md
       - Rules and synthetic values: rules.md
       - Sanitize and strict policies: policy.md
+      - PDF and image inspection: attachments.md
       - Configuration recipes: recipes.md
       - YAML and CLI reference: reference.md
   - Operate:

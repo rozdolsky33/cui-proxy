@@ -57,9 +57,14 @@ The proxy enforces the same thing at runtime, whatever the config says.
   real address, so it does block, and because history is resent, so does every
   later turn of that conversation; start a new session.
 - `policy.unsupported: block` is the only value and is the default: content
-  the proxy cannot inspect (images, files, compressed bodies, unknown routes,
+  the proxy cannot inspect (unsupported attachments, compressed bodies, unknown routes,
   oversized, too deeply nested or unparseable bodies) is always refused,
   **even under `policy.on_error: passthrough`**.
+- Attachments default to `policy.attachments: block`. The unreleased
+  `extract_text` mode replaces supported inline PDFs and PNG/JPEG images with
+  locally extracted text before applying these same rules. Original files never
+  go upstream. All body-processing failures in this mode block even if
+  `on_error: passthrough` is set. See [attachment inspection](attachments.md).
 - `policy check` prints the effective action of every rule and states plainly
   what is enforced, what is not implemented yet (verified approvals and
   account allowlists) and what no local tool can do.

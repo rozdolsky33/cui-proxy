@@ -37,3 +37,19 @@ blocked: it is masked as a `REDACTED-<8hex>` token instead and counted as
 For Git/SSH failures, first identify whether the error comes from the model
 request or the local command. See the [configuration walkthrough](configuration.md#git-and-ssh-troubleshooting)
 for the decision table and supported overrides.
+
+## Attachment-specific details
+
+Attachments default to `policy.attachments: block`. With
+`policy.attachments: extract_text`, supported inline PDFs and PNG/JPEG images
+are converted locally, then sanitized; original attachment bytes are never
+forwarded. See [Attachment inspection](attachments.md) for tools and limits.
+
+Attachment errors retain `reason=sanitize kind=bad_body` and add a safe
+`detail=attachment_<category>_<cause>` plus a fixed remedy. For example,
+`attachment_file_disabled` identifies the default refusal;
+`attachment_file_reference` identifies a file ID or URL that cannot be inspected;
+`attachment_pdf_missing_tool` identifies missing local extraction software.
+`shape`, `unsupported`, `invalid`, `limit`, `failed`, `empty`, and `timeout`
+distinguish other failures. Details are persisted for `cui-proxy explain` without
+filenames or contents. Old records without details cannot recover the cause.

@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 
+	"cui-proxy/internal/attachment"
 	"cui-proxy/internal/config"
 	"cui-proxy/internal/decisionlog"
 	"cui-proxy/internal/proxy"
@@ -222,13 +223,20 @@ func runExplain(args []string, stdout, stderr io.Writer) int {
 		if len(r.RuleIDs) > 0 {
 			fmt.Fprintf(stdout, "Rule that matched: %s (the first blocking match; scanning stops there).\n", strings.Join(r.RuleIDs, ", "))
 		}
+		if r.Detail != "" {
+			fmt.Fprintf(stdout, "Attachment detail: %s. %s\n", r.Detail, attachment.Explain(r.Detail))
+		}
 		fmt.Fprintf(stdout, "Why, and what would change it: %s\n", change)
 	case passthrough != "":
 		fmt.Fprintf(stdout, "The request was forwarded UNSANITIZED because policy.on_error is passthrough (UNSAFE): sanitizing failed (reason=%s).\n", passthrough)
 		fmt.Fprintln(stdout, "What would change it: policy.on_error: block refuses such a request instead.")
 	case r.Decision == decisionlog.Sanitized:
-		fmt.Fprintln(stdout, "The request was forwarded with the detected values masked; they were restored in the reply.")
-		fmt.Fprintln(stdout, "What would change it: under the strict profile, or with action: block on these rules, it would have been blocked instead.")
+		if len(r.RuleIDs) > 0 {
+			fmt.Fprintln(stdout, "The request was forwarded with the detected values masked; they were restored in the reply.")
+			fmt.Fprintln(stdout, "What would change it: under the strict profile, or with action: block on these rules, it would have been blocked instead.")
+		} else {
+			fmt.Fprintln(stdout, "The request was rewritten before forwarding, for example by converting attachments to text; no detector match was recorded.")
+		}
 	default:
 		fmt.Fprintln(stdout, "The request was forwarded unchanged: no rule matched.")
 		fmt.Fprintln(stdout, "What would change it: a rule that matches its content (test with synthetic text: cui-proxy test-rules).")

@@ -123,6 +123,20 @@ cui-proxy audit verify -config /path/to/config.yaml
 Some guards, such as malformed metadata or an unknown route, block independently
 of rule matches. See [Block diagnostics](block-diagnostics.md).
 
+## Check attachment conversion (unreleased)
+
+`test-rules` and the dashboard text box do not invoke PDF extraction or OCR.
+After building/upgrading to a binary that supports [attachments](attachments.md),
+check the effective setting and use fabricated inline documents with a controlled
+fake upstream. Confirm that it receives only sanitized `input_text`, with no
+`file_data`, `image_url`, filename, or original sensitive test value. Under strict,
+the same detected value must block with no upstream call. Also test disabled
+mode, file IDs/URLs, invalid data and missing tools; inspect `explain REQUEST-ID`.
+
+Repository tests cover this boundary with real Poppler when installed, and
+controlled OCR executables for deterministic invocation/failure checks. Actual OCR
+quality and the client wire format require separate deployment verification.
+
 ## After edits and upgrades
 
 Repeat the local samples whenever you change rules. After a binary/client/model
