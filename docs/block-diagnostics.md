@@ -33,3 +33,7 @@ A value whose synthetic would not restore where it stands (for example
 address/number synthetic would be glued to a letter or hex digit) is not
 blocked: it is masked as a `REDACTED-<8hex>` token instead and counted as
 `downgraded` in the metrics.
+
+For Git/SSH failures, first identify whether the error comes from the model
+request or the local command. See the [configuration walkthrough](configuration.md#git-and-ssh-troubleshooting)
+for the decision table and supported overrides.

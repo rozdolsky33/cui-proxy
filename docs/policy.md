@@ -67,3 +67,7 @@ The proxy enforces the same thing at runtime, whatever the config says.
 one false positive can block every later turn. Tune the rules with synthetic
 text (`cui-proxy test-rules`, the dashboard's test box) before switching.
 Why this design, and what is deferred: [ADR 0001](adr/0001-govsec-policy-enforcement.md).
+
+For complete defaults, file locations and examples of mixed masking/blocking,
+see the [configuration walkthrough](configuration.md#sanitize-strict-and-overrides).
+There is no per-value allowlist or individual built-in detector toggle in v0.3.2.

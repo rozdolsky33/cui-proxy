@@ -5,6 +5,10 @@
 - **Deciders:** project maintainer, with the security / legal authority that issues approvals at the target organization
 - **Related:** [ADR 0001](0001-govsec-policy-enforcement.md) section 3 and open questions 1-2
 
+Current implementation: profiles and decision logging have shipped; verified
+approvals, account allowlists and policy locking have not. Example fields in
+this ADR are proposals, not supported YAML.
+
 ## Why this is deferred
 
 ADR 0001 has the proxy verify, before it sanitizes or forwards anything, that

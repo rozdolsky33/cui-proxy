@@ -1,5 +1,11 @@
 # cui-proxy — Design
 
+> Historical design/implementation record. Its original status and checklists
+> describe that work, not the current release. For implemented settings and
+> behavior, see [configuration](../../configuration.md) and
+> [documentation status](../../documentation-status.md).
+
+
 Date: 2026-11-06
 Status: DRAFT, awaiting builder check and user approval
 
