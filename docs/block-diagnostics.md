@@ -2,7 +2,7 @@
 
 A blocked request is answered with an OpenAI-style JSON error whose `code`
 is the block reason (`route`, `body_too_large`, `compressed`, `header`,
-`policy`, `sanitize`, `unrestorable`, `bad_request`, `audit`, `internal`; `audit` is HTTP 503 and means
+`policy`, `sanitize`, `unrestorable`, `bad_request`, `client`, `audit`, `internal`; `audit` is HTTP 503 and means
 the decision log could not be written, see [Decision log](../README.md#decision-log)). When the body or structured metadata could
 not be sanitized, the message also names a kind and, when one span caused
 it, the detector rule (a name from your config, never a value):
@@ -22,7 +22,7 @@ metrics count blocks by reason only.
 | `pool_exhausted` | no synthetic left for the class (see Synthetic address pool) | restart with a fresh vault (memory mode) or remove the vault file |
 | `ambiguous` | a value equals an issued overflow synthetic (or a zero-padded spelling of one) | see Synthetic address pool |
 | `pseudonym` | no synthetic can be made for the value (e.g. an invalid CIDR from a custom rule) | fix the rule's pattern or `synth` class |
-| `rule_match` | a blocking rule matched (code `policy`: the strict profile, or a rule with `action: block`) | expected: remove the value, or use the `sanitize` profile / a rule without `action: block` if masking is allowed |
+| `rule_match` | a blocking rule matched (code `policy` for the body, `header` for metadata: strict profile or `action: block`) | expected: remove the value, or use the `sanitize` profile / a rule without `action: block` if masking is allowed |
 | `unrestorable` | the sanitized text would not restore even after downgrading (code `unrestorable`) | rare: report the rule and kind from the log line |
 | `bad_body` | invalid JSON/UTF-8 or unsupported content; for metadata also invalid shape, duplicate fields/headers, over 64 KiB, or a match in an unchanged field | check the request shape and reported rule using fabricated input |
 | `depth` | JSON nested deeper than 64 levels | expected for pathological input |

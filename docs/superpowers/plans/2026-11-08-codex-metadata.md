@@ -29,6 +29,6 @@ using the same active eight-rule policy. Audit chain verified. Independent
 review found encoded unknown metadata and passthrough audit-count issues; both
 were reproduced in tests and fixed, then verified by the reviewer.
 
-Installed locally as v0.3.1+metadata.1. Saved-default routing returned exact
+Initial local verification (before release preparation): installed locally as v0.3.1+metadata.1. Saved-default routing returned exact
 PROBE_OK 10.20.30.15 from a synthetic Git repository; no provider overrides.
 Original binary and config backed up outside the repository. No release published.

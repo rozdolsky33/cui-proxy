@@ -100,7 +100,8 @@ Notes:
   `passthrough` is recorded as `forwarded`, with the counts key
   `passthrough:<reason>` (for example `"passthrough:sanitize":1`) and no
   body replacement counts. Successfully sanitized workspace metadata retains
-  its rule ids and counts alongside this marker. The proxy sets this marker in a separate field. It is never
+  its rule ids and counts alongside this marker. The proxy sets this marker
+  in a separate field. It is never
   taken from a rule name, so a rule named `passthrough:sanitize` is recorded
   as the rule `passthrough_sanitize`.
 - **At most 64 rules per record.** A request that matches more distinct
