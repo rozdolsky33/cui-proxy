@@ -1,6 +1,6 @@
 # Configuration walkthrough and reference
 
-Checked against v0.3.3 on 2026-11-08. This guide describes implemented
+Checked against v0.4.0 on 2026-11-08. This guide describes implemented
 settings. Planned approval/account allowlists in the ADRs are not available.
 
 Start with [which file to edit](#which-file-to-edit), then
@@ -155,7 +155,7 @@ than the sanitize profile's default `warn`.
 | Block a category while masking others | `profile: sanitize` plus `action: block` on selected rules |
 | Change a custom match | Edit its regex or dictionary and reload |
 | Stop using a rule | Remove its YAML entry and reload; this stops that detection everywhere the rule applied |
-| Allow one public value while keeping the same detector | No `allow`, `exclude`, exceptions list, or `action: allow` in v0.3.3 |
+| Allow one public value while keeping the same detector | No `allow`, `exclude`, exceptions list, or `action: allow` in v0.4.0 |
 | Disable just `builtin.email` | No selector for individual built-in detectors. `type: builtin` expands to the entire bundle |
 | Override a strict detection | Not supported; `action: sanitize` under strict is invalid |
 | Use a custom set instead of the built-in bundle | Remove the bundle and supply custom rules, but this removes every built-in protection not recreated; adding a narrower regex alongside the bundle does not narrow it |
@@ -254,7 +254,7 @@ there is no default upstream in the loader.
 | `upstreams.codex` | None; starter uses ChatGPT backend | Absolute base URL; no embedded credentials, query or fragment; HTTPS, or HTTP loopback for testing | Restart |
 | `policy.profile` | `sanitize` | `sanitize` or `strict` | Reload |
 | `policy.on_error` | `block` | `block` or restricted, unsafe `passthrough` behavior above | Reload |
-| `policy.attachments` (unreleased after v0.3.3) | `block` | `block` or `extract_text`; see [Attachment inspection](attachments.md) | Reloadable; local tools required for extraction |
+| `policy.attachments` (from v0.4.0) | `block` | `block` or `extract_text`; see [Attachment inspection](attachments.md) | Reloadable; local tools required for extraction |
 | `policy.unsupported` | `block` | Only `block` accepted | Fixed behavior |
 | `policy.max_body_bytes` | `20971520` (20 MiB) | Request body limit in bytes; positive integer; zero uses default, not unlimited | Reload |
 | `vault.mode` | `memory` | `memory` or encrypted `file` | Restart |

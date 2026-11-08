@@ -60,7 +60,7 @@ The proxy enforces the same thing at runtime, whatever the config says.
   the proxy cannot inspect (unsupported attachments, compressed bodies, unknown routes,
   oversized, too deeply nested or unparseable bodies) is always refused,
   **even under `policy.on_error: passthrough`**.
-- Attachments default to `policy.attachments: block`. The unreleased
+- Attachments default to `policy.attachments: block`. The
   `extract_text` mode replaces supported inline PDFs and PNG/JPEG images with
   locally extracted text before applying these same rules. Original files never
   go upstream. All body-processing failures in this mode block even if
@@ -76,4 +76,4 @@ Why this design, and what is deferred: [ADR 0001](https://github.com/rozdolsky33
 
 For complete defaults, file locations and examples of mixed masking/blocking,
 see the [configuration walkthrough](configuration.md#sanitize-strict-and-overrides).
-There is no per-value allowlist or individual built-in detector toggle in v0.3.3.
+There is no per-value allowlist or individual built-in detector toggle in v0.4.0.

@@ -9,7 +9,7 @@ your environment before relying on them.
 | Mask common values and your service names | [sanitize.yaml](examples/sanitize.yaml) | [hosts.txt](examples/hosts.txt) | Replace and restore |
 | Refuse any detected value | [strict.yaml](examples/strict.yaml) | [hosts.txt](examples/hosts.txt) | Block the entire request |
 | Mask ordinary values, block restricted categories | [selective-block.yaml](examples/selective-block.yaml) | [hosts.txt](examples/hosts.txt), [restricted-names.txt](examples/restricted-names.txt) | Per-rule behavior |
-| Extract PDF/image text before masking (unreleased after v0.3.3) | [attachment-text.yaml](examples/attachment-text.yaml) | [hosts.txt](examples/hosts.txt) | Replace files with extracted text, then sanitize matches |
+| Extract PDF/image text before masking (from v0.4.0) | [attachment-text.yaml](examples/attachment-text.yaml) | [hosts.txt](examples/hosts.txt) | Replace files with extracted text, then sanitize matches |
 | Keep mappings across restarts | [persistent-vault.yaml](examples/persistent-vault.yaml) | [hosts.txt](examples/hosts.txt) | Replace and restore using an encrypted file vault |
 | Learn on separate ports | [tutorial.yaml](examples/tutorial.yaml) | [hosts.txt](examples/hosts.txt) | Mask on ports 18787 / 18788 |
 
@@ -45,9 +45,9 @@ All recipes enable audit and set `audit.on_error: block`. The generated
 under sanitize. This choice is explicit so a recipe cannot silently forward a
 request without its decision record.
 
-## Local PDF/image text extraction (unreleased)
+## Local PDF/image text extraction (from v0.4.0)
 
-This requires the implementation after v0.3.3 plus local extraction tools. Read
+This requires the v0.4.0 or newer plus local extraction tools. Read
 [attachment inspection](attachments.md) before enabling it. Original files and
 filenames are dropped; only extracted text is inspected and forwarded. Strict or
 explicit block rules still apply to that text. All conversion-mode failures block.

@@ -1,11 +1,10 @@
 # Local attachment inspection
 
-!!! info "Availability: unreleased source feature"
-    This setting is implemented on `main` after v0.3.3. The v0.3.3 release
-    does not accept `policy.attachments`. [Build from source](development.md#build)
-    or use a later release that includes attachment support, then restart the
-    running proxy before enabling it. Publishing this manual does not upgrade
-    your installed binary.
+!!! info "Available from v0.4.0"
+    Upgrade to v0.4.0 or newer and restart the running proxy before enabling
+    `policy.attachments`. The v0.3.3 release does not accept this setting.
+    Re-run `cui-proxy menubar install` after upgrading to refresh the app and
+    its bundled offline manual.
 
 Attachments are blocked by default. To replace supported attachments with locally
 extracted, sanitized text, merge the following **partial edit** into the existing

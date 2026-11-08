@@ -1,4 +1,4 @@
-# Complete configuration for unreleased attachment support after v0.3.3.
+# Complete configuration for attachment support in v0.4.0 or newer.
 # Requires local Poppler/Tesseract; save hosts.txt beside this file.
 listen: localhost:8787
 ui:

@@ -27,6 +27,8 @@ jobs:
         run: pip install -r requirements-docs.txt
       - name: Build CLI for executable documentation checks
         run: go build -o bin/cui-proxy ./cmd/cui-proxy
+      - name: Verify embedded offline manual matches its sources
+        run: go test ./internal/manual
       - name: Validate downloadable configurations and examples
         run: python scripts/check-docs.py --binary bin/cui-proxy
       - name: Build documentation and check links

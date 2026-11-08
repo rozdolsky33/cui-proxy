@@ -123,7 +123,7 @@ cui-proxy audit verify -config /path/to/config.yaml
 Some guards, such as malformed metadata or an unknown route, block independently
 of rule matches. See [Block diagnostics](block-diagnostics.md).
 
-## Check attachment conversion (unreleased)
+## Check attachment conversion (from v0.4.0)
 
 `test-rules` and the dashboard text box do not invoke PDF extraction or OCR.
 After building/upgrading to a binary that supports [attachments](attachments.md),

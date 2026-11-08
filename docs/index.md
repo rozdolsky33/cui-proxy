@@ -40,7 +40,7 @@ hide:
 
 - **Inspect PDFs and images locally**
 
-    Convert supported inline attachments to sanitized text and understand file-block diagnostics. Available in unreleased source after v0.3.3.
+    Convert supported inline attachments to sanitized text and understand file-block diagnostics. Available from v0.4.0.
 
     [PDF and image inspection →](attachments.md)
 
@@ -96,9 +96,8 @@ can recognize; your dictionaries and regex rules extend their coverage.
 
 ## About this manual
 
-These guides describe **v0.3.3** plus explicitly marked unreleased changes on
-`main`. [PDF/image text extraction](attachments.md) is an unreleased source
-feature; the v0.3.3 binary does not accept its configuration setting.
+These guides describe **v0.4.0**, including [PDF/image text extraction](attachments.md)
+and the menu bar's [offline manual](menubar.md#offline-documentation).
 Commands use fabricated values and the default configuration directory unless
 stated otherwise. Downloadable recipes are checked by the real CLI on every
 documentation build. [Dated backend verification](verification.md) records the
