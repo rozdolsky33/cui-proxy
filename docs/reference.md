@@ -51,7 +51,7 @@ bound. `localhost` is accepted. Do not point Codex at the dashboard port; see
 | --- | --- | --- | --- |
 | `policy.profile` | `sanitize` | `sanitize` masks detections; `strict` blocks them. Rule actions may strengthen sanitize, but cannot weaken strict. | Reload |
 | `policy.on_error` | `block` | `block` or `passthrough`. Passthrough can forward the original body on eligible sanitizer failures and is invalid with strict or any explicit blocking rule. It does not permit unsupported content or override policy matches. | Reload |
-| `policy.attachments` | `block` | `block` or `extract_text`. Unreleased after v0.3.3: supported inline PDF/PNG/JPEG becomes locally extracted text before scanning; original files never forwarded. All body failures block in extraction mode. See [attachments](attachments.md). | Reload |
+| `policy.attachments` | `block` | `block` or `extract_text`. From v0.4.0: supported inline PDF/PNG/JPEG becomes locally extracted text before scanning; original files never forwarded. All body failures block in extraction mode. See [attachments](attachments.md). | Reload |
 | `policy.unsupported` | `block` | Only `block` is accepted. Unsupported content is refused. | Fixed behavior |
 | `policy.max_body_bytes` | `20971520` (20 MiB) | Maximum request body bytes. Negative is invalid; zero takes the default, not unlimited. | Reload |
 
@@ -215,8 +215,8 @@ these configuration and control endpoints publicly.
 | Limit | Value |
 | --- | --- |
 | Default request body limit | 20 MiB; configurable with `policy.max_body_bytes` |
-| Attachment extraction per request (unreleased) | 8 attachments, 10 MiB decoded input, 20 total PDF pages, 2 MiB extracted text, 30 seconds; [details](attachments.md#limits-and-diagnostics) |
-| Attachment images and processes (unreleased) | 16 million pixels per input image; PDF raster longest side 4000 pixels; 2 extraction processes globally |
+| Attachment extraction per request (from v0.4.0) | 8 attachments, 10 MiB decoded input, 20 total PDF pages, 2 MiB extracted text, 30 seconds; [details](attachments.md#limits-and-diagnostics) |
+| Attachment images and processes (from v0.4.0) | 16 million pixels per input image; PDF raster longest side 4000 pixels; 2 extraction processes globally |
 | Structured turn-metadata header | 64 KiB; not a YAML option |
 | JSON nesting depth | 64 levels; not a YAML option |
 | Function-call argument restoration | 20 MiB cumulative argument-delta input per response and 20 MiB per completed argument document |

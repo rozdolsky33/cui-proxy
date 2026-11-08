@@ -49,7 +49,7 @@ the synthetic live probe. Credentials remain an inspection exception.
 
 ## Optional local attachment processing
 
-The unreleased [attachment mode](attachments.md) requires maintained Poppler
+The [attachment mode](attachments.md) requires maintained Poppler
 and Tesseract installations. Native parsers run as the proxy user with capped
 input/output, time and concurrency; they are not isolated by an OS sandbox or
 hard memory limit. They receive no inherited credentials and perform no remote

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -65,7 +66,7 @@ func needMac(t *testing.T) {
 func TestMenubarInstallStatusUninstall(t *testing.T) {
 	needMac(t)
 	t.Setenv("HOME", t.TempDir()) // uninstall looks at ~/Library/LaunchAgents: never the real one
-	apps := t.TempDir()
+	apps := filepath.Join(t.TempDir(), "Applications with spaces é")
 	cfg := filepath.Join(t.TempDir(), "config.yaml")
 	app := filepath.Join(apps, "CuiProxy.app")
 
@@ -81,7 +82,7 @@ func TestMenubarInstallStatusUninstall(t *testing.T) {
 		t.Fatalf("install: code %d, stdout %q, stderr %q", code, out, errOut)
 	}
 	exe := filepath.Join(app, "Contents", "MacOS", "CuiProxyMenu")
-	for _, p := range []string{exe, filepath.Join(app, "Contents", "Info.plist")} {
+	for _, p := range []string{exe, filepath.Join(app, "Contents", "Info.plist"), filepath.Join(app, "Contents", "Resources", "Manual", "index.html"), filepath.Join(app, "Contents", "Resources", "Manual", "attachments.html")} {
 		if _, err := os.Stat(p); err != nil {
 			t.Errorf("missing %s: %v", p, err)
 		}
@@ -101,13 +102,45 @@ func TestMenubarInstallStatusUninstall(t *testing.T) {
 		t.Errorf("--check did not see the installed hints:\n%s", o)
 	}
 
+	// The same local URL is available regardless of proxy/config availability.
+	var manualURL string
+	for _, line := range strings.Split(string(o), "\n") {
+		if strings.HasPrefix(line, "documentation_url=") {
+			manualURL = strings.TrimPrefix(line, "documentation_url=")
+		}
+	}
+	u, err := url.Parse(manualURL)
+	if err != nil || u.Scheme != "file" || u.Host != "" || strings.Contains(manualURL, " ") {
+		t.Fatalf("invalid local manual URL: %q", manualURL)
+	}
+	actual, err := os.Stat(u.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected, err := os.Stat(filepath.Join(app, "Contents", "Resources", "Manual", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(actual, expected) {
+		t.Fatalf("wrong local document: %q", manualURL)
+	}
+
 	// status reports it.
 	code, out, _ = runCLI("", "menubar", "status", "-dir", apps)
 	if code != 0 || !strings.Contains(out, "installed") {
 		t.Errorf("status: code %d, out %q", code, out)
 	}
 
-	// Installing again replaces it cleanly.
+	// Missing resources are reported locally without falling back to a website.
+	if err := os.Remove(filepath.Join(app, "Contents", "Resources", "Manual", "index.html")); err != nil {
+		t.Fatal(err)
+	}
+	missing, _ := exec.Command(exe, "--check").CombinedOutput()
+	if !strings.Contains(string(missing), "documentation_url=NOT FOUND") {
+		t.Fatalf("missing manual: %s", missing)
+	}
+
+	// Installing again repairs resources and replaces it cleanly.
 	if code, _, errOut := install(); code != 0 {
 		t.Fatalf("second install: code %d, stderr %q", code, errOut)
 	}

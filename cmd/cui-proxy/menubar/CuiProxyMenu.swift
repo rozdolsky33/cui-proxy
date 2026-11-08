@@ -474,6 +474,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             menu.addItem(.separator())
         }
         menu.addItem(item("Open Dashboard", #selector(openDashboard), key: "d", enabled: running))
+        menu.addItem(item("Open Documentation", #selector(openDocumentation), key: "?"))
         menu.addItem(item("Copy Codex command", #selector(copyCodex), key: "c", enabled: info != nil))
         menu.addItem(.separator())
 
@@ -500,6 +501,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func openDashboard() {
         if let u = info?.dashboard { NSWorkspace.shared.open(u) }
+    }
+
+    @objc private func openDocumentation() {
+        if let url = documentationURL(), NSWorkspace.shared.open(url) { return }
+        let alert = NSAlert()
+        alert.messageText = "Could not open local documentation"
+        alert.informativeText = "Reinstall the bundled manual with: cui-proxy menubar install. If the manual is present, check your default browser."
+        alert.alertStyle = .warning
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
     }
 
     @objc private func copyCodex() {
@@ -618,6 +629,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func quit() { shutdown() }
 }
 
+// This works with no config, proxy process, network, or source checkout.
+func documentationURL() -> URL? {
+    guard let resource = Bundle.main.resourceURL else { return nil }
+    let url = resource.appendingPathComponent("Manual", isDirectory: true).appendingPathComponent("index.html")
+    guard FileManager.default.isReadableFile(atPath: url.path) else { return nil }
+    return url
+}
+
 // MARK: - Entry point
 
 if CommandLine.arguments.contains("--check") {
@@ -626,6 +645,7 @@ if CommandLine.arguments.contains("--check") {
     let c = findConfig()
     print("binary=\(b ?? "NOT FOUND")")
     print("config=\(c)")
+    print("documentation_url=\(documentationURL()?.absoluteString ?? "NOT FOUND")")
     print("config_exists=\(FileManager.default.fileExists(atPath: c))")
     if let b = b {
         switch loadInfo(binary: b, config: c) {

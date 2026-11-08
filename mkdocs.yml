@@ -4,7 +4,7 @@ site_url: https://rozdolsky33.github.io/cui-proxy/
 repo_url: https://github.com/rozdolsky33/cui-proxy
 repo_name: rozdolsky33/cui-proxy
 edit_uri: edit/main/docs/
-copyright: cui-proxy · MIT licensed · v0.3.3 + unreleased main changes
+copyright: cui-proxy · MIT licensed · Documentation for v0.4.0
 docs_dir: docs
 site_dir: site
 strict: true

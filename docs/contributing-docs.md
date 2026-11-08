@@ -59,3 +59,31 @@ To republish, run the **Documentation** workflow on `main`. To roll back a
 documentation change, revert its commit through the normal review process;
 the resulting main-branch run publishes the reverted content. The Go release
 workflow remains separate, so publishing the manual does not release a binary.
+
+
+## Keep the bundled offline manual current
+
+The menu-bar installer unpacks `internal/manual/site.zip` from the Go binary
+into the app before signing it. This committed generated artifact keeps normal
+`go build`, Homebrew and standalone binary installs independent of Python.
+`mkdocs-offline.yml` reuses the online theme and navigation with local HTML
+links, offline search, no repository widget, and a local iframe-worker shim.
+Diagrams remain readable source with adjacent prose; no CDN renderer is loaded.
+Third-party asset licenses are included in the archive.
+
+After changing a published guide, example, screenshot, docs configuration or
+manual-build input, regenerate the snapshot with the pinned documentation tools:
+
+```sh
+.venv-docs/bin/python scripts/build-manual.py
+go test ./internal/manual
+```
+
+Commit `internal/manual/site.zip` with the source changes. The Go test compares
+the full published-input list and SHA-256 digests against the embedded manifest,
+so stale or omitted source files fail CI and release tests. Historical excluded
+plans, specs, ADRs and raw evidence do not force a manual rebuild. The build is
+local and uses the vendored offline search shim in `scripts/manual-assets/`;
+reading the result makes no automatic external requests. Preview the extracted
+`index.html` as a file URL with networking disabled to check navigation, search,
+images and downloads. These checks are separate from the HTTP Pages preview.

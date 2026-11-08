@@ -17,6 +17,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"cui-proxy/internal/manual"
 )
 
 // menubarSource is the Swift menu-bar app. It is compiled on the user's own
@@ -194,6 +196,10 @@ func menubarInstall(appsDir, cfgFlag, binFlag string, launch bool, stdout, stder
 		return fail(stderr, fmt.Errorf("menubar: %w", err))
 	}
 
+	if err := manual.WriteTo(filepath.Join(app, "Contents", "Resources", "Manual")); err != nil {
+		return fail(stderr, err)
+	}
+
 	fmt.Fprintln(stdout, "Compiling the menu-bar app (this takes a few seconds)...")
 	exe := filepath.Join(macos, menubarExeName)
 	if out, err := runQuiet(swiftc, "-O", "-swift-version", "5", "-o", exe, src); err != nil {
@@ -232,7 +238,8 @@ func menubarInstall(appsDir, cfgFlag, binFlag string, launch bool, stdout, stder
 		fmt.Fprintln(stdout, "Started. Look for the shield icon in your menu bar.")
 	}
 	fmt.Fprint(stdout, `
-Click the icon for: Open Dashboard, Copy Codex command, Start/Stop, Reload rules,
+Click the icon for: Open Dashboard, Open Documentation (offline), Copy Codex command,
+Start/Stop, Reload rules,
 Open Config Folder, Open Log, and Start at Login.
 `)
 	if _, err := os.Stat(config); err != nil {

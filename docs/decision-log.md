@@ -83,7 +83,7 @@ One JSON object per line, keys always in this order:
 | `reason` | empty unless `blocked`; then one of `route`, `body_too_large`, `compressed`, `header`, `policy`, `sanitize`, `unrestorable`, `bad_request`, `client`, `audit`, `internal` (the codes in [Block diagnostics](block-diagnostics.md)) |
 | `rule_ids` | sorted names of the rules that matched |
 | `counts` | per-rule match counts |
-| `detail` (optional, unreleased) | closed attachment category/cause for a sanitize block; [codes and remedies](attachments.md#limits-and-diagnostics), never filenames, URLs or contents |
+| `detail` (optional, from v0.4.0) | closed attachment category/cause for a sanitize block; [codes and remedies](attachments.md#limits-and-diagnostics), never filenames, URLs or contents |
 | `approval_id` | always `""` for now (reserved for approvals, ADR 0001 phase 3) |
 | `prev_hash` | the previous record's `hash` (64 zeros for the first record of a chain) |
 | `hash` | see [The hash chain](#the-hash-chain) |

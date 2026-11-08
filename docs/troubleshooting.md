@@ -158,7 +158,7 @@ the historical context and [verification](verification.md) for regression scope.
 ## PDF, image and file refusals
 
 `422 reason=sanitize kind=bad_body` is a body validation failure, independent of
-the number of blocking rules. Attachments are blocked by default. The unreleased
+the number of blocking rules. Attachments are blocked by default. The
 [text extraction mode](attachments.md) converts supported inline PDF/PNG/JPEG
 content locally; it never forwards originals.
 

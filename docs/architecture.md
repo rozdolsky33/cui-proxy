@@ -71,7 +71,7 @@ flowchart TD
 4. **Parse the body.** The Responses request must be a single valid UTF-8 JSON
    object, within the configured body limit (20 MiB by default) and fixed
    nesting limit of 64 containers. Attachments default to block. With the
-   unreleased [extraction setting](attachments.md), supported inline PDFs and
+   [extraction setting](attachments.md), supported inline PDFs and
    PNG/JPEG images become local text before detection; filenames and binary
    bytes are dropped. File references, audio and other unsupported forms block.
    Extraction limits and failures always block, including under passthrough.

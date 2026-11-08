@@ -1,6 +1,6 @@
 # Known limitations / behavior
 
-- Attachments are blocked by default. The unreleased [text extraction mode](attachments.md)
+- Attachments are blocked by default. The [text extraction mode](attachments.md)
   sends only sanitized extracted text from supported inline PDFs and PNG/JPEG
   images. It drops the originals and filenames, may lose layout/visual meaning,
   and can miss or misrecognize text. Native extractors are local subprocesses

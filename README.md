@@ -72,6 +72,9 @@ Click the shield:
 - **Open Dashboard** shows live requests, metrics and the active config.
   Try the "test a string" box with `ssh admin@10.20.30.15`: you get a fake
   address back.
+- **Open Documentation** opens the bundled manual in your browser, even offline
+  or with the proxy stopped. Re-run `cui-proxy menubar install` after an upgrade
+  to refresh the menu and manual.
 - **Copy Codex command**, then paste it in a terminal to run Codex through
   the proxy for one session. Use a synthetic prompt the first time.
 - Tick **Start at Login** once and it is always there.
@@ -185,6 +188,7 @@ and are never stored.
 | I want to... | Do this |
 |---|---|
 | Run Codex through the proxy | Menu bar: **Copy Codex command**, paste it. Or set it permanently: [Point Codex at the proxy](docs/configuration.md#point-codex-at-the-proxy). |
+| Read the manual offline (macOS) | Menu bar: **Open Documentation**; bundled with the app from v0.4.0. |
 | See what is happening | Menu bar: **Open Dashboard**, or <http://127.0.0.1:8788/>. |
 | Add a sensitive name | Add a line to `~/.config/cui-proxy/hosts.txt`, then **Reload rules** (menu bar) or `kill -HUP <pid>`. No restart. |
 | Preview what the rules do | `echo 'ssh admin@10.20.30.15' \| cui-proxy test-rules -config ~/.config/cui-proxy/config.yaml` |
@@ -227,7 +231,7 @@ Read these before relying on it. The full list is in [docs/limitations.md](docs/
 
 - Detection is pattern- and dictionary-based and **will miss things**; a missed value is sent as is.
 - The upstream mapping passed one live smoke test (2026-11-07, Codex CLI 0.167.0, `gpt-6-astra`); that is evidence, not a guarantee. Repeat the checks in [docs/verification.md](docs/verification.md) after upgrades.
-- Attachments are blocked by default. Opt-in [local PDF/image text extraction](docs/attachments.md), available in unreleased source after v0.3.3, forwards only sanitized text. Other unsupported content is refused; vendor encrypted fields are only shape-checked.
+- Attachments are blocked by default. Opt-in [local PDF/image text extraction](docs/attachments.md), available from v0.4.0, forwards only sanitized text. Other unsupported content is refused; vendor encrypted fields are only shape-checked.
 - Credential headers pass through unchanged; the proxy never stores them.
 - It protects only traffic that is pointed at it; it does not stop a client that bypasses it.
 
@@ -235,7 +239,7 @@ Read these before relying on it. The full list is in [docs/limitations.md](docs/
 
 The [documentation site](https://rozdolsky33.github.io/cui-proxy/) provides a searchable
 manual with tutorials, copyable configurations, dashboard screenshots and a
-request-lifecycle walkthrough. Operator guides below describe v0.3.3. Dated specs, plans and spikes are
+request-lifecycle walkthrough. Operator guides below describe v0.4.0. On macOS, **Open Documentation** in the menu bar opens the bundled offline manual. Dated specs, plans and spikes are
 historical records; ADR proposals include features that have not shipped.
 See the [documentation status](docs/documentation-status.md) for that distinction.
 
