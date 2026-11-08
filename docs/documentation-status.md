@@ -1,8 +1,9 @@
 # Documentation status
 
-Reviewed against v0.3.2 on 2026-11-08. The release includes workspace metadata
-sanitization and value-free accounting. This documentation revision also
-clarifies defaults, override limits, and the separate Git/SSH execution path.
+Reviewed for v0.3.3 on 2026-11-08. It includes workspace metadata sanitization,
+value-free accounting, and the JSON escape dataflow repair. The configuration
+walkthrough covers defaults, override limits, the separate Git/SSH execution
+path, and the fixed argument buffering limits.
 
 ## Current operator documentation
 
@@ -41,8 +42,10 @@ operation have been corrected.
   policy locking remain unimplemented. [ADR 0002](adr/0002-approval-record-format.md)
   is deferred. An accepted architecture does not mean every phase is shipped.
 
-The release [v0.3.2](https://github.com/rozdolsky33/cui-proxy/releases/tag/v0.3.2)
-contains the metadata fix. Source defaults are defined in
+Release [v0.3.3](https://github.com/rozdolsky33/cui-proxy/releases/tag/v0.3.3)
+includes the metadata and JSON escape fixes. The
+[dataflow report](verification-results/2026-11-08-json-escape-dataflow.md)
+records regression coverage and verification scope. Source defaults are defined in
 [`internal/config/config.go`](../internal/config/config.go); rule construction
 in [`internal/detect`](../internal/detect/); restart behavior in
 [`cmd/cui-proxy/app.go`](../cmd/cui-proxy/app.go).

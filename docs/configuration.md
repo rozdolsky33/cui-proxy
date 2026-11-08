@@ -209,11 +209,11 @@ response text is restored before the local command runs.
 A separate defect in v0.3.2 and earlier can reject tool output containing
 JSON with an escaped newline immediately before a matched value, such as
 `git@github.com`. It reports `reason=sanitize kind=bad_body`, even under
-`sanitize`. The JSON escape repair in the current source fixes this in code;
+`sanitize`. The JSON escape repair in v0.3.3 fixes this in code;
 changing SSH permissions, disabling email detection, or enabling passthrough
 is not the remedy. See the [dataflow regression report](verification-results/2026-11-08-json-escape-dataflow.md)
-for the affected paths and verification scope. This source change must be
-built and deployed before it affects a running proxy.
+for the affected paths and verification scope. Upgrade to v0.3.3 or later and
+restart the running proxy to use the repair.
 
 Work through these checks:
 

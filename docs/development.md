@@ -8,13 +8,13 @@ toolchain (validated with staticcheck 2026.2.2).
 ```sh
 make build            # -> bin/cui-proxy
 make test lint        # go test -race, go vet, staticcheck
-go build -ldflags "-X main.version=v0.3.2" -o bin/cui-proxy ./cmd/cui-proxy
+go build -ldflags "-X main.version=v0.3.3" -o bin/cui-proxy ./cmd/cui-proxy
 ```
 
 ## Releasing (maintainers)
 
 ```sh
-# Choose a NEW version after checking existing tags (v0.3.2 already exists).
+# Choose a NEW version after checking existing tags.
 git tag vX.Y.Z && git push origin vX.Y.Z
 ```
 
@@ -26,7 +26,7 @@ a GitHub release. It then updates the Homebrew tap if the repository secret
 the release is published:
 
 ```sh
-scripts/update-tap.sh v0.3.2      # needs `gh` logged in with push access to the tap
+scripts/update-tap.sh v0.3.3      # needs `gh` logged in with push access to the tap
 ```
 
 `scripts/package.sh <version>` builds the same archives locally into `dist/`
