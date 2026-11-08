@@ -1589,7 +1589,7 @@
 toolchain (validated with staticcheck 2026.2.2).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>build<span class="w">            </span><span class="c1"># -&gt; bin/cui-proxy</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>make<span class="w"> </span><span class="nb">test</span><span class="w"> </span>lint<span class="w">        </span><span class="c1"># go test -race, go vet, staticcheck</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>go<span class="w"> </span>build<span class="w"> </span>-ldflags<span class="w"> </span><span class="s2">"-X main.version=v0.4.0"</span><span class="w"> </span>-o<span class="w"> </span>bin/cui-proxy<span class="w"> </span>./cmd/cui-proxy
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>go<span class="w"> </span>build<span class="w"> </span>-ldflags<span class="w"> </span><span class="s2">"-X main.version=v0.5.0"</span><span class="w"> </span>-o<span class="w"> </span>bin/cui-proxy<span class="w"> </span>./cmd/cui-proxy
 </code></pre></div>
 <h2 id="releasing-maintainers">Releasing (maintainers)<a class="headerlink" href="#releasing-maintainers" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Choose a NEW version after checking existing tags.</span>
@@ -1601,7 +1601,7 @@ a GitHub release. It then updates the Homebrew tap if the repository secret
 <code>TAP_GITHUB_TOKEN</code> exists (a fine-grained token with <code>contents: write</code> on
 <code>rozdolsky33/homebrew-tap</code>). Without that secret, update the tap yourself after
 the release is published:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>scripts/update-tap.sh<span class="w"> </span>v0.4.0<span class="w">      </span><span class="c1"># needs `gh` logged in with push access to the tap</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>scripts/update-tap.sh<span class="w"> </span>v0.5.0<span class="w">      </span><span class="c1"># needs `gh` logged in with push access to the tap</span>
 </code></pre></div>
 <p>The same tag runs <code>.github/workflows/docs.yml</code>, which publishes the manual
 under <code>vX.Y.Z/</code> and moves the <code>latest/</code> alias to it; see
@@ -1687,7 +1687,7 @@ example validation, the strict site build, screenshots, and GitHub Pages publish
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      cui-proxy · MIT licensed · Documentation for v0.4.0
+      cui-proxy · MIT licensed · Documentation for v0.5.0
     </div>
   
   
