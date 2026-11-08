@@ -1,0 +1,37 @@
+# Complete configuration. Save both dictionary files beside this file.
+listen: localhost:8787
+ui:
+  listen: localhost:8788
+upstreams:
+  codex: https://chatgpt.com/backend-api/codex
+policy:
+  profile: sanitize
+  on_error: block
+  unsupported: block
+vault:
+  mode: memory
+audit:
+  enabled: true
+  file: .state/selective-decisions.jsonl
+  on_error: block
+rules:
+  - name: builtin
+    type: builtin
+  - name: service-hosts
+    type: dictionary
+    file: hosts.txt
+    synth: hostname
+  - name: restricted-names
+    type: dictionary
+    file: restricted-names.txt
+    synth: secret
+    action: block
+  - name: aws-keys
+    type: regex
+    pattern: '\b(?:AKIA|ASIA)[0-9A-Z]{16}\b'
+    synth: secret
+    action: block
+  - name: ticket-ids
+    type: regex
+    pattern: '\bDEMO-[0-9]{6}\b'
+    synth: secret

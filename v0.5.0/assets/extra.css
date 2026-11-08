@@ -1,0 +1,28 @@
+:root {
+  --md-primary-fg-color: #123c46;
+  --md-primary-fg-color--light: #235c68;
+  --md-primary-fg-color--dark: #082b33;
+}
+.md-grid { max-width: 76rem; }
+.md-typeset { font-size: .8rem; line-height: 1.65; }
+.md-typeset h1 { color: var(--md-default-fg-color); font-weight: 700; letter-spacing: -.025em; }
+.md-typeset h2 { font-weight: 650; letter-spacing: -.015em; }
+.md-typeset .hero { padding: 1rem 0 1.6rem; max-width: 44rem; }
+.md-typeset .hero h1 { font-size: 2.7em; line-height: 1.13; margin-bottom: .6em; }
+.md-typeset .hero .eyebrow { color: var(--md-accent-fg-color); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: .72rem; }
+.md-typeset .hero .lead { font-size: 1rem; color: var(--md-default-fg-color--light); }
+.md-typeset .grid.cards > ul > li { border-radius: .35rem; padding: 1.1rem; }
+.md-typeset table:not([class]) { font-size: .72rem; }
+.md-typeset img { border-radius: .35rem; border: 1px solid var(--md-default-fg-color--lightest); }
+.md-typeset .admonition { font-size: .75rem; }
+@media (max-width: 600px) {
+  .md-typeset .hero h1 { font-size: 2.1em; }
+  .md-typeset .hero .lead { font-size: .88rem; }
+}
+/* Keep text links and secondary actions readable in both palettes. */
+.md-typeset .hero .eyebrow { color: #08796c; }
+[data-md-color-scheme="slate"] { --md-typeset-a-color: #6ee7d5; }
+[data-md-color-scheme="slate"] .md-typeset .hero .eyebrow,
+[data-md-color-scheme="slate"] .md-typeset .md-button:not(.md-button--primary) {
+  color: #6ee7d5;
+}
