@@ -7,7 +7,7 @@ removing a line in the middle shows up in `cui-proxy audit verify`.
 `cui-proxy explain <request-id>` reads the log and puts one decision into
 plain words.
 
-This is phase 2 of [ADR 0001](adr/0001-govsec-policy-enforcement.md). The
+This is phase 2 of [ADR 0001](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/adr/0001-govsec-policy-enforcement.md). The
 in-memory feed on the dashboard is separate: it holds the last 500 requests
 and is lost on restart.
 

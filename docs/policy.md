@@ -17,7 +17,7 @@ Any rule can also set `action: block` to refuse a request that matches it
 even under `sanitize` (for example a dictionary of names that must never
 leave). Under `strict` every rule blocks and a rule may not set
 `action: sanitize` (a verified approval may allow that in a later release; see
-[docs/adr](adr/)). `strict` needs at least one rule (with none it would
+[docs/adr](https://github.com/rozdolsky33/cui-proxy/tree/main/docs/adr)). `strict` needs at least one rule (with none it would
 detect nothing). **Any blocking rule (the strict profile or an
 `action: block`) also requires `policy.on_error: block`**: the config is
 refused otherwise, because `passthrough` forwards the original request when it
@@ -30,10 +30,11 @@ The proxy enforces the same thing at runtime, whatever the config says.
   `cui-proxy: request blocked (reason=policy kind=rule_match rule=builtin.ipv4)`.
 - When any rule blocks, fields that are normally passed through unscanned so
   the protocol keeps working (`model`, ids, `role`, `status`, tool names and
-  types, `include` entries) are **checked, not rewritten**, and so is every
+  types) are **checked, not rewritten**, and so is every
   number in the request, not just text (number literals are expanded exactly,
-  so `4.111111111111111e15` is checked as 4111111111111111). The one partial
-  exception is the content of `encrypted_content` (the vendor's encrypted
+  so `4.111111111111111e15` is checked as 4111111111111111). Known protocol
+  `include` constants remain unscanned; unknown `include` strings are inspected.
+  Another exception is the content of `encrypted_content` (the vendor's encrypted
   reasoning blobs, resent as received): it is not scanned, but while a rule
   blocks it must look like base64 ciphertext or the request is refused. A
   value written only with base64 characters could still ride in it; nothing
@@ -66,8 +67,8 @@ The proxy enforces the same thing at runtime, whatever the config says.
 `strict` blocks more, and Codex resends the whole conversation each turn, so
 one false positive can block every later turn. Tune the rules with synthetic
 text (`cui-proxy test-rules`, the dashboard's test box) before switching.
-Why this design, and what is deferred: [ADR 0001](adr/0001-govsec-policy-enforcement.md).
+Why this design, and what is deferred: [ADR 0001](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/adr/0001-govsec-policy-enforcement.md).
 
 For complete defaults, file locations and examples of mixed masking/blocking,
 see the [configuration walkthrough](configuration.md#sanitize-strict-and-overrides).
-There is no per-value allowlist or individual built-in detector toggle in v0.3.2.
+There is no per-value allowlist or individual built-in detector toggle in v0.3.3.

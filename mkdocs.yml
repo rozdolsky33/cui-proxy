@@ -1,0 +1,113 @@
+site_name: cui-proxy
+site_description: Set up, customize, and operate a local sanitizing proxy for Codex.
+site_url: https://rozdolsky33.github.io/cui-proxy/
+repo_url: https://github.com/rozdolsky33/cui-proxy
+repo_name: rozdolsky33/cui-proxy
+edit_uri: edit/main/docs/
+copyright: cui-proxy · MIT licensed · Documentation for v0.3.3
+docs_dir: docs
+site_dir: site
+strict: true
+exclude_docs: |
+  /superpowers/
+  /spikes/
+  /verification-results/
+  /adr/
+theme:
+  name: material
+  language: en
+  font: false
+  icon:
+    logo: material/shield-check-outline
+    repo: fontawesome/brands/github
+  palette:
+    - media: '(prefers-color-scheme: light)'
+      scheme: default
+      primary: custom
+      accent: teal
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: '(prefers-color-scheme: dark)'
+      scheme: slate
+      primary: custom
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - navigation.tracking
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+    - toc.follow
+plugins:
+  - search
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      base_path: [docs]
+      check_paths: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+extra_css:
+  - assets/extra.css
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+    absolute_links: warn
+  links:
+    not_found: warn
+    anchors: warn
+    unrecognized_links: warn
+nav:
+  - Start here:
+      - Overview: index.md
+      - Quick start: quickstart.md
+      - Install and upgrade: install.md
+      - End-to-end tutorial: tutorial.md
+      - Connect Codex: codex.md
+  - Configure:
+      - Configuration walkthrough: configuration.md
+      - Rules and synthetic values: rules.md
+      - Sanitize and strict policies: policy.md
+      - Configuration recipes: recipes.md
+      - YAML and CLI reference: reference.md
+  - Operate:
+      - Dashboard walkthrough: dashboard.md
+      - macOS menu bar: menubar.md
+      - Test your setup: testing.md
+      - Decision log: decision-log.md
+      - Troubleshooting: troubleshooting.md
+      - Block diagnostics: block-diagnostics.md
+  - Understand:
+      - Life of a request: architecture.md
+      - Capabilities and limitations: limitations.md
+      - Glossary: glossary.md
+      - Security and assurance: assurance.md
+      - Verification evidence: verification.md
+      - Documentation status: documentation-status.md
+  - Contribute:
+      - Build and release: development.md
+      - Maintain the documentation: contributing-docs.md

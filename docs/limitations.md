@@ -46,8 +46,9 @@
 - Without a blocking rule, `tools[].name` and some protocol identifier fields
   are passed through unscanned so that the protocol keeps working (unknown
   `include` values are scanned, not skipped). When any rule blocks they are
-  checked too (see Policy profiles); only the content of `encrypted_content`
-  is not scanned (it must look like base64 ciphertext).
+  checked too (see Policy profiles). Known protocol `include` constants stay
+  unscanned under every profile. The content of `encrypted_content` is also
+  unscanned; with any blocking rule it must look like base64 ciphertext.
 - The builtin set has no AWS access key detector; `examples/config.yaml`
   adds one as a regex rule (`aws-keys`, `\b(?:AKIA|ASIA)[0-9A-Z]{16}\b`).
 - Upstream 3xx responses other than 304 become 502: a redirect (and its
@@ -65,8 +66,11 @@
   non-loopback Host names to prevent DNS rebinding. Restored streams are marked
   `Cache-Control: no-store`. Other native processes under the same OS user are
   inside the trust boundary.
-- The dashboard is localhost-only and never shows real values: only rule
-  names, counts, paths and block reasons.
+- The dashboard is localhost-only. Activity views show metadata, not request
+  contents; configuration views expose paths, rule names and regex patterns.
+  Test a string displays the text you enter and its transformed result, which
+  can still contain unmatched values. Use fabricated samples and review the
+  whole screen before sharing a screenshot.
 
 See [assurance and operations](assurance.md) for the reviewed threat
 model, verification evidence, operating requirements, and remaining limits.

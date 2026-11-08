@@ -2,3 +2,6 @@
 bin/
 dist/
 .idea
+site/
+.venv-docs/
+__pycache__/

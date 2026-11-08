@@ -3,7 +3,7 @@
 A blocked request is answered with an OpenAI-style JSON error whose `code`
 is the block reason (`route`, `body_too_large`, `compressed`, `header`,
 `policy`, `sanitize`, `unrestorable`, `bad_request`, `client`, `audit`, `internal`; `audit` is HTTP 503 and means
-the decision log could not be written, see [Decision log](../README.md#decision-log)). When the body or structured metadata could
+the decision log could not be written, see [Decision log](https://github.com/rozdolsky33/cui-proxy/blob/main/README.md#decision-log)). When the body or structured metadata could
 not be sanitized, the message also names a kind and, when one span caused
 it, the detector rule (a name from your config, never a value):
 
@@ -19,7 +19,7 @@ metrics count blocks by reason only.
 
 | kind | meaning | what to do |
 | --- | --- | --- |
-| `pool_exhausted` | no synthetic left for the class (see Synthetic address pool) | restart with a fresh vault (memory mode) or remove the vault file |
+| `pool_exhausted` | no synthetic left for the class (see Synthetic address pool) | plan a fresh vault only after ending affected conversations; old synthetics cannot be restored without their mappings. Preserve the existing file/key pair before switching to new file paths, or restart memory mode |
 | `ambiguous` | a value equals an issued overflow synthetic (or a zero-padded spelling of one) | see Synthetic address pool |
 | `pseudonym` | no synthetic can be made for the value (e.g. an invalid CIDR from a custom rule) | fix the rule's pattern or `synth` class |
 | `rule_match` | a blocking rule matched (code `policy` for the body, `header` for metadata: strict profile or `action: block`) | expected: remove the value, or use the `sanitize` profile / a rule without `action: block` if masking is allowed |

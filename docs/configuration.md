@@ -1,6 +1,6 @@
 # Configuration walkthrough and reference
 
-Checked against v0.3.2 on 2026-11-08. This guide describes implemented
+Checked against v0.3.3 on 2026-11-08. This guide describes implemented
 settings. Planned approval/account allowlists in the ADRs are not available.
 
 Start with [which file to edit](#which-file-to-edit), then
@@ -155,7 +155,7 @@ than the sanitize profile's default `warn`.
 | Block a category while masking others | `profile: sanitize` plus `action: block` on selected rules |
 | Change a custom match | Edit its regex or dictionary and reload |
 | Stop using a rule | Remove its YAML entry and reload; this stops that detection everywhere the rule applied |
-| Allow one public value while keeping the same detector | No `allow`, `exclude`, exceptions list, or `action: allow` in v0.3.2 |
+| Allow one public value while keeping the same detector | No `allow`, `exclude`, exceptions list, or `action: allow` in v0.3.3 |
 | Disable just `builtin.email` | No selector for individual built-in detectors. `type: builtin` expands to the entire bundle |
 | Override a strict detection | Not supported; `action: sanitize` under strict is invalid |
 | Use a custom set instead of the built-in bundle | Remove the bundle and supply custom rules, but this removes every built-in protection not recreated; adding a narrower regex alongside the bundle does not narrow it |
@@ -211,7 +211,7 @@ JSON with an escaped newline immediately before a matched value, such as
 `git@github.com`. It reports `reason=sanitize kind=bad_body`, even under
 `sanitize`. The JSON escape repair in v0.3.3 fixes this in code;
 changing SSH permissions, disabling email detection, or enabling passthrough
-is not the remedy. See the [dataflow regression report](verification-results/2026-11-08-json-escape-dataflow.md)
+is not the remedy. See the [dataflow regression report](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/verification-results/2026-11-08-json-escape-dataflow.md)
 for the affected paths and verification scope. Upgrade to v0.3.3 or later and
 restart the running proxy to use the repair.
 

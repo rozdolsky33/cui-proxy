@@ -1,0 +1,3 @@
+# Keep local preview and CI on the same documentation engine.
+mkdocs==1.6.1
+mkdocs-material==9.7.0

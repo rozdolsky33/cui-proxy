@@ -1,5 +1,10 @@
 # cui-proxy
 
+**[Read the documentation](https://rozdolsky33.github.io/cui-proxy/)** ·
+[Quick start](https://rozdolsky33.github.io/cui-proxy/quickstart/) ·
+[Configuration recipes](https://rozdolsky33.github.io/cui-proxy/recipes/) ·
+[Dashboard guide](https://rozdolsky33.github.io/cui-proxy/dashboard/)
+
 A local, fail-closed proxy for Codex CLI. It sits between Codex and the model
 backend, replaces sensitive values in each request (IP addresses, OCIDs,
 emails, SSNs, card numbers, tokens, and your own dictionary of host names)
@@ -228,7 +233,9 @@ Read these before relying on it. The full list is in [docs/limitations.md](docs/
 
 ## Documentation
 
-Operator guides below describe v0.3.2. Dated specs, plans and spikes are
+The [documentation site](https://rozdolsky33.github.io/cui-proxy/) provides a searchable
+manual with tutorials, copyable configurations, dashboard screenshots and a
+request-lifecycle walkthrough. Operator guides below describe v0.3.3. Dated specs, plans and spikes are
 historical records; ADR proposals include features that have not shipped.
 See the [documentation status](docs/documentation-status.md) for that distinction.
 
