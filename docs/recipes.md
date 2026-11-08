@@ -7,6 +7,7 @@ your environment before relying on them.
 | Goal | Configuration | Dictionary files | What a match does |
 |---|---|---|---|
 | Mask common values and your service names | [sanitize.yaml](examples/sanitize.yaml) | [hosts.txt](examples/hosts.txt) | Replace and restore |
+| Mask selected OCI/AWS CLI configuration assignments | [cloud-cli.yaml](examples/cloud-cli.yaml) | [hosts.txt](examples/hosts.txt) | Replace and restore; [coverage and limits](cloud-cli.md) |
 | Refuse any detected value | [strict.yaml](examples/strict.yaml) | [hosts.txt](examples/hosts.txt) | Block the entire request |
 | Mask ordinary values, block restricted categories | [selective-block.yaml](examples/selective-block.yaml) | [hosts.txt](examples/hosts.txt), [restricted-names.txt](examples/restricted-names.txt) | Per-rule behavior |
 | Extract PDF/image text before masking (from v0.4.0) | [attachment-text.yaml](examples/attachment-text.yaml) | [hosts.txt](examples/hosts.txt) | Replace files with extracted text, then sanitize matches |

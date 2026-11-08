@@ -71,6 +71,56 @@ def main():
                 expected="restricted-names")
             count += 2
 
+    # Cloud CLI guidance uses fabricated INI/env text, never local credentials.
+    cloud_config = examples / "cloud-cli.yaml"
+    cloud_cmd = ["test-rules", "-config", str(cloud_config)]
+    cloud_samples = [
+        ("user=ocid1.user.oc1..demouseralpha", "builtin.ocid", "demouseralpha"),
+        ("tenancy=ocid1.tenancy.oc1..demotenancyalpha", "builtin.ocid", "demotenancyalpha"),
+        ("fingerprint=aa:bb:cc:dd:ee:ff:aa:bb:cc:dd:ee:ff:aa:bb:cc:dd",
+         "oci-config-fields", "aa:bb:cc:dd"),
+        ("key_file=/demo/.oci/demo-key.pem", "oci-config-fields", "/demo/.oci/demo-key.pem"),
+        ("pass_phrase=demo passphrase only", "oci-config-fields", "demo passphrase only"),
+        ("security_token_file=/demo/.oci/sessions/demo/token",
+         "oci-config-fields", "/demo/.oci/sessions/demo/token"),
+        ("aws_secret_access_key=demo-secret-only", "aws-credential-fields", "demo-secret-only"),
+        ("aws_session_token=demo-session-only", "aws-credential-fields", "demo-session-only"),
+        ("ASIA" + "A" * 16, "aws-keys", "ASIA" + "A" * 16),
+        ("-----BEGIN PRIVATE KEY-----\ndemo-key-body\n-----END PRIVATE KEY-----",
+         "builtin.secret", "demo-key-body"),
+    ]
+    for field in ["FINGERPRINT", "KEY_FILE", "PASSPHRASE", "SECURITY_TOKEN_FILE"]:
+        cloud_samples.append((f"export OCI_CLI_{field}=demo-env-value",
+                              "oci-config-fields", "demo-env-value"))
+    for field in ["AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]:
+        cloud_samples.append((f"export {field}=demo-env-value",
+                              "aws-credential-fields", "demo-env-value"))
+    for sample, rule, value in cloud_samples:
+        result = run(cloud_cmd, sample=sample, expected=rule)
+        assert value not in result.stdout, f"Unmasked cloud sample: {rule}"
+        count += 1
+    mixed = "[DEFAULT]\r\n  KEY_FILE = /demo/key.pem\r\nregion=us-ashburn-1\r\n"
+    result = run(cloud_cmd, sample=mixed, expected="oci-config-fields")
+    assert "/demo/key.pem" not in result.stdout
+    assert "[DEFAULT]" in result.stdout and "region=us-ashburn-1" in result.stdout
+    count += 1
+    # These documented gaps must not be mistaken for assignment coverage.
+    for sample in ["region=us-ashburn-1\noutput=json", "key_file=",
+                   '{"pass_phrase":"demo-json-only"}', "pass_phrase: demo-yaml-only",
+                   "Explain key_file=/demo/key.pem", "demo-unlabeled-secret"]:
+        assert run(cloud_cmd, sample=sample).stdout == sample
+        count += 1
+    with tempfile.TemporaryDirectory(prefix="cui-docs-cloud-") as directory:
+        strict_cloud = Path(directory) / "strict.yaml"
+        strict_cloud.write_text(cloud_config.read_text().replace(
+            "profile: sanitize", "profile: strict").replace(
+            "file: hosts.txt", f"file: {examples / 'hosts.txt'}"))
+        run(["check-config", "-config", str(strict_cloud)])
+        for sample, rule, _ in cloud_samples:
+            run(["test-rules", "-config", str(strict_cloud)], sample=sample,
+                success=False, expected=rule)
+            count += 1
+
     # Pin the important invalid combination taught in the strict walkthrough.
     with tempfile.TemporaryDirectory(prefix="cui-docs-invalid-") as directory:
         config = Path(directory) / "invalid.yaml"
