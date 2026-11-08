@@ -5,8 +5,8 @@ Look for the shield in the menu bar and click it:
 | Menu item | What it does |
 |---|---|
 | **Open Dashboard** | Opens the dashboard in your browser (greyed out while the proxy is not running). |
-| **Open Documentation** | Opens the bundled v0.4.0 manual in your default browser, including when the proxy is stopped or there is no internet connection. |
-| **Online Documentation** | Opens the published manual for the installed version (`https://rozdolsky33.github.io/cui-proxy/v0.4.0/`) in your default browser. Needs an internet connection; a development build opens `latest/`. |
+| **Open Documentation** | Opens the bundled v0.5.0 manual in your default browser, including when the proxy is stopped or there is no internet connection. |
+| **Online Documentation** | Opens the published manual for the installed version (`https://rozdolsky33.github.io/cui-proxy/v0.5.0/`) in your default browser. Needs an internet connection; a development build opens `latest/`. |
 | **Copy Codex command** | Puts the `codex -c ...` command for this proxy on the clipboard. |
 | **Start / Stop proxy** | Starts or stops the proxy the app runs. |
 | **Reload rules** | Re-reads the config and dictionary without a restart. |
@@ -74,7 +74,7 @@ you to GitHub. The offline snapshot is not updated by **Reload rules**.
 **Online Documentation** is the connected alternative. The installer writes the
 published address for the installed version into the app's `Info.plist`
 (`CUIProxyOnlineDocs`; `menubar status` reports it as
-`online_documentation_url`), so a v0.4.0 install opens the v0.4.0 pages even
+`online_documentation_url`), so a v0.5.0 install opens the v0.5.0 pages even
 after newer releases are published. Use it to share a link with a colleague or
 to read a page with rendered diagrams. The bundled manual remains the default
 because it matches the installed binary and works without a network.

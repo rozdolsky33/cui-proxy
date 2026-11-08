@@ -96,7 +96,7 @@ can recognize; your dictionaries and regex rules extend their coverage.
 
 ## About this manual
 
-These guides describe **v0.4.0**, including [PDF/image text extraction](attachments.md)
+These guides describe **v0.5.0**, including [PDF/image text extraction](attachments.md)
 and the menu bar's [offline manual](menubar.md#offline-documentation).
 Use the version selector in the header to read the guide for a different
 release: `latest` is the newest release and `dev` follows the main branch. The

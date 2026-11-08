@@ -1,6 +1,6 @@
 # Documentation status
 
-Reviewed for v0.4.0 on 2026-11-08. It includes workspace metadata sanitization,
+Reviewed for v0.5.0 on 2026-11-08. It includes workspace metadata sanitization,
 value-free accounting, and the JSON escape dataflow repair. The configuration
 walkthrough covers defaults, override limits, the separate Git/SSH execution
 path, and the fixed argument buffering limits.
@@ -10,6 +10,10 @@ path, and the fixed argument buffering limits.
 setting, local PDF/OCR extraction, and persisted attachment diagnostics. Real
 Poppler extraction/rendering and controlled OCR-process tests were exercised;
 actual Tesseract recognition was not verified on the development machine.
+
+The menu bar's [**Online Documentation**](menubar.md#offline-documentation) item
+and the versioned documentation site (`latest/`, `dev/` and one folder per
+release) are available from v0.5.0.
 
 ## Current operator documentation
 
