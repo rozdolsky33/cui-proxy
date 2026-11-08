@@ -1,0 +1,27 @@
+{
+  "version": "v0.3.1+metadata.1",
+  "scope": "Synthetic Git remote workspace metadata and fabricated prompt IP; saved default routing",
+  "before": {
+    "version": "v0.3.1",
+    "status": 422,
+    "reason": "header"
+  },
+  "after": {
+    "status": 200,
+    "expected_reply": "PROBE_OK 10.20.30.15",
+    "exact_reply": true,
+    "provider_overrides": false
+  },
+  "checks": {
+    "race_suite": "passed",
+    "lint": "passed with staticcheck 2026.2.2 built with Go 1.26.10",
+    "metadata_fuzz_executions": 200268,
+    "independent_review": "two findings reproduced, fixed and verified",
+    "temporary_audit_chain": "passed"
+  },
+  "limits": [
+    "Other unknown headers and metadata fields remain fail-closed",
+    "Strict or explicit block rules still reject detections",
+    "Local patch only; no release published"
+  ]
+}

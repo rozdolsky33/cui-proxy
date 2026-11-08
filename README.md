@@ -499,8 +499,8 @@ The proxy enforces the same thing at runtime, whatever the config says.
   short of scanning the blob would catch that, and scanning risks false
   positives on genuine ciphertext.
 - The `Authorization`, `Cookie` and `Chatgpt-Account-Id` headers are
-  credentials and are forwarded as they are; every other header and the query
-  string are scanned and a match blocks.
+  credentials and are forwarded as they are. Structured Codex workspace metadata
+  is sanitized; other headers and the query string are scanned and a match blocks.
 - The profile applies on reload (SIGHUP, the dashboard button or the
   menu-bar item); the running profile is shown in the dashboard header and
   logged on every start and reload. **A reload can lower the policy** (this is
@@ -588,14 +588,22 @@ Settings, limits and details: [docs/decision-log.md](docs/decision-log.md).
 
 - Credential headers (`Authorization`, `Chatgpt-Account-Id`, cookies) are
   forwarded unscanned and are never logged or stored.
-- Other request headers and the query string are scanned, never rewritten:
-  any detected value BLOCKS the request (HTTP 422, code `header`).
-  `X-Codex-Turn-Metadata` carries the working directory (cwd; see
-  docs/verification.md), so a dictionary entry that matches a part of that
-  path blocks every request made from that directory with `header`. Work
-  from a directory whose path holds no dictionary term. (Sanitizing that
-  header like the body may follow once a real session confirms its shape;
-  today it is only scanned.)
+- Codex `X-Codex-Turn-Metadata` is parsed as JSON. Its `workspaces` and
+  `cwd` fields are sanitized using the same rules and vault as prompt content,
+  including workspace paths used as object keys and Git remote URLs. This lets
+  SSH remotes such as `git@github.com:example/repo.git` work without disabling
+  email detection. The `sanitize` profile masks detected values; `strict` and
+  rules with `action: block` still reject them. No new configuration is needed.
+  Other metadata fields (including session identifiers) are inspected after
+  decoding and never rewritten: a detected value there still blocks. Malformed,
+  over-deep, oversized (64 KiB), repeated-header or invalid-shape metadata fails
+  closed, including under `on_error: passthrough`. Unknown workspace members
+  are scanned recursively. Metadata replacements are included in decision logs
+  and counters, without storing the original values.
+- Other non-credential request headers and the query string are scanned, never
+  rewritten: any detected value blocks the request (HTTP 422, code `header`).
+  Structured metadata failures also report a safe failure kind and, when
+  available, the detector rule name. Authentication headers remain unchanged.
 - Only streamed (SSE) model responses are supported. Successful non-SSE or
   encoded responses are refused with HTTP 502 (`stream_rewrite`) rather than
   delivering unrestored tool arguments. Ordinary upstream error responses
