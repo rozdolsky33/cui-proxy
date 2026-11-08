@@ -521,7 +521,11 @@ func feed(t *testing.T, rw adapter.ResponseRewriter, in []sse.Event) []sse.Event
 		}
 		out = append(out, got...)
 	}
-	return append(out, rw.Flush()...)
+	tail, err := rw.Flush()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return append(out, tail...)
 }
 
 func field(t *testing.T, e sse.Event, path ...string) string {
@@ -801,7 +805,11 @@ func TestStreamsAreIsolatedPerItem(t *testing.T) {
 		}
 		collect(got)
 	}
-	collect(rw.Flush())
+	tail, err := rw.Flush()
+	if err != nil {
+		t.Fatal(err)
+	}
+	collect(tail)
 	if a.String() != "a 10.20.30.15 end" {
 		t.Errorf("item a = %q", a.String())
 	}
@@ -824,14 +832,21 @@ func TestFlushEmitsHeldBackText(t *testing.T) {
 	if s := deltas(t, got, "response.output_text.delta"); s != "ip " {
 		t.Errorf("before flush emitted %q, want only the safe prefix", s)
 	}
-	fl := rw.Flush()
+	fl, err := rw.Flush()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(fl) != 1 {
 		t.Fatalf("Flush returned %d events", len(fl))
 	}
 	if fl[0].Name != "response.output_text.delta" || field(t, fl[0], "delta") != "10.20.30.15" || field(t, fl[0], "item_id") != "msg_1" {
 		t.Errorf("flush event = %s %s", fl[0].Name, fl[0].Data)
 	}
-	if len(rw.Flush()) != 0 {
+	fl, err = rw.Flush()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fl) != 0 {
 		t.Errorf("second Flush emitted events")
 	}
 }
@@ -851,14 +866,15 @@ func TestTrailingDeltaBeforeDone(t *testing.T) {
 		typeOf(t, got[1]) != "response.output_text.done" || field(t, got[1], "text") != "ip 10.20.30.15" {
 		t.Errorf("got %d events: %v", len(got), got)
 	}
-	// output_item.done also flushes every stream of its item.
+	// output_item.done rejects an unfinished argument token instead of
+	// releasing a partial JSON string as a successful tool call.
 	rw = New().NewResponseRewriter(e.r)
 	if _, err := rw.Event(ev("response.function_call_arguments.delta", `{"type":"response.function_call_arguments.delta","item_id":"fc_1","output_index":1,"delta":"{\"h\":\"`+syn+`"}`)); err != nil {
 		t.Fatal(err)
 	}
 	got, err = rw.Event(ev("response.output_item.done", `{"type":"response.output_item.done","output_index":1,"item":{"type":"function_call","id":"fc_1","arguments":"{\"h\":\"`+syn+`\"}"}}`))
-	if err != nil || len(got) != 2 || typeOf(t, got[0]) != "response.function_call_arguments.delta" {
-		t.Fatalf("output_item.done did not flush first: %v %v", got, err)
+	if err == nil || len(got) != 0 {
+		t.Fatalf("unfinished arguments accepted: %v %v", got, err)
 	}
 }
 

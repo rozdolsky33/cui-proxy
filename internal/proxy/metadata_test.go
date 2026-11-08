@@ -110,3 +110,21 @@ func TestMetadataPassthroughAudit(t *testing.T) {
 		t.Fatalf("record: %+v", r)
 	}
 }
+
+func TestMetadataEscapedBoundaryHTTP(t *testing.T) {
+	h := newHarness(t, nil)
+	req := h.req("POST", "/v1/responses", userBody("hi"))
+	req.Header.Set("X-Codex-Turn-Metadata", `{"cwd":"/tmp/\nalice@example.com"}`)
+	res, b := h.do(req)
+	if res.StatusCode != 200 {
+		t.Fatalf("sanitized metadata rejected: %d %s", res.StatusCode, b)
+	}
+	got := h.upstreamGot().Header.Get("X-Codex-Turn-Metadata")
+	if !json.Valid([]byte(got)) || strings.Contains(got, "alice@example.com") {
+		t.Fatal("unsafe metadata")
+	}
+	a := h.nextAudit()
+	if a.Rules["builtin.email"] != 1 {
+		t.Fatalf("wrong accounting: %+v", a)
+	}
+}

@@ -89,3 +89,24 @@ func FuzzTurnMetadata(f *testing.F) {
 		}
 	})
 }
+
+func TestMetadataNestedEscapesAndHeaderCasing(t *testing.T) {
+	e := newEnv(t)
+	inner, _ := json.Marshal(map[string]string{"output": "\nalice@example.com"})
+	raw, _ := json.Marshal(map[string]any{"workspaces": map[string]string{"demo": string(inner)}})
+	h := http.Header{"x-codex-turn-metadata": {string(raw)}}
+	if err := New().SanitizeHeaders(h, e.s); err != nil {
+		t.Fatal(err)
+	}
+	out := h.Get(turnMetadataHeader)
+	if !json.Valid([]byte(out)) || strings.Contains(out, "alice@example.com") {
+		t.Fatal("unsafe output")
+	}
+	if err := New().SanitizeHeaders(h, e.s); err != nil {
+		t.Fatalf("resend rejected: %v", err)
+	}
+	h["x-codex-turn-metadata"] = []string{`{}`}
+	if err := New().SanitizeHeaders(h, e.s); err == nil {
+		t.Fatal("duplicate header casing accepted")
+	}
+}

@@ -3,6 +3,7 @@ package codex
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"unicode/utf8"
 
 	"cui-proxy/internal/adapter"
@@ -12,11 +13,20 @@ import (
 const turnMetadataHeader = "X-Codex-Turn-Metadata"
 const maxTurnMetadataBytes = 64 << 10
 
+func (*Adapter) StructuredHeaders() []string { return []string{turnMetadataHeader} }
+
 // SanitizeHeaders rewrites only confirmed content fields in Codex turn
 // metadata. Session/routing fields and unknown fields are inspected in decoded
 // form but never changed. Authentication and other headers are left alone.
 func (*Adapter) SanitizeHeaders(h http.Header, s *transform.Sanitizer) error {
-	values, present := h[turnMetadataHeader]
+	var values []string
+	present := false
+	for key, vv := range h {
+		if strings.EqualFold(key, turnMetadataHeader) {
+			present = true
+			values = append(values, vv...)
+		}
+	}
 	if !present {
 		return nil
 	}
@@ -29,6 +39,12 @@ func (*Adapter) SanitizeHeaders(h http.Header, s *transform.Sanitizer) error {
 	}
 	root, err := parse(raw, 0)
 	if err != nil {
+		return err
+	}
+	if err := checkJSONStructure(string(raw), s); err != nil {
+		return err
+	}
+	if err := checkJSONStructure(string(root.encode(true)), s); err != nil {
 		return err
 	}
 	w := reqWalker{s: s}
@@ -60,8 +76,8 @@ func (*Adapter) SanitizeHeaders(h http.Header, s *transform.Sanitizer) error {
 			}
 		}
 	}
-	// Also inspect decoded rewritten keys and strings. This catches custom rules
-	// on protocol-looking keys that the shared body walker deliberately preserves.
+	// Recheck decoded rewritten content, including embedded JSON, without
+	// confusing serialization escapes with sensitive text.
 	if err := inspectMetadata(root, s); err != nil {
 		return err
 	}
@@ -70,16 +86,36 @@ func (*Adapter) SanitizeHeaders(h http.Header, s *transform.Sanitizer) error {
 		if len(out) > maxTurnMetadataBytes {
 			return adapter.ErrBadBody
 		}
+		for key := range h {
+			if strings.EqualFold(key, turnMetadataHeader) {
+				delete(h, key)
+			}
+		}
 		h.Set(turnMetadataHeader, string(out))
 	}
 	return nil
 }
 
-func inspectMetadata(n *node, s *transform.Sanitizer) error {
+func inspectMetadata(n *node, s *transform.Sanitizer) error { return inspectMetadataAt(n, s, 0) }
+
+func inspectMetadataAt(n *node, s *transform.Sanitizer, depth int) error {
+	if depth > maxDepth {
+		return ErrDepth
+	}
 	for _, key := range n.keys {
 		if err := inspectMetadataText(key, s); err != nil {
 			return err
 		}
+	}
+	if n.kind == '"' && (first(n.str) == '{' || first(n.str) == '[') && json.Valid([]byte(n.str)) {
+		inner, err := parse([]byte(n.str), depth)
+		if err != nil {
+			return err
+		}
+		if err := checkJSONStructure(n.str, s); err != nil {
+			return err
+		}
+		return inspectMetadataAt(inner, s, depth)
 	}
 	if n.kind == '"' || n.kind == '0' {
 		if err := inspectMetadataText(n.str, s); err != nil {
@@ -87,7 +123,7 @@ func inspectMetadata(n *node, s *transform.Sanitizer) error {
 		}
 	}
 	for _, child := range n.kids {
-		if err := inspectMetadata(child, s); err != nil {
+		if err := inspectMetadataAt(child, s, depth+1); err != nil {
 			return err
 		}
 	}

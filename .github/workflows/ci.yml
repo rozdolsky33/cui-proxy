@@ -42,6 +42,8 @@ jobs:
         run: go test -run '^$' -fuzz '^FuzzSanitizeRequest$' -fuzztime 20s ./internal/adapter/codex
       - name: fuzz FuzzSSERewrite
         run: go test -run '^$' -fuzz '^FuzzSSERewrite$' -fuzztime 20s ./internal/adapter/codex
+      - name: fuzz FuzzArgumentJSON
+        run: go test -run '^$' -fuzz '^FuzzArgumentJSON$' -fuzztime 20s ./internal/adapter/codex
       - name: fuzz FuzzRoundTrip
         run: go test -run '^$' -fuzz '^FuzzRoundTrip$' -fuzztime 20s ./internal/transform
 

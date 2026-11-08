@@ -1175,7 +1175,7 @@ func (f *failingRewriter) Event(e sse.Event) ([]sse.Event, error) {
 	return f.inner.Event(e)
 }
 
-func (f *failingRewriter) Flush() []sse.Event { return f.inner.Flush() }
+func (f *failingRewriter) Flush() ([]sse.Event, error) { return f.inner.Flush() }
 
 // I1: a value glued where its bounded synthetic would not restore is
 // forwarded as a REDACTED token (not blocked) and counted as downgraded.
