@@ -10,7 +10,9 @@ import (
 
 // Long punctuation runs must not cause each address candidate suffix to be
 // scanned again. The generous deadline distinguishes linear scanning from
-// the previous quadratic path, which needs seconds for only 32 KiB.
+// the previous quadratic path, which needs seconds for only 32 KiB and so
+// minutes for this input. Linear scanning takes about 1.5 s under the race
+// detector on a fast laptop; shared CI runners under load have exceeded 5 s.
 func TestLongAddressCandidatesCompletePromptly(t *testing.T) {
 	ds, err := Build([]config.Rule{{Name: "builtin", Type: "builtin"}}, "")
 	if err != nil {
@@ -39,7 +41,7 @@ func TestLongAddressCandidatesCompletePromptly(t *testing.T) {
 				t.Errorf("maximum-length address form not detected: %q", value)
 			}
 		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("scanning less than 400 KiB of punctuation exceeded five seconds")
+	case <-time.After(30 * time.Second):
+		t.Fatal("scanning less than 400 KiB of punctuation exceeded thirty seconds")
 	}
 }
