@@ -5,12 +5,16 @@
 [Configuration recipes](https://rozdolsky33.github.io/cui-proxy/recipes/) ·
 [Dashboard guide](https://rozdolsky33.github.io/cui-proxy/dashboard/)
 
-A local, fail-closed proxy for Codex CLI. It sits between Codex and the model
-backend, replaces sensitive values in each request (IP addresses, OCIDs,
-emails, SSNs, card numbers, tokens, and your own dictionary of host names)
-with synthetic values from reserved ranges (RFC 5737 / RFC 3849 addresses,
-`.example` host and mail names), and swaps the real values back into the
-streamed response so tool calls run against your real systems.
+Local, fail-closed proxy for Codex CLI that replaces sensitive data with
+synthetic values before it reaches the model and restores the originals in
+streamed responses, so your coding agent's tool calls still run against real
+systems.
+
+It sits between Codex and the model backend. Detected values (IP addresses,
+OCIDs, emails, SSNs, card numbers, tokens, and your own dictionary of host
+names) are swapped for synthetic values from reserved ranges (RFC 5737 /
+RFC 3849 addresses, `.example` host and mail names) on the way out, and
+swapped back on the way in.
 
 > **Important: this tool reduces risk; it is not a compliance control.**
 > It does not make it permissible to use a cloud model with CUI or other
