@@ -64,7 +64,7 @@ func TestServeRecordsDecisionsThenVerifyAndExplain(t *testing.T) {
 
 	code, out, errOut = runCLI("", "explain", "-config", cfg, blockedID)
 	for _, want := range []string{"Request " + blockedID, "decision  blocked", "reason    header",
-		"blocked before anything was sent upstream", "Headers are never rewritten", "line 2"} {
+		"blocked before anything was sent upstream", "Codex workspaces and cwd are sanitized", "line 2"} {
 		if code != 0 || !strings.Contains(out, want) {
 			t.Errorf("explain blocked: code %d, lacks %q:\n%s%s", code, want, out, errOut)
 		}

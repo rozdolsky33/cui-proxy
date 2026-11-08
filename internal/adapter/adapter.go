@@ -6,6 +6,7 @@ package adapter
 
 import (
 	"errors"
+	"net/http"
 
 	"cui-proxy/internal/sse"
 	"cui-proxy/internal/transform"
@@ -57,4 +58,10 @@ type Adapter interface {
 	SanitizeRequest(body []byte, s *transform.Sanitizer) ([]byte, error)
 	// NewResponseRewriter returns a rewriter for one response stream.
 	NewResponseRewriter(r *transform.Restorer) ResponseRewriter
+}
+
+// HeaderSanitizer optionally handles structured adapter-specific metadata.
+// Implementations must fail closed and must not alter authentication headers.
+type HeaderSanitizer interface {
+	SanitizeHeaders(http.Header, *transform.Sanitizer) error
 }

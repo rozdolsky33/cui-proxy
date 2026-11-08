@@ -79,6 +79,10 @@ Not on a Mac, or prefer a terminal? See the next section.
 > round trip. See [verification results](docs/verification.md) and
 > [Known limitations](docs/limitations.md#known-limitations--behavior).
 
+Codex workspace paths and Git remotes are sanitized from v0.3.2; no new
+configuration is needed. Strict/block rules still reject matching metadata.
+See [metadata verification](docs/verification.md#workspace-metadata-smoke-2026-11-08).
+
 If the icon shows `!`, or Codex gets an error, see
 [If the first Codex run fails](#if-the-first-codex-run-fails).
 

@@ -31,7 +31,7 @@ The installer downloads the release archive for your OS and CPU, **verifies
 its sha256 against the release's `checksums.txt`**, and installs the single
 `cui-proxy` binary into `/usr/local/bin` if you can write there, otherwise
 `~/.local/bin`. It never uses `sudo` and touches nothing else. Options:
-`INSTALL_DIR=/some/dir` and `CUI_PROXY_VERSION=v0.2.0`.
+`INSTALL_DIR=/some/dir` and `CUI_PROXY_VERSION=v0.3.2`.
 
 Prefer to read it first?
 

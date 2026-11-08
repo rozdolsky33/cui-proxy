@@ -2,14 +2,22 @@
 
 - Credential headers (`Authorization`, `Chatgpt-Account-Id`, cookies) are
   forwarded unscanned and are never logged or stored.
-- Other request headers and the query string are scanned, never rewritten:
-  any detected value BLOCKS the request (HTTP 422, code `header`).
-  `X-Codex-Turn-Metadata` carries the working directory (cwd; see
-  docs/verification.md), so a dictionary entry that matches a part of that
-  path blocks every request made from that directory with `header`. Work
-  from a directory whose path holds no dictionary term. (Sanitizing that
-  header like the body may follow once a real session confirms its shape;
-  today it is only scanned.)
+- Codex `X-Codex-Turn-Metadata` is parsed as JSON. Its `workspaces` and
+  `cwd` fields are sanitized using the same rules and vault as prompt content,
+  including workspace paths used as object keys and Git remote URLs. This lets
+  SSH remotes such as `git@github.com:example/repo.git` work without disabling
+  email detection. The `sanitize` profile masks detected values; `strict` and
+  rules with `action: block` still reject them. No new configuration is needed.
+  Other metadata fields (including session identifiers) are inspected after
+  decoding and never rewritten: a detected value there still blocks. Malformed,
+  over-deep, oversized (64 KiB), repeated-header or invalid-shape metadata fails
+  closed, including under `on_error: passthrough`. Unknown workspace members
+  are scanned recursively. Metadata replacements are included in decision logs
+  and counters, without storing the original values.
+- Other non-credential request headers and the query string are scanned, never
+  rewritten: any detected value blocks the request (HTTP 422, code `header`).
+  Structured metadata failures also report a safe failure kind and, when
+  available, the detector rule name. Authentication headers remain unchanged.
 - Only streamed (SSE) model responses are supported. Successful non-SSE or
   encoded responses are refused with HTTP 502 (`stream_rewrite`) rather than
   delivering unrestored tool arguments. Ordinary upstream error responses
@@ -45,11 +53,12 @@
 - Upstream 3xx responses other than 304 become 502: a redirect (and its
   `Location`) is never relayed to the client.
 - Any sanitize failure blocks the request (fail closed) unless
-  `policy.on_error: passthrough`, which forwards the ORIGINAL request only for
+  `policy.on_error: passthrough`, which forwards the original body only for
   a failure of the sanitizer itself (for example no synthetic left for a
   class). It never forwards unsupported content or a policy block, it is
   refused in the config next to any blocking rule, and it is logged as UNSAFE
-  at startup (and by `check-config`).
+  at startup (and by `check-config`). Successfully sanitized workspace metadata
+  stays sanitized; metadata inspection failures always block.
 - Listeners are loopback-only unless `allow_non_loopback: true`; the bound
   address is checked after binding. The proxy API accepts native clients:
   browser Origin/Fetch Metadata headers are refused, and loopback mode rejects

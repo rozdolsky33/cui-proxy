@@ -7,8 +7,9 @@ var remedy = map[string]string{
 	reasonClient: "use a native client with a loopback base URL; the proxy API does not accept browser requests or DNS-rebound host names.",
 	reasonPolicy: "a blocking rule matched (the strict profile, or a rule with action: block). Expected: remove the value, " +
 		"or use the sanitize profile / a rule without action: block if masking is allowed.",
-	reasonHeader: "a non-credential request header or the query string matched a rule. Headers are never rewritten, so this always blocks. " +
-		"X-Codex-Turn-Metadata carries the working directory: run from a directory whose path holds nothing sensitive.",
+	reasonHeader: "request metadata could not be safely forwarded. Codex workspaces and cwd are sanitized using the active rules; " +
+		"strict/block rules, malformed metadata, and sensitive values in other headers, query strings or unchanged metadata fields still block. " +
+		"Use the reported kind and rule to diagnose the failure; never disable detection globally to allow a Git remote.",
 	reasonSanitize: "the body could not be sanitized. The proxy log line for this request names a kind and the rule " +
 		"(request blocked (reason=sanitize kind=... rule=...)); see docs/block-diagnostics.md for each kind.",
 	reasonUnrestorable: "the sanitized text would not restore even after downgrading. Rare: report the rule and kind from the proxy log line.",

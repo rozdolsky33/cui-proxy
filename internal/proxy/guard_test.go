@@ -149,7 +149,11 @@ func TestSensitiveHeaderOrQueryBlocked(t *testing.T) {
 				req.Header.Set(tc.header, tc.value)
 			}
 			res, b := h.do(req)
-			assertBlocked(t, h, res, b, http.StatusUnprocessableEntity, "header")
+			audited := "header"
+			if tc.header == "X-Codex-Turn-Metadata" {
+				audited = "header:bad_body"
+			}
+			assertBlockedAudit(t, h, res, b, http.StatusUnprocessableEntity, "header", audited)
 			h.noUpstreamCall() // explicit: nothing reached the upstream
 			for _, real := range []string{realIP, realOCID, realEmail, "corp-internal", "10%2E20"} {
 				if strings.Contains(string(b), real) || strings.Contains(h.logs.String(), real) {

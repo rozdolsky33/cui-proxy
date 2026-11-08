@@ -40,8 +40,10 @@ The proxy enforces the same thing at runtime, whatever the config says.
   short of scanning the blob would catch that, and scanning risks false
   positives on genuine ciphertext.
 - The `Authorization`, `Cookie` and `Chatgpt-Account-Id` headers are
-  credentials and are forwarded as they are; every other header and the query
-  string are scanned and a match blocks.
+  credentials and are forwarded as they are. Codex `workspaces` and `cwd`
+  metadata is sanitized under `sanitize`; strict/block rules still reject
+  detections there with reason `header`. Other metadata fields, headers and
+  the query string are inspected and a match blocks.
 - The profile applies on reload (SIGHUP, the dashboard button or the
   menu-bar item); the running profile is shown in the dashboard header and
   logged on every start and reload. **A reload can lower the policy** (this is
@@ -58,8 +60,8 @@ The proxy enforces the same thing at runtime, whatever the config says.
   oversized, too deeply nested or unparseable bodies) is always refused,
   **even under `policy.on_error: passthrough`**.
 - `policy check` prints the effective action of every rule and states plainly
-  what is enforced, what is not implemented yet (verified approvals, a
-  persisted decision log, account allowlists) and what no local tool can do.
+  what is enforced, what is not implemented yet (verified approvals and
+  account allowlists) and what no local tool can do.
 
 `strict` blocks more, and Codex resends the whole conversation each turn, so
 one false positive can block every later turn. Tune the rules with synthetic

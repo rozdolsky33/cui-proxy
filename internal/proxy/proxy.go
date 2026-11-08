@@ -255,6 +255,7 @@ type exchange struct {
 	// plus all rewriter.Event and rewriter.Flush calls on the response. It
 	// excludes reading the body and waiting on upstream or client I/O. It is
 	// observed only for sanitize routes that were forwarded.
+	events   []transform.Event // committed only after headers and body pass
 	overhead time.Duration
 	observe  bool
 }
@@ -342,7 +343,17 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 	if encoded(r.Header) {
 		return h.block(x, reasonCompressed)
 	}
-	// Before reading the body: headers and query are never rewritten, so a
+	// Structured metadata is adapter-owned; all remaining headers and the
+	// query retain their fail-closed inspection.
+	if hs, ok := h.d.Adapter.(adapter.HeaderSanitizer); ok {
+		r = r.Clone(r.Context())
+		c := &collector{}
+		if err := hs.SanitizeHeaders(r.Header, san.WithSink(c)); err != nil {
+			return h.blockDiag(x, reasonHeader, diagnose(err))
+		}
+		x.events = append(x.events, c.evs...)
+	}
+	// Before reading the body: other headers and query are never rewritten, so a
 	// detected value blocks outright (on_error: passthrough does not apply).
 	if requestMetaSensitive(r, san) {
 		return h.block(x, reasonHeader)
@@ -383,6 +394,22 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 		body = out
 	default:
 		return h.block(x, reasonInternal)
+	}
+	if len(x.events) > 0 {
+		if x.entry.Rules == nil {
+			x.entry.Rules = map[string]int{}
+		}
+		for _, e := range x.events {
+			h.d.Metrics.Record(e)
+			x.entry.Rules[e.Rule] += e.Count
+		}
+		x.counts = map[string]int{}
+		for _, e := range x.events {
+			x.counts[e.Rule] += e.Count
+		}
+		if x.passthrough == nil {
+			x.decision = decisionlog.Sanitized
+		}
 	}
 	return h.forward(x, r, route, body, rest)
 }
@@ -426,13 +453,7 @@ func (h *handler) sanitize(x *exchange, san *transform.Sanitizer, body []byte) (
 		}
 		return nil, reasonSanitize, d
 	}
-	if len(c.evs) > 0 {
-		x.entry.Rules = map[string]int{}
-		for _, e := range c.evs {
-			h.d.Metrics.Record(e)
-			x.entry.Rules[e.Rule] += e.Count
-		}
-	}
+	x.events = append(x.events, c.evs...)
 	return out, "", diag{}
 }
 

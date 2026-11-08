@@ -36,6 +36,17 @@ reported none. For example, the Go advisory for
 CI and release jobs run `make vuln` against the current advisory database;
 a clean scan is time-specific evidence, not a guarantee of absence of bugs.
 
+## Workspace metadata
+
+From v0.3.2, Codex `workspaces` and `cwd` header fields use the request
+sanitizer and vault (including workspace keys and Git remote URLs). Other
+metadata fields are inspected after decoding and remain unchanged. Strict or
+explicit block rules still reject detections. Invalid metadata fails closed
+even under passthrough. Regression and fuzz coverage lives in
+`internal/adapter/codex/metadata_test.go` and `internal/proxy/metadata_test.go`;
+[verification](verification.md#workspace-metadata-smoke-2026-11-08) records
+the synthetic live probe. Credentials remain an inspection exception.
+
 ## Deployment and routine checks
 
 1. Build with the required patched Go toolchain. Run `make test`, `make lint`,

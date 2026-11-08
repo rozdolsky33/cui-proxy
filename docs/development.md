@@ -2,18 +2,19 @@
 
 ## Build
 
-Requires Go 1.26.10 or newer.
+Requires Go 1.26.10 or newer and a staticcheck build compatible with that
+toolchain (validated with staticcheck 2026.2.2).
 
 ```sh
 make build            # -> bin/cui-proxy
 make test lint        # go test -race, go vet, staticcheck
-go build -ldflags "-X main.version=v0.2.0" -o bin/cui-proxy ./cmd/cui-proxy
+go build -ldflags "-X main.version=v0.3.2" -o bin/cui-proxy ./cmd/cui-proxy
 ```
 
 ## Releasing (maintainers)
 
 ```sh
-git tag v0.2.0 && git push origin v0.2.0
+git tag v0.3.2 && git push origin v0.3.2
 ```
 
 `.github/workflows/release.yml` runs vet and the race tests, builds the four
@@ -24,7 +25,7 @@ a GitHub release. It then updates the Homebrew tap if the repository secret
 the release is published:
 
 ```sh
-scripts/update-tap.sh v0.2.0      # needs `gh` logged in with push access to the tap
+scripts/update-tap.sh v0.3.2      # needs `gh` logged in with push access to the tap
 ```
 
 `scripts/package.sh <version>` builds the same archives locally into `dist/`

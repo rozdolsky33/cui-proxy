@@ -67,7 +67,8 @@ var credentialHeaders = map[string]bool{
 
 // requestMetaSensitive reports whether any request header name, any value of
 // a non-credential header, or the (percent-decoded) query string contains a
-// value the detectors find. Headers and query are never rewritten.
+// value the detectors find. Adapter-owned metadata has already been sanitized;
+// all other headers and the query are never rewritten.
 func requestMetaSensitive(r *http.Request, s *transform.Sanitizer) bool {
 	for k, vs := range r.Header {
 		if len(s.Detect(k)) > 0 {
