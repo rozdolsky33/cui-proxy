@@ -11,7 +11,7 @@ Use Go 1.26 as declared in `go.mod`, and install `staticcheck` for linting.
 - `make build`: build `bin/cui-proxy`.
 - `make test`: run all Go tests with the race detector.
 - `make lint`: run `go vet` and `staticcheck` (all checks enabled).
-- `make fuzz`: run three fuzz targets for 20 seconds each.
+- `make fuzz`: run four fuzz targets for 20 seconds each.
 - `bin/cui-proxy check-config -config examples/config.yaml`: validate the example configuration.
 - `bin/cui-proxy serve -config examples/config.yaml`: start the proxy and local dashboard.
 - `shellcheck install.sh scripts/*.sh`: check installer and packaging scripts.

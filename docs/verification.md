@@ -52,6 +52,17 @@ an exact fabricated IP reply. Confirm successful restoration and metadata
 replacement counts. Strict or explicit block rules should still reject a
 matching remote. Never put real restricted values in a probe or its report.
 
+## JSON escape dataflow regression (2026-11-08)
+
+The [dataflow report](verification-results/2026-11-08-json-escape-dataflow.md)
+covers the later `reason=sanitize kind=bad_body` failure after tool execution.
+The repair scans decoded JSON content, preserves structure, and restores
+function arguments using complete JSON tokens. Automated HTTP/SSE tests cover
+nested tool output, metadata, repeated sanitization and exact restoration;
+chunk-split tests compare streamed and completed arguments. An offline replay
+of the failing local tool output succeeds with the existing policy. This is
+separate from the live backend runs above; no live service was upgraded.
+
 ## Repeat the smoke
 
 You run this by hand, once, on your own machine, with your own Codex login.

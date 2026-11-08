@@ -365,7 +365,10 @@ func FuzzSSERewrite(f *testing.F) {
 		for {
 			ev, err := rd.Next()
 			if errors.Is(err, io.EOF) {
-				check(rw.Flush())
+				evs, err := rw.Flush()
+				if err == nil {
+					check(evs)
+				}
 				return
 			}
 			if err != nil {

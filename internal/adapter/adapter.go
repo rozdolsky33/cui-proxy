@@ -44,7 +44,8 @@ type ResponseRewriter interface {
 	// events while text is held back. An error means the stream must be cut.
 	Event(e sse.Event) ([]sse.Event, error)
 	// Flush returns events carrying any text still held back, at end of stream.
-	Flush() []sse.Event
+	// An error means unfinished content is invalid and the stream must be cut.
+	Flush() ([]sse.Event, error)
 }
 
 // Adapter handles one harness's wire format.
@@ -64,4 +65,6 @@ type Adapter interface {
 // Implementations must fail closed and must not alter authentication headers.
 type HeaderSanitizer interface {
 	SanitizeHeaders(http.Header, *transform.Sanitizer) error
+	// StructuredHeaders lists headers fully inspected in decoded form by SanitizeHeaders.
+	StructuredHeaders() []string
 }

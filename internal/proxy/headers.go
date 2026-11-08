@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 
 	"cui-proxy/internal/transform"
@@ -69,12 +70,12 @@ var credentialHeaders = map[string]bool{
 // a non-credential header, or the (percent-decoded) query string contains a
 // value the detectors find. Adapter-owned metadata has already been sanitized;
 // all other headers and the query are never rewritten.
-func requestMetaSensitive(r *http.Request, s *transform.Sanitizer) bool {
+func requestMetaSensitive(r *http.Request, s *transform.Sanitizer, structured []string) bool {
 	for k, vs := range r.Header {
 		if len(s.Detect(k)) > 0 {
 			return true
 		}
-		if credentialHeaders[http.CanonicalHeaderKey(k)] {
+		if credentialHeaders[http.CanonicalHeaderKey(k)] || slices.Contains(structured, http.CanonicalHeaderKey(k)) {
 			continue
 		}
 		for _, v := range vs {

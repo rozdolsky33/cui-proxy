@@ -177,6 +177,8 @@ func (n *node) write(b *bytes.Buffer, canonical bool) {
 		return
 	}
 	switch n.kind {
+	case '0', 'l':
+		b.Write(n.raw)
 	case '{', '[':
 		b.WriteByte(n.kind)
 		for i, kid := range n.kids {

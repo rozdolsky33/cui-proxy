@@ -55,8 +55,9 @@ func NewRestorer(v *vault.Vault) *Restorer { return &Restorer{v: v} }
 // JSONEscaped returns a restorer over the same vault that writes each real
 // value JSON-escaped for string-literal context: the content of
 // json.Marshal(real) without the surrounding quotes, HTML characters left
-// as is. Use it for text that is itself JSON (function-call arguments), so a
-// real value holding '"', '\' or control characters keeps the text valid.
+// as is. This escapes replacements only: it does not decode JSON tokens or
+// escape sequences for matching. Structured JSON (including function-call
+// arguments) must be decoded, restored, and encoded by its adapter.
 // Matching is identical to the plain restorer; NewStream on the result
 // streams with the same escaping.
 func (r *Restorer) JSONEscaped() *Restorer { return &Restorer{v: r.v, escape: true} }

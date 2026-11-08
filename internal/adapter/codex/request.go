@@ -248,7 +248,7 @@ func (w reqWalker) object(n *node, sc scope) error {
 		}
 	}
 	for i, k := range n.keys {
-		if !protocolKeys[k] {
+		if sc.inner || !protocolKeys[k] {
 			nk, err := w.text(k)
 			if err != nil {
 				return err
@@ -343,11 +343,8 @@ func (w reqWalker) number(n *node) error {
 	return nil
 }
 
-// str sanitizes one string leaf. A string holding a JSON object or array is
-// parsed (depth counted from here) and walked with nothing opaque, keys
-// included; the result is re-encoded if anything changed. Then the text and,
-// if still unchanged, its canonical re-encoding are scanned again as a whole
-// (belt and braces), and the result must still be valid JSON.
+// str sanitizes decoded JSON content, never its serialized escape syntax.
+// Matches spanning JSON tokens cannot be rewritten safely and fail closed.
 func (w reqWalker) str(n *node, sc scope) error {
 	s := n.str
 	if c := first(s); (c == '{' || c == '[') && json.Valid([]byte(s)) {
@@ -355,30 +352,17 @@ func (w reqWalker) str(n *node, sc scope) error {
 		if err != nil {
 			return err
 		}
+		if err := checkJSONStructure(s, w.s); err != nil {
+			return err
+		}
+		if err := checkJSONStructure(string(tree.encode(true)), w.s); err != nil {
+			return err
+		}
 		if err := w.walk(tree, scope{pos: posOther, inner: true, depth: sc.depth}); err != nil {
 			return err
 		}
-		text := s
 		if tree.dirty {
-			text = string(tree.encode(false))
-		}
-		out, err := w.text(text)
-		if err != nil {
-			return err
-		}
-		if out == text && !tree.dirty {
-			canon := string(tree.encode(true))
-			if c2, err := w.text(canon); err != nil {
-				return err
-			} else if c2 != canon {
-				out = c2
-			}
-		}
-		if out != s && !json.Valid([]byte(out)) {
-			return fmt.Errorf("%w: embedded JSON broken by sanitizing", ErrBadBody)
-		}
-		if out != s {
-			n.setString(out)
+			n.setString(string(tree.encode(false)))
 		}
 		return nil
 	}

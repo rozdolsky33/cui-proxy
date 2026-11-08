@@ -206,6 +206,15 @@ rule, supported prompt text and workspace metadata are masked rather than
 rejected. No SSH allowlist or disabled email detector is needed. Eligible
 response text is restored before the local command runs.
 
+A separate defect in v0.3.2 and earlier can reject tool output containing
+JSON with an escaped newline immediately before a matched value, such as
+`git@github.com`. It reports `reason=sanitize kind=bad_body`, even under
+`sanitize`. The JSON escape repair in v0.3.3 fixes this in code;
+changing SSH permissions, disabling email detection, or enabling passthrough
+is not the remedy. See the [dataflow regression report](verification-results/2026-11-08-json-escape-dataflow.md)
+for the affected paths and verification scope. Upgrade to v0.3.3 or later and
+restart the running proxy to use the repair.
+
 Work through these checks:
 
 1. Confirm `cui-proxy version`, then restart the running service after an
@@ -258,6 +267,11 @@ there is no default upstream in the loader.
 | `rules` | Empty list | Rules below; not merged with starter rules | Reload |
 
 The 64 KiB turn-metadata limit and JSON depth limit are not YAML options.
+Function-call argument restoration also has a fixed 20 MiB limit on cumulative
+argument delta input per response, and on each completed argument document.
+JSON tokens are buffered until complete so escaping and numeric boundaries
+can be restored correctly. Invalid or unfinished arguments cut the response
+stream; this does not change ordinary text streaming.
 Increasing `max_body_bytes` does not increase those limits.
 
 ### Rule fields

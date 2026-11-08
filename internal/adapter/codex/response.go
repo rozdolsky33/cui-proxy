@@ -3,6 +3,7 @@ package codex
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strings"
 
 	"cui-proxy/internal/sse"
@@ -35,21 +36,23 @@ var terminal = map[string]bool{
 // openStream is one in-progress streamed text field.
 type openStream struct {
 	st       *transform.Stream
+	json     *argumentStream
 	name     string // SSE event name of the last delta
 	last     *node  // the last delta event, reused for trailing deltas
 	deltaAt  int    // index of "delta" in last
-	item     string // raw item_id
-	outIndex string // raw output_index
+	item     string // canonical item_id
+	outIndex string // canonical output_index
 }
 
 type rewriter struct {
-	plain, esc *transform.Restorer
-	streams    map[string]*openStream
-	order      []string // keys in creation order, for deterministic flushing
+	plain         *transform.Restorer
+	argumentBytes int
+	streams       map[string]*openStream
+	order         []string // keys in creation order, for deterministic flushing
 }
 
 func newRewriter(r *transform.Restorer) *rewriter {
-	return &rewriter{plain: r, esc: r.JSONEscaped(), streams: map[string]*openStream{}}
+	return &rewriter{plain: r, streams: map[string]*openStream{}}
 }
 
 // Event restores one SSE event.
@@ -80,21 +83,39 @@ func (rw *rewriter) Event(e sse.Event) ([]sse.Event, error) {
 	if strings.HasSuffix(typ, ".delta") || strings.Contains(typ, "reasoning") && !strings.Contains(typ, "reasoning_summary") {
 		return pass, nil
 	}
-	out := rw.release(typ, root)
-	if rw.restore(root, ""); root.dirty {
+	out, err := rw.release(typ, root)
+	if err != nil {
+		return nil, err
+	}
+	if err := rw.restore(root, ""); err != nil {
+		return nil, err
+	}
+	if root.dirty {
 		e.Data = root.encode(false)
 	}
 	return append(out, e), nil
 }
 
-// Flush releases the held-back text of every open stream.
-func (rw *rewriter) Flush() []sse.Event {
+// Flush releases held-back text and validates all unfinished argument streams.
+func (rw *rewriter) Flush() ([]sse.Event, error) {
 	return rw.flushWhere(func(string, *openStream) bool { return true })
 }
 
 func rawOf(n *node) string {
 	if n == nil {
 		return ""
+	}
+	if n.kind == '"' {
+		return string(quote(n.str))
+	}
+	// Indices with equivalent JSON spellings must share a stream too. Bound
+	// work before exact arithmetic; no float rounding or exponent expansion.
+	if n.kind == '0' && len(n.str) <= 64 {
+		if _, ok := expandNumber(n.str); ok {
+			if value, ok := new(big.Rat).SetString(n.str); ok && value.IsInt() {
+				return value.Num().String()
+			}
+		}
 	}
 	return string(n.raw)
 }
@@ -123,16 +144,30 @@ func (rw *rewriter) delta(e sse.Event, root *node, typ string) ([]sse.Event, err
 	key := streamKey(typ, root)
 	os := rw.streams[key]
 	if os == nil {
-		r := rw.plain
+		os = &openStream{item: rawOf(root.get("item_id")), outIndex: rawOf(root.get("output_index"))}
 		if deltaKinds[typ] {
-			r = rw.esc
+			os.json = &argumentStream{r: rw.plain}
+		} else {
+			os.st = rw.plain.NewStream()
 		}
-		os = &openStream{st: r.NewStream(), item: rawOf(root.get("item_id")), outIndex: rawOf(root.get("output_index"))}
 		rw.streams[key] = os
 		rw.order = append(rw.order, key)
 	}
 	os.name, os.last, os.deltaAt = e.Name, root, at
-	out := os.st.Write(d)
+	var out string
+	if os.json != nil {
+		if len(d) > maxArgumentBytes-rw.argumentBytes {
+			return nil, fmt.Errorf("codex: arguments exceed buffer limit")
+		}
+		rw.argumentBytes += len(d)
+		var err error
+		out, err = os.json.Write(d)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		out = os.st.Write(d)
+	}
 	switch out {
 	case d:
 		return []sse.Event{e}, nil
@@ -152,7 +187,7 @@ func (os *openStream) withDelta(d string) sse.Event {
 }
 
 // release flushes the streams that the event typ closes.
-func (rw *rewriter) release(typ string, root *node) []sse.Event {
+func (rw *rewriter) release(typ string, root *node) ([]sse.Event, error) {
 	switch {
 	case terminal[typ]:
 		return rw.Flush()
@@ -175,11 +210,11 @@ func (rw *rewriter) release(typ string, root *node) []sse.Event {
 		k := streamKey(strings.TrimSuffix(typ, ".done")+".delta", root)
 		return rw.flushWhere(func(key string, _ *openStream) bool { return key == k })
 	}
-	return nil
+	return nil, nil
 }
 
 // flushWhere flushes and closes the streams selected by sel, in creation order.
-func (rw *rewriter) flushWhere(sel func(string, *openStream) bool) []sse.Event {
+func (rw *rewriter) flushWhere(sel func(string, *openStream) bool) ([]sse.Event, error) {
 	var out []sse.Event
 	order := rw.order[:0]
 	for _, k := range rw.order {
@@ -188,18 +223,28 @@ func (rw *rewriter) flushWhere(sel func(string, *openStream) bool) []sse.Event {
 			order = append(order, k)
 			continue
 		}
-		if rest := os.st.Flush(); rest != "" {
+		var rest string
+		if os.json != nil {
+			var err error
+			rest, err = os.json.Finish()
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			rest = os.st.Flush()
+		}
+		if rest != "" {
 			out = append(out, os.withDelta(rest))
 		}
 		delete(rw.streams, k)
 	}
 	rw.order = order
-	return out
+	return out, nil
 }
 
 // restore restores the string leaves of n in place. key is the member name
 // n is the value of ("" for array elements and the event itself).
-func (rw *rewriter) restore(n *node, key string) {
+func (rw *rewriter) restore(n *node, key string) error {
 	switch n.kind {
 	case '{':
 		t, _ := n.getString("type")
@@ -208,21 +253,38 @@ func (rw *rewriter) restore(n *node, key string) {
 			if opaque[k] || reasoning && k != "summary" {
 				continue
 			}
-			rw.restore(n.kids[i], k)
+			if err := rw.restore(n.kids[i], k); err != nil {
+				return err
+			}
 			n.dirty = n.dirty || n.kids[i].dirty
 		}
 	case '[':
 		for _, kid := range n.kids {
-			rw.restore(kid, "")
+			if err := rw.restore(kid, ""); err != nil {
+				return err
+			}
 			n.dirty = n.dirty || kid.dirty
 		}
 	case '"':
-		r := rw.plain
-		if key == "arguments" {
-			r = rw.esc
+		var out string
+		if key == "arguments" && n.str != "" {
+			if len(n.str) > maxArgumentBytes {
+				return fmt.Errorf("codex: arguments exceed buffer limit")
+			}
+			if !json.Valid([]byte(n.str)) {
+				return fmt.Errorf("codex: invalid arguments")
+			}
+			var err error
+			out, err = restoreArgumentDocument(n.str, rw.plain)
+			if err != nil {
+				return err
+			}
+		} else {
+			out = rw.plain.Text(n.str)
 		}
-		if out := r.Text(n.str); out != n.str {
+		if out != n.str {
 			n.setString(out)
 		}
 	}
+	return nil
 }

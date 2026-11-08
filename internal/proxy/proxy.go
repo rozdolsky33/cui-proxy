@@ -345,6 +345,7 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 	}
 	// Structured metadata is adapter-owned; all remaining headers and the
 	// query retain their fail-closed inspection.
+	var structuredHeaders []string
 	if hs, ok := h.d.Adapter.(adapter.HeaderSanitizer); ok {
 		r = r.Clone(r.Context())
 		c := &collector{}
@@ -352,10 +353,11 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 			return h.blockDiag(x, reasonHeader, diagnose(err))
 		}
 		x.events = append(x.events, c.evs...)
+		structuredHeaders = hs.StructuredHeaders()
 	}
 	// Before reading the body: other headers and query are never rewritten, so a
 	// detected value blocks outright (on_error: passthrough does not apply).
-	if requestMetaSensitive(r, san) {
+	if requestMetaSensitive(r, san, structuredHeaders) {
 		return h.block(x, reasonHeader)
 	}
 	limit := cfg.Policy.MaxBodyBytes
@@ -616,8 +618,11 @@ func (h *handler) stream(x *exchange, r *http.Request, body io.Reader, rest *tra
 		ev, err := rd.Next()
 		if errors.Is(err, io.EOF) {
 			t0 := time.Now()
-			evs := rw.Flush()
+			evs, err := rw.Flush()
 			x.overhead += time.Since(t0)
+			if err != nil {
+				return fail("rewrite")
+			}
 			if err := emit(evs, nil, true); err != nil {
 				return fail("write")
 			}
