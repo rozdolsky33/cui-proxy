@@ -41,7 +41,9 @@ flowchart TD
     A[Receive native client request] --> B[Route, encoding and metadata guards]
     B --> C[Read bounded request body]
     C --> D[Codex adapter: parse supported JSON]
-    D --> E[Detectors find spans; merge overlaps]
+    D --> A1[Opt-in attachments: replace with local extracted text]
+    A1 --> E[Detectors find spans; merge overlaps]
+    A1 -->|Extraction fails or attachment unsupported| X
     E --> F{Any blocking match?}
     F -->|Yes| X[Record blocked decision and reject]
     F -->|No| G[Vault supplies synthetics; verify restoration]
@@ -68,8 +70,11 @@ flowchart TD
    fails closed. The fixed metadata limit is 64 KiB.
 4. **Parse the body.** The Responses request must be a single valid UTF-8 JSON
    object, within the configured body limit (20 MiB by default) and fixed
-   nesting limit of 64 containers. Images, file references, audio, and other unsupported binary
-   representations are refused.
+   nesting limit of 64 containers. Attachments default to block. With the
+   unreleased [extraction setting](attachments.md), supported inline PDFs and
+   PNG/JPEG images become local text before detection; filenames and binary
+   bytes are dropped. File references, audio and other unsupported forms block.
+   Extraction limits and failures always block, including under passthrough.
 5. **Detect and decide.** All configured detectors run on supported values.
    Overlaps become a union so a shorter match cannot leave part of another
    detected value exposed. Any effective blocking match rejects the request

@@ -1,9 +1,15 @@
 # Documentation status
 
-Reviewed for v0.3.3 on 2026-11-08. It includes workspace metadata sanitization,
+Reviewed for v0.3.3 and unreleased `main` changes on 2026-11-08. It includes workspace metadata sanitization,
 value-free accounting, and the JSON escape dataflow repair. The configuration
 walkthrough covers defaults, override limits, the separate Git/SSH execution
 path, and the fixed argument buffering limits.
+
+[Attachment text inspection](attachments.md) is implemented after v0.3.3 and
+requires a source build or a future release containing it. It adds an opt-in
+setting, local PDF/OCR extraction, and persisted attachment diagnostics. Real
+Poppler extraction/rendering and controlled OCR-process tests were exercised;
+actual Tesseract recognition was not verified on the development machine.
 
 ## Current operator documentation
 
@@ -19,6 +25,7 @@ The [published manual](https://rozdolsky33.github.io/cui-proxy/) adds a guided
 | [README](https://github.com/rozdolsky33/cui-proxy/blob/main/README.md) | Quick start and navigation |
 | [Executive overview](https://github.com/rozdolsky33/cui-proxy/blob/main/EXECUTIVE-OVERVIEW.md) | Purpose, data flow, implemented capabilities and limits; memory vault is the default, file persistence is optional |
 | [Configuration walkthrough](configuration.md) | Files, every YAML field/default, sanitize/strict, supported overrides, rule examples, Git/SSH troubleshooting, reload/restart |
+| [Attachment inspection](attachments.md) | Opt-in local PDF/image text conversion, tool requirements, limits and safe failure details; unreleased |
 | [Policy](policy.md) | Profiles, blocking behavior and restrictions |
 | [Block diagnostics](block-diagnostics.md) | Reason/kind interpretation and remedies |
 | [Limitations](limitations.md) | Inspection exceptions and unsupported behavior |

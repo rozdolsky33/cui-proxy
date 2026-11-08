@@ -5,6 +5,7 @@
 package adapter
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -67,4 +68,9 @@ type HeaderSanitizer interface {
 	SanitizeHeaders(http.Header, *transform.Sanitizer) error
 	// StructuredHeaders lists headers fully inspected in decoded form by SanitizeHeaders.
 	StructuredHeaders() []string
+}
+
+// PolicySanitizer optionally converts attachments using the per-request policy.
+type PolicySanitizer interface {
+	SanitizeRequestWithPolicy(context.Context, []byte, *transform.Sanitizer, string) ([]byte, error)
 }

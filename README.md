@@ -227,7 +227,7 @@ Read these before relying on it. The full list is in [docs/limitations.md](docs/
 
 - Detection is pattern- and dictionary-based and **will miss things**; a missed value is sent as is.
 - The upstream mapping passed one live smoke test (2026-11-07, Codex CLI 0.167.0, `gpt-6-astra`); that is evidence, not a guarantee. Repeat the checks in [docs/verification.md](docs/verification.md) after upgrades.
-- Some content cannot be inspected (images, files, audio, encrypted fields) and is refused or only shape-checked.
+- Attachments are blocked by default. Opt-in [local PDF/image text extraction](docs/attachments.md), available in unreleased source after v0.3.3, forwards only sanitized text. Other unsupported content is refused; vendor encrypted fields are only shape-checked.
 - Credential headers pass through unchanged; the proxy never stores them.
 - It protects only traffic that is pointed at it; it does not stop a client that bypasses it.
 

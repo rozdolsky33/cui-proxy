@@ -48,6 +48,7 @@ type Policy struct {
 	MaxBodyBytes int64  `yaml:"max_body_bytes"`
 	Profile      string `yaml:"profile"`
 	Unsupported  string `yaml:"unsupported"`
+	Attachments  string `yaml:"attachments"`
 }
 
 // EffectiveAction is what a detection by r does under profile: the rule's own
@@ -207,6 +208,9 @@ func (c *Config) applyDefaults() {
 	if c.Policy.Profile == "" {
 		c.Policy.Profile = ProfileSanitize
 	}
+	if c.Policy.Attachments == "" {
+		c.Policy.Attachments = "block"
+	}
 	if c.Policy.Unsupported == "" {
 		c.Policy.Unsupported = "block"
 	}
@@ -285,6 +289,9 @@ func (c *Config) ValidateWith(known func(class string) bool) error {
 				return fmt.Errorf(`config: rules[%d]: action "block" cannot be combined with policy.on_error "passthrough": passthrough would forward the original request when it cannot be inspected before the rule is checked`, i)
 			}
 		}
+	}
+	if c.Policy.Attachments != "" && c.Policy.Attachments != "block" && c.Policy.Attachments != "extract_text" {
+		return fmt.Errorf("config: policy.attachments must be block or extract_text")
 	}
 	if c.Policy.Unsupported != "" && c.Policy.Unsupported != "block" {
 		return fmt.Errorf("config: policy.unsupported %q must be block (content the proxy cannot inspect is always refused)", c.Policy.Unsupported)

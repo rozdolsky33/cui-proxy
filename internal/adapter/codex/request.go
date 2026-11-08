@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"cui-proxy/internal/adapter"
+	"cui-proxy/internal/attachment"
 	"cui-proxy/internal/transform"
 )
 
@@ -173,6 +174,10 @@ var binaryTypes = []string{"image", "file", "audio"}
 // as JSON. Untouched values keep their original bytes; a body with nothing to
 // replace is returned as is. On error the result is nil.
 func sanitizeRequest(body []byte, s *transform.Sanitizer) ([]byte, error) {
+	return sanitizeWithExtractor(body, s, nil)
+}
+
+func sanitizeWithExtractor(body []byte, s *transform.Sanitizer, e *attachment.Extractor) ([]byte, error) {
 	if first(body) != '{' || !utf8.Valid(body) || !json.Valid(body) {
 		return nil, fmt.Errorf("%w: not a JSON object", ErrBadBody)
 	}
@@ -180,7 +185,7 @@ func sanitizeRequest(body []byte, s *transform.Sanitizer) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	w := reqWalker{s: s}
+	w := reqWalker{s: s, extract: e}
 	if err := w.walk(root, scope{pos: posTop}); err != nil {
 		return nil, err
 	}
@@ -190,14 +195,18 @@ func sanitizeRequest(body []byte, s *transform.Sanitizer) ([]byte, error) {
 	return root.encode(false), nil
 }
 
-type reqWalker struct{ s *transform.Sanitizer }
+type reqWalker struct {
+	s       *transform.Sanitizer
+	extract *attachment.Extractor
+}
 
 type scope struct {
-	pos    pos
-	inner  bool // inside JSON carried in a string: nothing opaque, no binary checks
-	schema bool // inside a tool/format schema: no binary checks
-	tools  bool // under top-level tools
-	depth  int  // containers enclosing the value
+	pos         pos
+	userContent bool // direct elements of an unambiguous user message content array
+	inner       bool // inside JSON carried in a string: nothing opaque, no binary checks
+	schema      bool // inside a tool/format schema: no binary checks
+	tools       bool // under top-level tools
+	depth       int  // containers enclosing the value
 }
 
 // checkBlocked refuses text that a blocking rule matches, without rewriting
@@ -228,7 +237,7 @@ func (w reqWalker) walk(n *node, sc scope) error {
 			if !sc.inner && ep == posInclude && kid.kind == '"' && protocolInclude(kid.str) {
 				continue // include entries are protocol values
 			}
-			if err := w.walk(kid, scope{pos: ep, inner: sc.inner, schema: sc.schema, tools: sc.tools, depth: sc.depth + 1}); err != nil {
+			if err := w.walk(kid, scope{pos: ep, userContent: sc.userContent, inner: sc.inner, schema: sc.schema, tools: sc.tools, depth: sc.depth + 1}); err != nil {
 				return err
 			}
 			n.dirty = n.dirty || kid.dirty
@@ -244,7 +253,9 @@ func (w reqWalker) walk(n *node, sc scope) error {
 func (w reqWalker) object(n *node, sc scope) error {
 	if !sc.inner && !sc.schema {
 		if err := checkBinary(n, sc.pos == posTool); err != nil {
-			return err
+			if err := w.attachment(n, sc, err); err != nil {
+				return err
+			}
 		}
 	}
 	for i, k := range n.keys {
@@ -276,7 +287,7 @@ func (w reqWalker) object(n *node, sc scope) error {
 		tools := sc.tools || sc.pos == posTop && k == "tools"
 		schema := sc.schema || !sc.inner && (k == "parameters" || k == "format" || k == "schema") &&
 			(sc.tools || sc.pos == posText)
-		if err := w.walk(kid, scope{pos: childPos(sc.pos, k), inner: sc.inner, schema: schema, tools: tools, depth: sc.depth + 1}); err != nil {
+		if err := w.walk(kid, scope{pos: childPos(sc.pos, k), userContent: sc.pos == posItem && k == "content" && userMessage(n), inner: sc.inner, schema: schema, tools: tools, depth: sc.depth + 1}); err != nil {
 			return err
 		}
 		n.dirty = n.dirty || kid.dirty
@@ -292,7 +303,13 @@ func checkBinary(n *node, toolEntry bool) error {
 	for i, k := range n.keys {
 		kid := n.kids[i]
 		if binaryKeys[k] || k == "data" && kid.kind == '"' {
-			return fmt.Errorf("%w: binary content key %q", ErrBadBody, k)
+			c := attachment.Binary
+			if k == "image_url" {
+				c = attachment.Image
+			} else if k == "file_data" || k == "file_id" {
+				c = attachment.File
+			}
+			return fmt.Errorf("%w: %w", ErrBadBody, &attachment.Error{Category: c, Cause: attachment.Disabled})
 		}
 		if k != "type" || kid.kind != '"' || toolEntry {
 			continue
@@ -300,7 +317,13 @@ func checkBinary(n *node, toolEntry bool) error {
 		lt := strings.ToLower(kid.str)
 		for _, b := range binaryTypes {
 			if strings.Contains(lt, b) {
-				return fmt.Errorf("%w: %s part", ErrBadBody, b)
+				c := attachment.Audio
+				if b == "image" {
+					c = attachment.Image
+				} else if b == "file" {
+					c = attachment.File
+				}
+				return fmt.Errorf("%w: %w", ErrBadBody, &attachment.Error{Category: c, Cause: attachment.Disabled})
 			}
 		}
 	}

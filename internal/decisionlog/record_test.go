@@ -189,3 +189,33 @@ func TestSafeName(t *testing.T) {
 		}
 	}
 }
+
+func TestAttachmentDetailClosedAndHashed(t *testing.T) {
+	entry := Entry{RequestID: goldenID1, Adapter: "codex", Profile: "sanitize", Decision: Blocked, Reason: "sanitize", Detail: "attachment_pdf_missing_tool"}
+	r, err := newRecord(entry, goldenTS1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.seal(Genesis)
+	if !strings.Contains(string(r.canonical()), `"detail":"attachment_pdf_missing_tool"`) {
+		t.Fatal("detail absent from hash input")
+	}
+	first := r.Hash
+	r.Detail = "attachment_pdf_invalid"
+	r.seal(Genesis)
+	if r.Hash == first {
+		t.Fatal("detail not authenticated")
+	}
+	for _, detail := range []string{"private.pdf", "attachment_unknown_invalid", "attachment_pdf_invalid\nsecret"} {
+		entry.Detail = detail
+		if _, err := newRecord(entry, goldenTS1); err == nil {
+			t.Fatal("accepted arbitrary detail")
+		}
+	}
+	entry.Detail = "attachment_pdf_invalid"
+	entry.Decision = Forwarded
+	entry.Reason = ""
+	if _, err := newRecord(entry, goldenTS1); err == nil {
+		t.Fatal("detail on non-block decision")
+	}
+}

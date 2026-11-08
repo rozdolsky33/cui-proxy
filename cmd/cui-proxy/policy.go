@@ -118,6 +118,7 @@ func runPolicyCheck(args []string, stdout, stderr io.Writer) int {
 
 	fmt.Fprintf(stdout, "cui-proxy policy check: %s\n\n", abs)
 	fmt.Fprintf(stdout, "Profile      %s\nunsupported  %s\non_error     %s\n", profile, cfg.Policy.Unsupported, cfg.Policy.OnError)
+	fmt.Fprintf(stdout, "attachments  %s\n", cfg.Policy.Attachments)
 	audit, err := describeAudit(cfg)
 	if err != nil {
 		return fail(stderr, fmt.Errorf("policy check: %w", err))
@@ -148,7 +149,12 @@ func runPolicyCheck(args []string, stdout, stderr io.Writer) int {
 	if anyBlock {
 		fmt.Fprintln(stdout, "  - Because a rule blocks, protocol identifiers (model, ids, role, tool names, include entries) are checked too, and every number in the request is checked, not just text.")
 	}
-	fmt.Fprintln(stdout, "  - Content the proxy cannot inspect is refused, even under on_error: passthrough: images, files, compressed bodies, unknown routes, oversized, too deeply nested or unparseable bodies.")
+	fmt.Fprintln(stdout, "  - Content the proxy cannot inspect is refused, even under on_error: passthrough: unsupported attachments, compressed bodies, unknown routes, oversized, too deeply nested or unparseable bodies.")
+	if cfg.Policy.Attachments == "extract_text" {
+		fmt.Fprintln(stdout, "  - Inline PDFs and PNG/JPEG images are replaced with locally extracted text, then scanned. Original files are never forwarded; conversion mode disables on_error passthrough for body failures.")
+	} else {
+		fmt.Fprintln(stdout, "  - Attachments are blocked by default; opt in with policy.attachments: extract_text.")
+	}
 	fmt.Fprintln(stdout, "  - Request headers and the query string are scanned; a match blocks the request.")
 	fmt.Fprintln(stdout, "  - The upstream must be https (loopback excepted); redirects from it are never relayed.")
 	if cfg.Audit.IsEnabled() {

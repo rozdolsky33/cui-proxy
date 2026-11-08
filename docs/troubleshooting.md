@@ -100,7 +100,7 @@ representations; read [limitations](limitations.md).
 
 ## Proxy refusals and upstream failures
 
-The error's `reason`, `kind`, `rule` and request ID narrow the diagnosis. A
+The error's `reason`, `kind`, `rule`, optional `detail`, and request ID narrow the diagnosis. A
 metadata `header` error does not identify a particular header by itself.
 
 | Symptom / code | Diagnosis | Fix |
@@ -154,6 +154,21 @@ earlier, use v0.3.3 or later and restart the running proxy. SSH key changes,
 disabling email detection and enabling passthrough do not repair that parser
 issue. See [configuration](configuration.md#git-and-ssh-troubleshooting) for
 the historical context and [verification](verification.md) for regression scope.
+
+## PDF, image and file refusals
+
+`422 reason=sanitize kind=bad_body` is a body validation failure, independent of
+the number of blocking rules. Attachments are blocked by default. The unreleased
+[text extraction mode](attachments.md) converts supported inline PDF/PNG/JPEG
+content locally; it never forwards originals.
+
+New errors add fixed details such as `attachment_file_disabled`,
+`attachment_file_reference`, or `attachment_image_missing_tool`, with a remedy
+in the response and server log. `explain REQUEST-ID` reads the persisted detail.
+An old record without a detail cannot reveal the exact cause retroactively.
+For tool failures, check the service PATH and English Tesseract data; a terminal
+installation alone does not prove a menu-bar process can find the executable.
+A v0.3.3 binary rejects the new setting: upgrade/build and restart first.
 
 ## Decision-log and restoration questions
 

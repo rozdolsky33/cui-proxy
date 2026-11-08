@@ -9,6 +9,7 @@ your environment before relying on them.
 | Mask common values and your service names | [sanitize.yaml](examples/sanitize.yaml) | [hosts.txt](examples/hosts.txt) | Replace and restore |
 | Refuse any detected value | [strict.yaml](examples/strict.yaml) | [hosts.txt](examples/hosts.txt) | Block the entire request |
 | Mask ordinary values, block restricted categories | [selective-block.yaml](examples/selective-block.yaml) | [hosts.txt](examples/hosts.txt), [restricted-names.txt](examples/restricted-names.txt) | Per-rule behavior |
+| Extract PDF/image text before masking (unreleased after v0.3.3) | [attachment-text.yaml](examples/attachment-text.yaml) | [hosts.txt](examples/hosts.txt) | Replace files with extracted text, then sanitize matches |
 | Keep mappings across restarts | [persistent-vault.yaml](examples/persistent-vault.yaml) | [hosts.txt](examples/hosts.txt) | Replace and restore using an encrypted file vault |
 | Learn on separate ports | [tutorial.yaml](examples/tutorial.yaml) | [hosts.txt](examples/hosts.txt) | Mask on ports 18787 / 18788 |
 
@@ -33,7 +34,7 @@ dictionary in the table. Relative paths resolve against the YAML's directory,
 regardless of the current terminal directory. YAML does not expand `~` or
 environment variables and does not merge multiple files.
 
-The first four recipes use the normal ports. Stop an existing proxy before
+All recipes except the tutorial use the normal ports. Stop an existing proxy before
 serving one, or give it unique listener ports, vault files and audit files.
 `check-config` and `test-rules` do not start a listener. For a permanent setup,
 move the reviewed files to a private directory you intend to keep and explicitly
@@ -43,6 +44,17 @@ All recipes enable audit and set `audit.on_error: block`. The generated
 `cui-proxy init` starter instead defaults to warning on an audit-write failure
 under sanitize. This choice is explicit so a recipe cannot silently forward a
 request without its decision record.
+
+## Local PDF/image text extraction (unreleased)
+
+This requires the implementation after v0.3.3 plus local extraction tools. Read
+[attachment inspection](attachments.md) before enabling it. Original files and
+filenames are dropped; only extracted text is inspected and forwarded. Strict or
+explicit block rules still apply to that text. All conversion-mode failures block.
+
+```yaml title="attachment-text.yaml — complete configuration"
+--8<-- "examples/attachment-text.yaml"
+```
 
 ## Everyday masking
 

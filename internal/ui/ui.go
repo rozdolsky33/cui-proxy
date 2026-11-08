@@ -186,6 +186,7 @@ type configView struct {
 	Policy    struct {
 		Profile      string `json:"profile"`
 		Unsupported  string `json:"unsupported"`
+		Attachments  string `json:"attachments"`
 		OnError      string `json:"on_error"`
 		MaxBodyBytes int64  `json:"max_body_bytes"`
 	} `json:"policy"`
@@ -213,6 +214,10 @@ func (s *server) config(w http.ResponseWriter, r *http.Request) {
 		}
 		v.Policy.OnError, v.Policy.MaxBodyBytes = c.Policy.OnError, c.Policy.MaxBodyBytes
 		v.Policy.Profile, v.Policy.Unsupported = c.Policy.Profile, c.Policy.Unsupported
+		v.Policy.Attachments = c.Policy.Attachments
+		if v.Policy.Attachments == "" {
+			v.Policy.Attachments = "block"
+		}
 		if v.Policy.Profile == "" { // a config built in code, not loaded
 			v.Policy.Profile = config.ProfileSanitize
 		}

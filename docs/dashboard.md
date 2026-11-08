@@ -12,6 +12,9 @@ The proxy and dashboard use different ports: Codex connects to port **8787**;
 your browser connects to port **8788**. Start with the [quick start](quickstart.md)
 or [full tutorial](tutorial.md) if the proxy is not running yet.
 
+Screenshots use an isolated source-build demo with fabricated data on ports
+19787/19788; your configured ports and attachment mode may differ.
+
 ![Dashboard with synthetic request activity, counters, and effective configuration](assets/dashboard-overview.png)
 
 ## Header and connection state
@@ -88,8 +91,8 @@ The **Configuration** panel shows active values, including loader defaults.
 It is not an editor. Change the YAML file or dictionary on disk, then reload
 or restart as required.
 
-The fields cover proxy and UI listeners; policy profile, unsupported-content
-handling, sanitizer error handling and body limit; vault mode and file paths;
+The fields cover proxy and UI listeners; policy profile, attachment handling
+(unreleased), unsupported-content handling, sanitizer error handling and body limit; vault mode and file paths;
 and decision-log location, write-failure policy, rotation size and retention.
 A dash means a path or setting is not applicable. Upstreams appear in the header.
 The [field reference](reference.md) explains every setting.
@@ -124,8 +127,8 @@ A successful reload displays `reloaded` with a time and refreshes the effective
 configuration. A validation or rule-build failure keeps the old rules active.
 
 Reload applies rules, dictionary contents, `policy.profile`, `policy.on_error`,
-and `policy.max_body_bytes`. In-flight requests finish with the snapshot they
-started with. Existing vault mappings remain available.
+`policy.attachments` (unreleased), and `policy.max_body_bytes`. In-flight requests
+finish with the snapshot they started with. Existing vault mappings remain available.
 
 Listener addresses, upstreams, `allow_non_loopback`, vault settings and **all
 explicit audit-setting changes** need a restart. A reload can succeed while

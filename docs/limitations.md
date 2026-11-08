@@ -1,5 +1,11 @@
 # Known limitations / behavior
 
+- Attachments are blocked by default. The unreleased [text extraction mode](attachments.md)
+  sends only sanitized extracted text from supported inline PDFs and PNG/JPEG
+  images. It drops the originals and filenames, may lose layout/visual meaning,
+  and can miss or misrecognize text. Native extractors are local subprocesses
+  with resource budgets, not an OS sandbox. File IDs, URLs, audio and unsupported
+  shapes are refused. Text extraction does not certify the original document.
 - Credential headers (`Authorization`, `Chatgpt-Account-Id`, cookies) are
   forwarded unscanned and are never logged or stored.
 - Codex `X-Codex-Turn-Metadata` is parsed as JSON. Its `workspaces` and
@@ -59,7 +65,9 @@
   class). It never forwards unsupported content or a policy block, it is
   refused in the config next to any blocking rule, and it is logged as UNSAFE
   at startup (and by `check-config`). Successfully sanitized workspace metadata
-  stays sanitized; metadata inspection failures always block.
+  stays sanitized; metadata inspection failures always block. Attachment
+  extraction mode also blocks every body-processing failure, preventing a
+  fallback to original attachment bytes.
 - Listeners are loopback-only unless `allow_non_loopback: true`; the bound
   address is checked after binding. The proxy API accepts native clients:
   browser Origin/Fetch Metadata headers are refused, and loopback mode rejects

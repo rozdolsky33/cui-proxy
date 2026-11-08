@@ -79,10 +79,11 @@ One JSON object per line, keys always in this order:
 | `request_id` | 16 lowercase hex digits (8 random bytes), minted per request |
 | `adapter` | the adapter name (`codex`) |
 | `profile` | the active `policy.profile` (`sanitize` or `strict`) |
-| `decision` | `forwarded` (no masking, or explicit body passthrough), `sanitized` (sent with values masked) or `blocked` (never sent) |
+| `decision` | `forwarded` (no masking, or explicit body passthrough), `sanitized` (sent with values masked or attachments converted to text) or `blocked` (never sent) |
 | `reason` | empty unless `blocked`; then one of `route`, `body_too_large`, `compressed`, `header`, `policy`, `sanitize`, `unrestorable`, `bad_request`, `client`, `audit`, `internal` (the codes in [Block diagnostics](block-diagnostics.md)) |
 | `rule_ids` | sorted names of the rules that matched |
 | `counts` | per-rule match counts |
+| `detail` (optional, unreleased) | closed attachment category/cause for a sanitize block; [codes and remedies](attachments.md#limits-and-diagnostics), never filenames, URLs or contents |
 | `approval_id` | always `""` for now (reserved for approvals, ADR 0001 phase 3) |
 | `prev_hash` | the previous record's `hash` (64 zeros for the first record of a chain) |
 | `hash` | see [The hash chain](#the-hash-chain) |
@@ -116,6 +117,11 @@ Notes:
 - The record is built only from closed sets (decision, reason), the minted
   id, and those cleaned names. A record that does not fit that shape is not
   written. The write then counts as failed (see below).
+
+The new optional attachment detail participates in the canonical hash only when
+present, preserving existing record hashes. Older binaries cannot verify records
+with this new field. Use the updated binary for `audit verify` and `explain` after
+upgrading. Historical detail-free records cannot recover an exact attachment cause.
 
 ## What is never recorded
 

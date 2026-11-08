@@ -21,6 +21,7 @@ package proxy
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"log"
@@ -32,6 +33,7 @@ import (
 	"time"
 
 	"cui-proxy/internal/adapter"
+	"cui-proxy/internal/attachment"
 	"cui-proxy/internal/audit"
 	"cui-proxy/internal/config"
 	"cui-proxy/internal/decisionlog"
@@ -153,13 +155,17 @@ const (
 
 // diag is the value-free diagnosis of a sanitize block: a closed-set kind
 // and, when the error names a span, its rule and class (cleaned by safeName).
-type diag struct{ kind, rule, class string }
+type diag struct{ kind, rule, class, detail string }
 
 // diagnose classifies a SanitizeRequest error. Only sentinel identities and
 // the SpanError rule/class fields are read, never the error text (which may
 // carry request data, e.g. a JSON key).
 func diagnose(err error) diag {
 	var d diag
+	var ae *attachment.Error
+	if errors.As(err, &ae) {
+		d.detail = ae.Error()
+	}
 	var se *transform.SpanError
 	if errors.As(err, &se) {
 		d.rule, d.class = safeName(se.Rule), safeName(se.Class)
@@ -245,6 +251,7 @@ type exchange struct {
 	// recorded: the decision record was attempted. There is at most one
 	// attempt per request; later failures (a stream cut, a redirect) do not
 	// rewrite it.
+	detail     string // closed diagnostic code for a blocked attachment
 	recorded   bool
 	recordedAs decisionlog.Decision // what the record says (when recorded)
 	// decision and counts are what forward records for a forwarded request.
@@ -381,7 +388,7 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 			return h.block(x, reasonBadRequest) // a passthrough route is never scanned
 		}
 	case adapter.KindSanitize:
-		out, reason, d := h.sanitize(x, san, body)
+		out, reason, d := h.sanitize(r.Context(), x, san, body)
 		if reason != "" {
 			if !passthroughEligible(cfg, san, reason, d) {
 				return h.blockDiag(x, reason, d)
@@ -439,10 +446,16 @@ func (c *collector) Record(e transform.Event) {
 // and the audit entry only when the whole request sanitized, so a blocked
 // request counts no replacements. On failure it returns a reason code and
 // the value-free diagnosis.
-func (h *handler) sanitize(x *exchange, san *transform.Sanitizer, body []byte) ([]byte, string, diag) {
+func (h *handler) sanitize(ctx context.Context, x *exchange, san *transform.Sanitizer, body []byte) ([]byte, string, diag) {
 	c := &collector{}
 	t0 := time.Now()
-	out, err := h.d.Adapter.SanitizeRequest(body, san.WithSink(c))
+	var out []byte
+	var err error
+	if a, ok := h.d.Adapter.(adapter.PolicySanitizer); ok && x.cfg.Policy.Attachments == "extract_text" {
+		out, err = a.SanitizeRequestWithPolicy(ctx, body, san.WithSink(c), x.cfg.Policy.Attachments)
+	} else {
+		out, err = h.d.Adapter.SanitizeRequest(body, san.WithSink(c))
+	}
 	x.overhead += time.Since(t0)
 	x.observe = true
 	if err != nil {
@@ -455,6 +468,9 @@ func (h *handler) sanitize(x *exchange, san *transform.Sanitizer, body []byte) (
 		}
 		return nil, reasonSanitize, d
 	}
+	if x.passthrough == nil && !bytes.Equal(out, body) {
+		x.decision = decisionlog.Sanitized
+	}
 	x.events = append(x.events, c.evs...)
 	return out, "", diag{}
 }
@@ -466,7 +482,7 @@ func (h *handler) sanitize(x *exchange, san *transform.Sanitizer, body []byte) (
 // scanned), and never for content the proxy cannot inspect (policy.unsupported
 // is always block). Only a failure of the sanitizer itself qualifies.
 func passthroughEligible(cfg *config.Config, san *transform.Sanitizer, reason string, d diag) bool {
-	if cfg.Policy.OnError != "passthrough" || reason == reasonPolicy || san.HasBlockingRules() {
+	if cfg.Policy.Attachments == "extract_text" || cfg.Policy.OnError != "passthrough" || reason == reasonPolicy || san.HasBlockingRules() {
 		return false
 	}
 	switch d.kind {
@@ -677,7 +693,7 @@ func (h *handler) record(x *exchange, dec decisionlog.Decision, reason string, c
 	}
 	e := decisionlog.Entry{
 		RequestID: x.id, Adapter: h.d.Adapter.Name(), Profile: profile,
-		Decision: dec, Reason: reason, Counts: counts,
+		Decision: dec, Reason: reason, Counts: counts, Detail: x.detail,
 	}
 	if x.passthrough != nil && dec == decisionlog.Forwarded {
 		e.Passthrough = x.passthrough.reason
@@ -745,6 +761,7 @@ func (h *handler) block(x *exchange, reason string) bool {
 // in the log line, the audit entry (Blocked "<reason>:<kind>" and Rules
 // "blocked:<rule>") and the 422 message. Metrics keys stay the reason.
 func (h *handler) blockDiag(x *exchange, reason string, d diag) bool {
+	x.detail = d.detail
 	var counts map[string]int
 	if d.rule != "" {
 		counts = map[string]int{d.rule: 1}
@@ -758,12 +775,20 @@ func (h *handler) blockDiag(x *exchange, reason string, d diag) bool {
 		x.entry.Rules = map[string]int{"blocked:" + d.rule: 1}
 	}
 	h.d.Metrics.IncBlocked(reason)
-	h.d.Logf("cui-proxy: request blocked (reason=%s kind=%s rule=%s class=%s)", reason, d.kind, orDash(d.rule), orDash(d.class))
+	suffix := ""
+	if d.detail != "" {
+		suffix = " detail=" + d.detail + ". " + attachment.Explain(d.detail)
+	}
+	h.d.Logf("cui-proxy: request blocked (reason=%s kind=%s rule=%s class=%s)%s", reason, d.kind, orDash(d.rule), orDash(d.class), suffix)
 	msg := "request blocked (reason=" + reason + " kind=" + d.kind
 	if d.rule != "" {
 		msg += " rule=" + d.rule
 	}
-	writeError(x, blockStatus[reason], reason, "cui_proxy_blocked", msg+")")
+	msg += ")"
+	if d.detail != "" {
+		msg += " detail=" + d.detail + ". " + attachment.Explain(d.detail)
+	}
+	writeError(x, blockStatus[reason], reason, "cui_proxy_blocked", msg)
 	return false
 }
 

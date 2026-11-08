@@ -19,6 +19,7 @@ package decisionlog
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"cui-proxy/internal/attachment"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -145,6 +146,7 @@ type Entry struct {
 	// unsanitized because policy.on_error is passthrough. Decision must be
 	// Forwarded. It is the only way to record a passthrough marker.
 	Passthrough string
+	Detail      string // closed attachment diagnostic, only for sanitize blocks
 }
 
 // Record is one line of the log. Field order here is the canonical order.
@@ -157,6 +159,7 @@ type Record struct {
 	Reason     string         `json:"reason"`
 	RuleIDs    []string       `json:"rule_ids"`
 	Counts     map[string]int `json:"counts"`
+	Detail     string         `json:"detail,omitempty"`
 	ApprovalID string         `json:"approval_id"` // always "" until approvals exist (ADR 0001, phase 3)
 	PrevHash   string         `json:"prev_hash"`
 	Hash       string         `json:"hash"`
@@ -178,6 +181,7 @@ func newRecord(e Entry, now time.Time) (Record, error) {
 		Profile:   SafeName(e.Profile),
 		Decision:  e.Decision,
 		Reason:    e.Reason,
+		Detail:    e.Detail,
 		Counts:    map[string]int{},
 	}
 	for k, n := range e.Counts {
@@ -266,6 +270,9 @@ func (r Record) check() error {
 	if (r.Decision == Blocked) != (r.Reason != "") || (r.Reason != "" && !reasons[r.Reason]) {
 		return bad("reason")
 	}
+	if r.Detail != "" && (!attachment.KnownDetail(r.Detail) || r.Decision != Blocked || r.Reason != "sanitize") {
+		return bad("detail")
+	}
 	for k, n := range r.Counts {
 		switch {
 		case n <= 0:
@@ -337,6 +344,9 @@ func (r Record) canonical() []byte {
 		b = strconv.AppendInt(b, int64(r.Counts[k]), 10)
 	}
 	b = append(b, `},`...)
+	if r.Detail != "" {
+		str("detail", r.Detail)
+	}
 	str("approval_id", r.ApprovalID)
 	b = append(b, `"prev_hash":`...)
 	b = strconv.AppendQuote(b, r.PrevHash)

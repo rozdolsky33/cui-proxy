@@ -105,3 +105,14 @@ func TestConfigViewShowsAudit(t *testing.T) {
 		t.Errorf("strict view %+v", v.Audit)
 	}
 }
+
+func TestConfigViewAttachmentPolicy(t *testing.T) {
+	d := testDeps(t)
+	for _, tc := range []struct{ mode, want string }{{"", "block"}, {"extract_text", "extract_text"}} {
+		d.Cfg().Policy.Attachments = tc.mode
+		rec := do(New(d), "GET", "/api/config", "", nil)
+		if !strings.Contains(rec.Body.String(), `"attachments":"`+tc.want+`"`) {
+			t.Fatalf("policy not visible: %s", rec.Body.String())
+		}
+	}
+}

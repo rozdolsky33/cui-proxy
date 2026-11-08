@@ -190,7 +190,7 @@ output. That can stop the agent's next turn even though SSH itself works.
 |---|---|---|
 | `422 reason=header ... rule=builtin.email` | Workspace metadata, another header, or query | v0.3.2 sanitizes `workspaces` and `cwd`; strict/explicit blocks and other header matches still block |
 | `422 reason=policy kind=rule_match` | Active profile and named blocking rule | Use masking only if appropriate, or narrow the offending custom rule; a strict exception is unavailable |
-| `422 reason=sanitize kind=bad_body` | Request shape/content | No blanket override. Images/files/audio, invalid JSON, or other unsupported representations can trigger it; capture a synthetic reproduction |
+| `422 reason=sanitize kind=bad_body` | Request shape/content | No blanket override. Attachments (see [safe text extraction](attachments.md)), audio, invalid JSON, or other unsupported representations can trigger it; capture a synthetic reproduction |
 | `Permission denied (publickey)` | SSH key/agent, GitHub identity and repository permissions | No |
 | Connection timeout, DNS failure, connection refused | Network, firewall, VPN, SSH endpoint | No |
 | Codex command approval/sandbox denial | The agent's execution permissions | No; approve the needed action through the supported permission flow |
@@ -254,6 +254,7 @@ there is no default upstream in the loader.
 | `upstreams.codex` | None; starter uses ChatGPT backend | Absolute base URL; no embedded credentials, query or fragment; HTTPS, or HTTP loopback for testing | Restart |
 | `policy.profile` | `sanitize` | `sanitize` or `strict` | Reload |
 | `policy.on_error` | `block` | `block` or restricted, unsafe `passthrough` behavior above | Reload |
+| `policy.attachments` (unreleased after v0.3.3) | `block` | `block` or `extract_text`; see [Attachment inspection](attachments.md) | Reloadable; local tools required for extraction |
 | `policy.unsupported` | `block` | Only `block` accepted | Fixed behavior |
 | `policy.max_body_bytes` | `20971520` (20 MiB) | Request body limit in bytes; positive integer; zero uses default, not unlimited | Reload |
 | `vault.mode` | `memory` | `memory` or encrypted `file` | Restart |
