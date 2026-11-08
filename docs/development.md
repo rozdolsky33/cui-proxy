@@ -14,7 +14,8 @@ go build -ldflags "-X main.version=v0.3.2" -o bin/cui-proxy ./cmd/cui-proxy
 ## Releasing (maintainers)
 
 ```sh
-git tag v0.3.2 && git push origin v0.3.2
+# Choose a NEW version after checking existing tags (v0.3.2 already exists).
+git tag vX.Y.Z && git push origin vX.Y.Z
 ```
 
 `.github/workflows/release.yml` runs vet and the race tests, builds the four

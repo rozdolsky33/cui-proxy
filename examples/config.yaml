@@ -10,7 +10,7 @@ upstreams:
 
 policy:
   # sanitize: detected values are masked with synthetic ones and restored in
-  #           the reply (nothing is refused unless a rule says action: block).
+  #           the reply; explicit block rules and unsupported content still block.
   # strict:   ANY detection blocks the whole request before it is forwarded.
   #           Use this where a policy forbids sending restricted data at all:
   #           cui-proxy policy init --profile strict

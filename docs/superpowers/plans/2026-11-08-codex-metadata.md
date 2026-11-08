@@ -1,5 +1,11 @@
 # Codex workspace metadata repair
 
+> Historical design/implementation record. Its original status and checklists
+> describe that work, not the current release. For implemented settings and
+> behavior, see [configuration](../../configuration.md) and
+> [documentation status](../../documentation-status.md).
+
+
 Goal: allow normal repository sessions without exposing detected workspace values.
 
 Design: an optional adapter header interface handles Codex turn metadata. Only

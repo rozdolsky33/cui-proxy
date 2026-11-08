@@ -7,6 +7,11 @@
 
 ## Context
 
+This context records the state before phases 1 and 2. Current releases include
+strict/per-rule blocking and persisted decision logs. Approval verification,
+account allowlists and policy locking remain unimplemented. Use the
+[configuration guide](../configuration.md) for accepted YAML fields.
+
 cui-proxy replaces sensitive values in Codex CLI traffic with synthetic ones
 and restores them in the response (see the design spec). That is **masking**.
 Organizations that handle government or other restricted data usually have
@@ -24,11 +29,11 @@ common (this paraphrases the typical shape, not any one policy):
 6. Suspected exposure is reported; use stops.
 7. Decisions can be shown to an auditor afterwards.
 
-Today the proxy covers part of requirement 2 (it masks what its detectors
-recognize), blocks what it cannot inspect (images, files, compressed bodies,
-unknown routes, headers or query strings that match a rule), and keeps only an
-in-memory activity feed plus plain, value-free log lines. It does not block on a match, does not know whether a
-use is approved, and keeps no durable record of decisions.
+At the time of this proposal, the proxy covered part of requirement 2 (masking
+what its detectors recognized), blocked what it could not inspect (images, files, compressed bodies,
+unknown routes, headers or query strings that match a rule), and kept only an
+in-memory activity feed plus plain, value-free log lines. It did not block on a
+match, verify approval, or keep a durable decision log.
 
 The problem: make the tool **enforce** what software can enforce, **record**
 what an auditor will ask for, **state plainly** what it cannot do, and stay

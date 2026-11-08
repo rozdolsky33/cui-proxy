@@ -144,11 +144,11 @@ flowchart LR
     checks --> adapter --> detect
     cfg -. "rules, loaded and hot-reloaded" .-> detect
     detect --> policy
-    policy -- "strict: any match" --> block["422 blocked<br/>names rule, never the value"]
+    policy -- "strict or rule action: block" --> block["422 blocked<br/>names rule, never the value"]
     block --> codex
-    policy -- "sanitize" --> synth
+    policy -- "effective action: sanitize" --> synth
     synth <--> vault
-    synth -- "2 request with fake values only" --> up
+    synth -- "2 request with detected values masked" --> up
     up -- "3 streamed response" --> restore
     restore <--> vault
     restore -- "4 response with real values" --> codex
@@ -164,9 +164,10 @@ In words:
    compressed body, bad headers) rather than forwarding it.
 2. The detectors find sensitive values using the built-in rules and your own
    dictionary. Under the `strict` profile any match blocks the request.
-   Under `sanitize` (the default) each value is swapped for a realistic
-   synthetic one, and the pair is stored in the vault.
-3. Only the sanitized request leaves your machine, over HTTPS.
+   Under `sanitize` (the default), detected values are swapped for synthetic
+   ones unless an explicit rule blocks. The pairs are stored in the vault.
+3. The masked request is forwarded over HTTPS; unmatched content and
+   documented inspection exceptions remain unchanged.
 4. As the response streams back, the restorer replaces synthetic values with
    the real ones from the vault, so tool calls run against your real systems.
 
@@ -227,11 +228,16 @@ Read these before relying on it. The full list is in [docs/limitations.md](docs/
 
 ## Documentation
 
+Operator guides below describe v0.3.2. Dated specs, plans and spikes are
+historical records; ADR proposals include features that have not shipped.
+See the [documentation status](docs/documentation-status.md) for that distinction.
+
 | I want to... | Read |
 |---|---|
+| Understand the purpose and current scope | [Executive overview](EXECUTIVE-OVERVIEW.md) |
 | Install, upgrade or uninstall (Homebrew, curl, manual) | [docs/install.md](docs/install.md) |
 | Use the menu-bar app | [docs/menubar.md](docs/menubar.md) |
-| Point Codex at the proxy, commands, dashboard, reload, vault | [docs/configuration.md](docs/configuration.md) |
+| Configure defaults, sanitize/strict, overrides, Git/SSH, reload and vault | [docs/configuration.md](docs/configuration.md) |
 | Choose `sanitize` or `strict` | [docs/policy.md](docs/policy.md) |
 | Understand a blocked request | [docs/block-diagnostics.md](docs/block-diagnostics.md) |
 | Audit what the proxy decided | [docs/decision-log.md](docs/decision-log.md) |
