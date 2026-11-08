@@ -60,15 +60,17 @@ Actions**.
 |---|---|
 | Pull request | Nothing. The build job validates the site, examples and offline manual. |
 | Push to `main` | `dev/`, the guide for unreleased changes. |
-| Release tag `vX.Y.Z` | `vX.Y.Z/`, and the `latest/` alias moves to it. The site root redirects to `latest/`. |
-| Manual run | Any version you name, optionally moving `latest/`. Use it to republish or to add a version that predates versioning. |
+| Release tag `vX.Y.Z` | `vX.Y.Z/`, and the `latest/` alias moves to it. The site root redirects to `latest/`. The tag run then starts a second, main-branch run that uploads the site, because Pages serves only deployments made from a branch. |
+| Manual run | Any version you name, optionally moving `latest/`. Use it to republish or to add a version that predates versioning. Tick **sync_only** to upload the `gh-pages` branch as it is without publishing anything. |
 
 The menu-bar app's **Online Documentation** item opens `vX.Y.Z/` for the
 installed release, so a release's pages must exist: the tag push publishes
 them automatically. `.github/workflows/docs.yml` builds with read-only
-repository access; only the publish job receives `contents: write` (to commit
-to `gh-pages`), `pages: write` and `id-token: write`. No personal access token
-is needed.
+repository access; the publish job receives `contents: write` (to commit to
+`gh-pages`), the deploy job `pages: write` and `id-token: write`, and the
+tag handoff job `actions: write` (to start the main-branch upload). No
+personal access token is needed. The `github-pages` environment must allow
+deployments from `main`; the tag policy only lets the tag run publish.
 
 To roll back a documentation change on `dev`, revert its commit through the
 normal review process. To fix a published release's pages, correct the source,
