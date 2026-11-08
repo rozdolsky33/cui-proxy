@@ -1,7 +1,7 @@
 package proxy
 
 // remedy says what would change a block, per reason. The wording follows the
-// README's "Block diagnostics" table and docs/verification.md; it names
+// docs/block-diagnostics.md table and docs/verification.md; it names
 // settings and actions, never request data.
 var remedy = map[string]string{
 	reasonClient: "use a native client with a loopback base URL; the proxy API does not accept browser requests or DNS-rebound host names.",
@@ -11,7 +11,7 @@ var remedy = map[string]string{
 		"strict/block rules, malformed metadata, and sensitive values in other headers, query strings or unchanged metadata fields still block. " +
 		"Use the reported kind and rule to diagnose the failure; never disable detection globally to allow a Git remote.",
 	reasonSanitize: "the body could not be sanitized. The proxy log line for this request names a kind and the rule " +
-		"(request blocked (reason=sanitize kind=... rule=...)); see the README's \"Block diagnostics\" for each kind.",
+		"(request blocked (reason=sanitize kind=... rule=...)); see docs/block-diagnostics.md for each kind.",
 	reasonUnrestorable: "the sanitized text would not restore even after downgrading. Rare: report the rule and kind from the proxy log line.",
 	reasonRoute: "Codex called an endpoint the adapter does not know (for example remote compaction). " +
 		"Unknown routes are always refused (policy.unsupported: block); see docs/verification.md.",

@@ -170,6 +170,6 @@ Next:
 
 Dashboard: http://127.0.0.1:8788/
 
-Read the README's "Known limitations" first: this tool reduces risk, it is
+Read the known limitations first (README, docs/limitations.md): this tool reduces risk, it is
 not a compliance control, and GOVSEC / ISSM approval is still required.
 `

@@ -79,8 +79,8 @@ One JSON object per line, keys always in this order:
 | `request_id` | 16 lowercase hex digits (8 random bytes), minted per request |
 | `adapter` | the adapter name (`codex`) |
 | `profile` | the active `policy.profile` (`sanitize` or `strict`) |
-| `decision` | `forwarded` (sent upstream unchanged), `sanitized` (sent with values masked) or `blocked` (never sent) |
-| `reason` | empty unless `blocked`; then one of `route`, `body_too_large`, `compressed`, `header`, `policy`, `sanitize`, `unrestorable`, `bad_request`, `internal` (the codes in the README's "Block diagnostics") |
+| `decision` | `forwarded` (no masking, or explicit body passthrough), `sanitized` (sent with values masked) or `blocked` (never sent) |
+| `reason` | empty unless `blocked`; then one of `route`, `body_too_large`, `compressed`, `header`, `policy`, `sanitize`, `unrestorable`, `bad_request`, `client`, `audit`, `internal` (the codes in [Block diagnostics](block-diagnostics.md)) |
 | `rule_ids` | sorted names of the rules that matched |
 | `counts` | per-rule match counts |
 | `approval_id` | always `""` for now (reserved for approvals, ADR 0001 phase 3) |
@@ -89,12 +89,18 @@ One JSON object per line, keys always in this order:
 
 Notes:
 
+- Successful `workspaces` and `cwd` metadata replacements share the request
+  vault and count alongside body replacements. Replacement counts are committed
+  only after the whole request is eligible for forwarding. Original paths and
+  remote URLs are never recorded.
+
 - For a `blocked` request with a rule, `rule_ids` holds the first blocking
   match and `counts` is `1`: scanning stops at that match.
-- A request forwarded **unsanitized** because `policy.on_error` is
+- A request whose body is forwarded **unsanitized** because `policy.on_error` is
   `passthrough` is recorded as `forwarded`, with the counts key
   `passthrough:<reason>` (for example `"passthrough:sanitize":1`) and no
-  rule ids. The proxy sets this marker in a separate field. It is never
+  body replacement counts. Successfully sanitized workspace metadata retains
+  its rule ids and counts alongside this marker. The proxy sets this marker in a separate field. It is never
   taken from a rule name, so a rule named `passthrough:sanitize` is recorded
   as the rule `passthrough_sanitize`.
 - **At most 64 rules per record.** A request that matches more distinct
@@ -376,7 +382,7 @@ for that request names the kind. An unknown id exits 1.
   usually faster. (Batching the syncs of concurrent requests would raise
   the cap; it is not implemented.)
 - It records the proxy's decisions only. Traffic that does not go through
-  the proxy is not in it (see the README's limitations and ADR 0001).
+  the proxy is not in it (see [limitations](limitations.md) and ADR 0001).
 - The record holds no `kind` (for `sanitize` blocks), no schema version
   field and no approval yet (`approval_id` is always empty). The ADR's
   operability section plans a versioned `v` field. It is not in this

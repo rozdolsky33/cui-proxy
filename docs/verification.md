@@ -35,6 +35,23 @@ This smoke covers text and a function tool call over HTTP/SSE. Long-session
 compaction, websocket transport, image input, and custom `apply_patch` events
 are outside this run's coverage. Existing content restrictions still apply.
 
+## Workspace metadata smoke (2026-11-08)
+
+The [recorded metadata run](verification-results/2026-11-08-metadata-fix.json)
+used a synthetic Git repository with an SSH remote and the saved default
+routing, without provider overrides. The installed v0.3.1 returned HTTP 422
+with reason `header`; the local v0.3.1+metadata.1 patch returned HTTP 200 and
+exact reply `PROBE_OK 10.20.30.15` under the same eight-rule policy. Its
+temporary audit chain verified. This is evidence for workspace metadata and
+fabricated prompt restoration, not every possible request body or transport.
+The metadata fix is included in v0.3.2.
+
+To repeat, use a scratch Git repository with a fabricated SSH remote such as
+`git@github.com:example/demo.git`, keep email detection enabled, and ask for
+an exact fabricated IP reply. Confirm successful restoration and metadata
+replacement counts. Strict or explicit block rules should still reject a
+matching remote. Never put real restricted values in a probe or its report.
+
 ## Repeat the smoke
 
 You run this by hand, once, on your own machine, with your own Codex login.
@@ -116,10 +133,10 @@ If something fails, check these in order:
 
 | Symptom | Meaning / what to change |
 |---|---|
-| Codex prints a 404 from the upstream, or the feed shows status 404 | The path mapping is wrong. The proxy sends `POST <upstream base> + /responses`, i.e. `https://chatgpt.com/backend-api/codex/responses`. Find the path Codex uses without the proxy (e.g. `RUST_LOG=codex_core=debug codex exec "say hi" </dev/null` against the default provider, and look for the request URL; debug logs can contain auth headers, so do not share them and delete them afterwards). Then change either `upstreams.codex` in the config (the base) or the route's `UpstreamPath` in `internal/adapter/codex/codex.go` (`Match`), and the README's Codex section to match. `GET /v1/models` maps to `<base>/models` the same way. |
+| Codex prints a 404 from the upstream, or the feed shows status 404 | The path mapping is wrong. The proxy sends `POST <upstream base> + /responses`, i.e. `https://chatgpt.com/backend-api/codex/responses`. Find the path Codex uses without the proxy (e.g. `RUST_LOG=codex_core=debug codex exec "say hi" </dev/null` against the default provider, and look for the request URL; debug logs can contain auth headers, so do not share them and delete them afterwards). Then change either `upstreams.codex` in the config (the base) or the route's `UpstreamPath` in `internal/adapter/codex/codex.go` (`Match`), and the "Point Codex at the proxy" section of [configuration.md](configuration.md) to match. `GET /v1/models` maps to `<base>/models` the same way. |
 | 401 / 403 from the upstream | The auth headers did not arrive. Check that `requires_openai_auth=true` is in the `-c` flag. The proxy forwards `Authorization` and `Chatgpt-Account-Id` untouched. |
-| 422 `header` block | A non-credential request header (e.g. `X-Codex-Turn-Metadata`, which carries the cwd) matched a rule. Headers are never rewritten, so this always blocks. A dictionary entry that matches part of the working directory's path blocks every request from that directory. Run from a directory whose path holds nothing sensitive. (Once this smoke confirms the header's shape, sanitizing it like the body can be considered; the behavior is unchanged for now.) |
-| 422 `sanitize` / `unrestorable` block | The body could not be sanitized. The error message and the log line name a kind and the rule, e.g. `reason=sanitize kind=pool_exhausted rule=builtin.ipv4`; see the README's "Block diagnostics". No value is ever printed. |
+| 422 `header` block | Codex `workspaces` and `cwd` metadata is sanitized using the active rules. Strict/block rules, malformed or oversized metadata, and detected values in unchanged metadata fields, other headers or queries still block. Inspect the reported kind and rule; do not disable email detection to allow SSH Git remotes. |
+| 422 `sanitize` / `unrestorable` block | The body could not be sanitized. The error message and the log line name a kind and the rule, e.g. `reason=sanitize kind=pool_exhausted rule=builtin.ipv4`; see [Block diagnostics](block-diagnostics.md). No value is ever printed. |
 | 403 `route` on an unexpected POST path, typically after a long session | Codex called an endpoint the adapter does not know, most likely remote compaction (it advertises `X-Codex-Beta-Features: remote_compaction_v2`; the path may be e.g. `/v1/responses/compact`). The feed shows the path as `(unmatched)`; find the real path with the debug log as in the 404 row. Add it as a `KindSanitize` route in `Match` in `internal/adapter/codex/codex.go` (its body is the same kind of history, so the request sanitizer applies). Note that a successful non-SSE response is refused until the adapter supports safe restoration for that format. |
 | 502 `upstream_redirect` | The upstream answered with a 3xx. The proxy never relays redirects, so the base URL is probably wrong (see the 404 row). |
 | 502 `stream_rewrite` or a stream cut mid-answer | An SSE event the rewriter could not handle. Note the event names from the open items below and report them. |
@@ -212,7 +229,7 @@ break at that line and exit 1. See [decision-log.md](decision-log.md).
 Write down, for this repo:
 
 1. Whether `https://chatgpt.com/backend-api/codex` + `/responses` worked. If
-   not, the base and path that did, plus the code/README change made.
+   not, the base and path that did, plus the code/docs change made.
 2. Codex CLI version (`codex --version`).
 3. Answers to the open items below, including the compaction path (6b) and
    the `X-Codex-Turn-Metadata` shape.
@@ -238,7 +255,8 @@ sessions can exercise the additional cases below:
   except 304 into a 502 anyway).
 - **Header shapes**: the exact names and contents of `Session-Id`,
   `Thread-Id`, `X-Codex-Turn-Metadata` and `X-Codex-Beta-Features`. These are
-  scanned and can cause a `header` block.
+  inspected and can cause a `header` block; `workspaces` and `cwd` in turn
+  metadata are sanitized. Additional client shapes need synthetic verification.
 - **Additional transports and content**: non-streaming, websocket, compaction
   and image requests are outside the recorded smoke coverage. Image parts are blocked by design. Remote compaction
   (`remote_compaction_v2`) probably uses its own endpoint, which today
