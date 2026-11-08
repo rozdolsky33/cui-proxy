@@ -1,8 +1,31 @@
 name: ci
 
+# Documentation-only changes do not run the Go matrix, fuzz smoke, or packaging
+# jobs. The Documentation workflow still builds the site, rebuilds the CLI, and
+# checks the embedded offline manual against docs/ on every change, so docs
+# drift is caught there. Keep both paths-ignore lists identical.
 on:
   push:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'scripts/manual-assets/**'
+      - 'mkdocs.yml'
+      - 'mkdocs-offline.yml'
+      - 'requirements-docs.txt'
+      - 'LICENSE'
+      - '.github/workflows/docs.yml'
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'scripts/manual-assets/**'
+      - 'mkdocs.yml'
+      - 'mkdocs-offline.yml'
+      - 'requirements-docs.txt'
+      - 'LICENSE'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
