@@ -29,6 +29,10 @@ the release is published:
 scripts/update-tap.sh v0.4.0      # needs `gh` logged in with push access to the tap
 ```
 
+The same tag runs `.github/workflows/docs.yml`, which publishes the manual
+under `vX.Y.Z/` and moves the `latest/` alias to it; see
+[publishing and rollback](contributing-docs.md#publishing-and-rollback).
+
 `scripts/package.sh <version>` builds the same archives locally into `dist/`
 for a dry run. The formula is always generated from the checksums of the
 published release (`scripts/make-formula.sh`), never from a local build.

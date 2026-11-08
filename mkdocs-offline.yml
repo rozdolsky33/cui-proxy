@@ -9,3 +9,6 @@ plugins:
 extra:
   polyfills:
     - assets/iframe-worker.js
+  # The bundled manual is a single version; no versions.json to fetch.
+  version:
+    provider: none

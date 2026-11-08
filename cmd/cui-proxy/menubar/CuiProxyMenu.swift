@@ -475,6 +475,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         menu.addItem(item("Open Dashboard", #selector(openDashboard), key: "d", enabled: running))
         menu.addItem(item("Open Documentation", #selector(openDocumentation), key: "?"))
+        menu.addItem(item("Online Documentation", #selector(openOnlineDocumentation)))
         menu.addItem(item("Copy Codex command", #selector(copyCodex), key: "c", enabled: info != nil))
         menu.addItem(.separator())
 
@@ -511,6 +512,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         alert.alertStyle = .warning
         NSApp.activate(ignoringOtherApps: true)
         alert.runModal()
+    }
+
+    @objc private func openOnlineDocumentation() {
+        NSWorkspace.shared.open(onlineDocumentationURL())
     }
 
     @objc private func copyCodex() {
@@ -637,6 +642,13 @@ func documentationURL() -> URL? {
     return url
 }
 
+// The published manual for the installed version, written to Info.plist by
+// `cui-proxy menubar install`. Falls back to the latest release.
+func onlineDocumentationURL() -> URL {
+    if let s = infoString("CUIProxyOnlineDocs"), let u = URL(string: s), u.scheme == "https" { return u }
+    return URL(string: "https://rozdolsky33.github.io/cui-proxy/latest/")!
+}
+
 // MARK: - Entry point
 
 if CommandLine.arguments.contains("--check") {
@@ -646,6 +658,7 @@ if CommandLine.arguments.contains("--check") {
     print("binary=\(b ?? "NOT FOUND")")
     print("config=\(c)")
     print("documentation_url=\(documentationURL()?.absoluteString ?? "NOT FOUND")")
+    print("online_documentation_url=\(onlineDocumentationURL().absoluteString)")
     print("config_exists=\(FileManager.default.fileExists(atPath: c))")
     if let b = b {
         switch loadInfo(binary: b, config: c) {

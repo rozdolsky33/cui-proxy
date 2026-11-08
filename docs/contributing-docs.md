@@ -50,15 +50,32 @@ when a current guide needs the historical context.
 
 ## Publishing and rollback
 
-The repository's Pages setting must select **GitHub Actions** as its build
-source. `.github/workflows/docs.yml` builds with read-only repository access.
-Only its main-branch deployment job receives `pages: write` and `id-token: write`.
-No personal access token is needed to publish the artifact.
+The site is versioned with [mike](https://github.com/jimporter/mike). Every
+published version lives in its own folder of the `gh-pages` branch, which the
+**Documentation** workflow uploads as the Pages artifact; the branch is storage,
+not the Pages source. The repository's Pages setting must stay on **GitHub
+Actions**.
 
-To republish, run the **Documentation** workflow on `main`. To roll back a
-documentation change, revert its commit through the normal review process;
-the resulting main-branch run publishes the reverted content. The Go release
-workflow remains separate, so publishing the manual does not release a binary.
+| Event | What is published |
+|---|---|
+| Pull request | Nothing. The build job validates the site, examples and offline manual. |
+| Push to `main` | `dev/`, the guide for unreleased changes. |
+| Release tag `vX.Y.Z` | `vX.Y.Z/`, and the `latest/` alias moves to it. The site root redirects to `latest/`. |
+| Manual run | Any version you name, optionally moving `latest/`. Use it to republish or to add a version that predates versioning. |
+
+The menu-bar app's **Online Documentation** item opens `vX.Y.Z/` for the
+installed release, so a release's pages must exist: the tag push publishes
+them automatically. `.github/workflows/docs.yml` builds with read-only
+repository access; only the publish job receives `contents: write` (to commit
+to `gh-pages`), `pages: write` and `id-token: write`. No personal access token
+is needed.
+
+To roll back a documentation change on `dev`, revert its commit through the
+normal review process. To fix a published release's pages, correct the source,
+then run the workflow by hand with that version. To remove a version entirely,
+run `mike delete --push vX.Y.Z` locally and rerun the workflow so the artifact
+matches the branch. The Go release workflow remains separate, so publishing
+the manual does not release a binary.
 
 
 ## Keep the bundled offline manual current

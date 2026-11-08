@@ -96,6 +96,22 @@ func menubarAppsDir(dir string) (string, error) {
 	return filepath.Join(home, "Applications"), nil
 }
 
+// menubarDocsSite is the published, versioned manual. Each release is served
+// under its tag (v0.4.0/) and the newest release under latest/.
+const menubarDocsSite = "https://rozdolsky33.github.io/cui-proxy/"
+
+var menubarReleaseVersion = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$`)
+
+// menubarOnlineDocsURL is the online manual matching ver. A release build opens
+// the pages for its own version; anything else (dev, unknown) opens the latest
+// release.
+func menubarOnlineDocsURL(ver string) string {
+	if menubarReleaseVersion.MatchString(ver) {
+		return menubarDocsSite + ver + "/"
+	}
+	return menubarDocsSite + "latest/"
+}
+
 // menubarInfoPlist is the app's Info.plist. binary and config are hints the
 // app falls back on when its own search finds nothing; both are XML-escaped.
 func menubarInfoPlist(binary, config, ver string) []byte {
@@ -124,6 +140,7 @@ func menubarInfoPlist(binary, config, ver string) []byte {
   <key>NSHighResolutionCapable</key><true/>
   <key>CUIProxyBinary</key><string>` + esc(binary) + `</string>
   <key>CUIProxyConfig</key><string>` + esc(config) + `</string>
+  <key>CUIProxyOnlineDocs</key><string>` + esc(menubarOnlineDocsURL(ver)) + `</string>
 </dict>
 </plist>
 `)

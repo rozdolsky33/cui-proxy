@@ -1,5 +1,9 @@
 site_name: cui-proxy
-site_description: Set up, customize, and operate a local sanitizing proxy for Codex.
+site_description: >-
+  Local, fail-closed proxy for Codex CLI that replaces sensitive data with
+  synthetic values before it reaches the model and restores the originals in
+  streamed responses, so your coding agent's tool calls still run against real
+  systems.
 site_url: https://rozdolsky33.github.io/cui-proxy/
 repo_url: https://github.com/rozdolsky33/cui-proxy
 repo_name: rozdolsky33/cui-proxy
@@ -49,6 +53,13 @@ theme:
     - toc.follow
 plugins:
   - search
+# Versioned publishing: mike serves each release under its tag (v0.4.0/) and the
+# newest release under latest/; pushes to main publish under dev/. The version
+# selector reads versions.json from the site root.
+extra:
+  version:
+    provider: mike
+    default: latest
 markdown_extensions:
   - admonition
   - attr_list

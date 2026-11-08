@@ -1,10 +1,24 @@
 name: Documentation
 
+# Pull requests and pushes validate the manual. Pushes to main publish it as
+# the dev version; a release tag publishes its own version and moves the latest
+# alias. Run the workflow by hand to publish or republish any version.
 on:
   push:
     branches: [main]
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
   pull_request:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (vX.Y.Z or dev). Empty: dev, or the tag being built.'
+        required: false
+        default: ''
+      latest:
+        description: 'Also move the latest alias to this version'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -33,16 +47,14 @@ jobs:
         run: python scripts/check-docs.py --binary bin/cui-proxy
       - name: Build documentation and check links
         run: mkdocs build --strict
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
 
-  deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+  publish:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
+      contents: write # mike commits each built version to the gh-pages branch
       pages: write
       id-token: write
     concurrency:
@@ -52,6 +64,61 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-docs.txt
+      - name: Install documentation tools
+        run: pip install -r requirements-docs.txt
+      - name: Choose the version to publish
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_LATEST: ${{ inputs.latest }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            version="$INPUT_VERSION"
+            latest="$INPUT_LATEST"
+          elif [ "$GITHUB_REF_TYPE" = tag ]; then
+            version="$GITHUB_REF_NAME"
+            latest=true
+          else
+            version=dev
+            latest=false
+          fi
+          case "$version" in
+            dev) ;;
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "refusing to publish unexpected version '$version'" >&2; exit 1 ;;
+          esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+      - name: Publish ${{ steps.version.outputs.version }} to the gh-pages branch
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          LATEST: ${{ steps.version.outputs.latest }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin gh-pages --depth=1 || true
+          if [ "$LATEST" = true ]; then
+            mike deploy --push --update-aliases --alias-type copy "$VERSION" latest
+            mike set-default --push latest
+          else
+            mike deploy --push --alias-type copy "$VERSION"
+          fi
+      - name: Collect every published version
+        # mike builds into site/, so the artifact is assembled elsewhere.
+        run: |
+          mkdir pages
+          git archive gh-pages | tar -x -C pages
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Deploy documentation
