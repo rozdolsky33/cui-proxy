@@ -102,6 +102,7 @@ nav:
   - Configure:
       - Configuration walkthrough: configuration.md
       - Rules and synthetic values: rules.md
+      - OCI and AWS CLI rules: cloud-cli.md
       - Sanitize and strict policies: policy.md
       - PDF and image inspection: attachments.md
       - Configuration recipes: recipes.md

@@ -85,6 +85,8 @@ rules:
 ```
 
 This detects key-ID shapes, not every AWS credential or secret-key format.
+For OCI configuration fields and AWS credential assignments, use the
+[OCI and AWS CLI rules guide](cloud-cli.md) and its complete recipe.
 General hostnames, local paths, usernames, and names specific to your
 organization need your own rules. A hostname that encodes an address is not
 an IP literal. See [limitations](limitations.md).
