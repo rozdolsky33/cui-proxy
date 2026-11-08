@@ -16,7 +16,7 @@
         <link rel="prev" href="../configuration/">
       
       
-        <link rel="next" href="../policy/">
+        <link rel="next" href="../cloud-cli/">
       
       
         
@@ -593,6 +593,8 @@
       
         
       
+        
+      
     
     
     
@@ -822,6 +824,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cloud-cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OCI and AWS CLI rules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1828,6 +1858,8 @@ adds this separate rule (<strong>partial YAML edit</strong>):</p>
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="nt">synth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">secret</span>
 </code></pre></div>
 <p>This detects key-ID shapes, not every AWS credential or secret-key format.
+For OCI configuration fields and AWS credential assignments, use the
+<a href="../cloud-cli/">OCI and AWS CLI rules guide</a> and its complete recipe.
 General hostnames, local paths, usernames, and names specific to your
 organization need your own rules. A hostname that encodes an address is not
 an IP literal. See <a href="../limitations/">limitations</a>.</p>
@@ -2048,13 +2080,13 @@ to find the effective rule behind a block. For a complete first run, use the
         
         
           
-          <a href="../policy/" class="md-footer__link md-footer__link--next" aria-label="Next: Sanitize and strict policies">
+          <a href="../cloud-cli/" class="md-footer__link md-footer__link--next" aria-label="Next: OCI and AWS CLI rules">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Sanitize and strict policies
+                OCI and AWS CLI rules
               </div>
             </div>
             <div class="md-footer__button md-icon">
