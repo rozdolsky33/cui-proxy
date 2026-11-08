@@ -24,7 +24,7 @@ metrics count blocks by reason only.
 | `pseudonym` | no synthetic can be made for the value (e.g. an invalid CIDR from a custom rule) | fix the rule's pattern or `synth` class |
 | `rule_match` | a blocking rule matched (code `policy` for the body, `header` for metadata: strict profile or `action: block`) | expected: remove the value, or use the `sanitize` profile / a rule without `action: block` if masking is allowed |
 | `unrestorable` | the sanitized text would not restore even after downgrading (code `unrestorable`) | rare: report the rule and kind from the log line |
-| `bad_body` | invalid JSON/UTF-8 or unsupported content; for metadata also invalid shape, duplicate fields/headers, over 64 KiB, or a match in an unchanged field | check the request shape and reported rule using fabricated input |
+| `bad_body` | invalid JSON/UTF-8 or unsupported content; for metadata also invalid shape, repeated headers, over 64 KiB, or a match in an unchanged field | check the request shape and reported rule using fabricated input |
 | `depth` | JSON nested deeper than 64 levels | expected for pathological input |
 | `other` | any other failure | check the log line |
 
