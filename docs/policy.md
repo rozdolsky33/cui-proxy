@@ -76,4 +76,4 @@ Why this design, and what is deferred: [ADR 0001](https://github.com/rozdolsky33
 
 For complete defaults, file locations and examples of mixed masking/blocking,
 see the [configuration walkthrough](configuration.md#sanitize-strict-and-overrides).
-There is no per-value allowlist or individual built-in detector toggle in v0.4.0.
+There is no per-value allowlist or individual built-in detector toggle in v0.5.0.

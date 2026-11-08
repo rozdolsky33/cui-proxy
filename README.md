@@ -193,6 +193,7 @@ and are never stored.
 |---|---|
 | Run Codex through the proxy | Menu bar: **Copy Codex command**, paste it. Or set it permanently: [Point Codex at the proxy](docs/configuration.md#point-codex-at-the-proxy). |
 | Read the manual offline (macOS) | Menu bar: **Open Documentation**; bundled with the app from v0.4.0. |
+| Read the published manual for my version (macOS) | Menu bar: **Online Documentation** (from v0.5.0); opens the pages for the installed release. |
 | See what is happening | Menu bar: **Open Dashboard**, or <http://127.0.0.1:8788/>. |
 | Add a sensitive name | Add a line to `~/.config/cui-proxy/hosts.txt`, then **Reload rules** (menu bar) or `kill -HUP <pid>`. No restart. |
 | Preview what the rules do | `echo 'ssh admin@10.20.30.15' \| cui-proxy test-rules -config ~/.config/cui-proxy/config.yaml` |
@@ -243,7 +244,7 @@ Read these before relying on it. The full list is in [docs/limitations.md](docs/
 
 The [documentation site](https://rozdolsky33.github.io/cui-proxy/) provides a searchable
 manual with tutorials, copyable configurations, dashboard screenshots and a
-request-lifecycle walkthrough. Operator guides below describe v0.4.0. On macOS, **Open Documentation** in the menu bar opens the bundled offline manual. Dated specs, plans and spikes are
+request-lifecycle walkthrough. Operator guides below describe v0.5.0. On macOS, **Open Documentation** in the menu bar opens the bundled offline manual and **Online Documentation** opens the published pages for the installed version. Dated specs, plans and spikes are
 historical records; ADR proposals include features that have not shipped.
 See the [documentation status](docs/documentation-status.md) for that distinction.
 
