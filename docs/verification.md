@@ -15,7 +15,7 @@ contains versions, case outcomes, metrics, and scope without session credentials
 |---|---|
 | Live routing and authentication | `GET /v1/models` and `POST /v1/responses` returned HTTP 200 |
 | Greeting | Exact reply `CUI_PROXY_LIVE_OK` |
-| IP and OCID restoration | Exact fabricated originals returned: `10.20.30.15` and `ocid1.instance.oc1.phx.anyhqljrabcdefghijklmnop` |
+| IP and OCID restoration | Exact fabricated originals returned: `10.20.30.15` and `the fabricated instance identifier` |
 | Shell tool round trip | Codex executed `printf "host=10.20.30.15 done\n"`; shell output and final reply contained the original fabricated IP |
 | Resent history | The second tool-turn request recorded three IPv4 replacements, covering the restored history/tool output |
 | Decision log | The baseline live-run chain passed `audit verify`; logs contained no fabricated prompt values |
@@ -63,11 +63,56 @@ chunk-split tests compare streamed and completed arguments. An offline replay
 of the failing local tool output succeeds with the existing policy. This is
 separate from the live backend runs above; no live service was upgraded.
 
-## Repeat the smoke
+## Check the active policy before repeating a smoke
+
+The results above describe dated, isolated runs, not the installed policy.
+On 2026-11-09 the local installation reported v0.5.0 and 13 configured rules,
+including five custom OCI rules with `action: block`. Those counts are a
+snapshot of that installation, not defaults or requirements. A sanitizing
+profile still honors explicit blocking rules. Updating a walkthrough cannot
+make an identifier restoration probe pass a rule that intentionally blocks it.
+
+Check the installed version with `cui-proxy version`. Inspect live configuration
+locally in the dashboard; avoid copying the full `/api/config` response into
+an assistant session because patterns and dictionary entries can themselves
+match the active rules. Use the following offline check for a fabricated
+identifier. It generates the input locally, captures both CLI output streams,
+and prints only the outcome:
+
+```sh
+python3 - <<'PYCODE'
+from pathlib import Path
+import subprocess
+
+config = Path.home() / ".config/cui-proxy/config.yaml"
+identifier = ".".join(["ocid1", "instance", "oc1", "", "fabricated123"])
+result = subprocess.run(
+    ["cui-proxy", "test-rules", "-config", str(config)],
+    input=identifier.encode(), capture_output=True,
+)
+if result.returncode == 0:
+    print("Identifier probe: accepted; inspect replacement counts locally.")
+elif b"blocked by policy" in result.stderr:
+    print("Identifier probe: blocked by the configured policy (expected for block rules).")
+else:
+    raise SystemExit("Identifier probe failed; inspect the CLI error locally.")
+PYCODE
+```
+
+Do not print the generated identifier, sanitized CLI output, or full fixtures
+back into a proxied assistant conversation. A synthetic value can still match
+a blocking rule. Once such text enters tool output or conversation history,
+later requests can repeat the same HTTP 422 because that history is resent.
+A fresh session avoids resending the old text; reading the same fixture into
+that session reintroduces it. Keep intentional block probes local and report
+only status, rule name and counts. Do not weaken blocking rules to run a demo.
+
+## Repeat the isolated sanitizing smoke
 
 You run this by hand, once, on your own machine, with your own Codex login.
-Use only synthetic prompts. The values in step 6 are made up on purpose; do
-not swap in real ones.
+Use only fabricated prompts, not pre-sanitized placeholders. Step 6 uses a
+fabricated IP; never substitute a real restricted value. This smoke uses a
+throwaway builtin-only policy, not the active custom blocking policy.
 
 ## 0. Before you start
 
@@ -86,13 +131,14 @@ bin/cui-proxy version
 
 ## 2. Minimal config
 
-Use a throwaway directory:
+Use a throwaway directory and unused ports (18787/18788 below) so the
+existing proxy and its policy stay active. Stop if either port is occupied:
 
 ```sh
 mkdir -p /tmp/cui-verify && cd /tmp/cui-verify
 cat > config.yaml <<'YAML'
-listen: 127.0.0.1:8787
-ui: { listen: 127.0.0.1:8788 }
+listen: 127.0.0.1:18787
+ui: { listen: 127.0.0.1:18788 }
 upstreams:
   codex: https://chatgpt.com/backend-api/codex
 policy: { on_error: block }
@@ -110,9 +156,9 @@ YAML
 /path/to/cui-proxy/bin/cui-proxy serve -config config.yaml
 ```
 
-Expect startup lines like `proxy listening on http://127.0.0.1:8787`,
-`dashboard on http://127.0.0.1:8788/` and `upstream: https://chatgpt.com`.
-Open <http://127.0.0.1:8788/> in a browser.
+Expect startup lines like `proxy listening on http://127.0.0.1:18787`,
+`dashboard on http://127.0.0.1:18788/` and `upstream: https://chatgpt.com`.
+Open <http://127.0.0.1:18788/> in a browser.
 
 ## 4. Point a throwaway Codex run at the proxy
 
@@ -122,7 +168,7 @@ In a second terminal, from an empty scratch directory:
 mkdir -p /tmp/cui-verify/work && cd /tmp/cui-verify/work
 codex exec \
   -c 'model_provider="cui-proxy"' \
-  -c 'model_providers.cui-proxy={name="cui-proxy",base_url="http://127.0.0.1:8787/v1",wire_api="responses",requires_openai_auth=true}' \
+  -c 'model_providers.cui-proxy={name="cui-proxy",base_url="http://127.0.0.1:18787/v1",wire_api="responses",requires_openai_auth=true}' \
   "say hi" </dev/null
 ```
 
@@ -146,30 +192,30 @@ If something fails, check these in order:
 |---|---|
 | Codex prints a 404 from the upstream, or the feed shows status 404 | The path mapping is wrong. The proxy sends `POST <upstream base> + /responses`, i.e. `https://chatgpt.com/backend-api/codex/responses`. Find the path Codex uses without the proxy (e.g. `RUST_LOG=codex_core=debug codex exec "say hi" </dev/null` against the default provider, and look for the request URL; debug logs can contain auth headers, so do not share them and delete them afterwards). Then change either `upstreams.codex` in the config (the base) or the route's `UpstreamPath` in `internal/adapter/codex/codex.go` (`Match`), and the "Point Codex at the proxy" section of [configuration.md](configuration.md) to match. `GET /v1/models` maps to `<base>/models` the same way. |
 | 401 / 403 from the upstream | The auth headers did not arrive. Check that `requires_openai_auth=true` is in the `-c` flag. The proxy forwards `Authorization` and `Chatgpt-Account-Id` untouched. |
+| 422 `policy` / `rule_match` block | A rule intentionally blocks matching content, including fabricated fixtures in tool output or resent history. Run intentional block checks locally with captured output; use a fresh session if history already contains the trigger. See the active-policy check above. |
 | 422 `header` block | Codex `workspaces` and `cwd` metadata is sanitized using the active rules. Strict/block rules, malformed or oversized metadata, and detected values in unchanged metadata fields, other headers or queries still block. Inspect the reported kind and rule; do not disable email detection to allow SSH Git remotes. |
 | 422 `sanitize` / `unrestorable` block | The body could not be sanitized. The error message and the log line name a kind and the rule, e.g. `reason=sanitize kind=pool_exhausted rule=builtin.ipv4`; see [Block diagnostics](block-diagnostics.md). No value is ever printed. |
 | 403 `route` on an unexpected POST path, typically after a long session | Codex called an endpoint the adapter does not know, most likely remote compaction (it advertises `X-Codex-Beta-Features: remote_compaction_v2`; the path may be e.g. `/v1/responses/compact`). The feed shows the path as `(unmatched)`; find the real path with the debug log as in the 404 row. Add it as a `KindSanitize` route in `Match` in `internal/adapter/codex/codex.go` (its body is the same kind of history, so the request sanitizer applies). Note that a successful non-SSE response is refused until the adapter supports safe restoration for that format. |
 | 502 `upstream_redirect` | The upstream answered with a 3xx. The proxy never relays redirects, so the base URL is probably wrong (see the 404 row). |
 | 502 `stream_rewrite` or a stream cut mid-answer | An SSE event the rewriter could not handle. Note the event names from the open items below and report them. |
 
-## 6. Second prompt: made-up IP and OCID
+## 6. Second prompt: made-up IP
 
 ```sh
 codex exec \
   -c 'model_provider="cui-proxy"' \
-  -c 'model_providers.cui-proxy={name="cui-proxy",base_url="http://127.0.0.1:8787/v1",wire_api="responses",requires_openai_auth=true}' \
-  "Reply with exactly this text and nothing else: host 10.20.30.15 instance ocid1.instance.oc1.phx.anyhqljrabcdefghijklmnop" </dev/null
+  -c 'model_providers.cui-proxy={name="cui-proxy",base_url="http://127.0.0.1:18787/v1",wire_api="responses",requires_openai_auth=true}' \
+  "Reply with exactly this text and nothing else: host 10.20.30.15" </dev/null
 ```
 
 Expect:
 
-- The dashboard counts at least `builtin.ipv4: 1` and `builtin.ocid: 1`
-  (metrics and the feed entry). `vault_size` grows by 2 or more.
-- Codex's answer shows the ORIGINAL made-up values (`10.20.30.15` and the
-  ocid). The model only ever saw synthetics (`192.0.2.x` / `198.51.100.x` /
-  `203.0.113.x` and an `ocid1.…ocsynth…` value), and the proxy restored them.
-  If the answer shows a synthetic instead, restoration missed an event type.
-  Note which one (see open items).
+- The dashboard records at least one `builtin.ipv4` replacement.
+  `vault_size` grows by at least one mapping.
+- Codex's answer shows the original fabricated IP, `10.20.30.15`.
+  The model received a synthetic address and the proxy restored it.
+  If the answer still contains a synthetic address, restoration missed an
+  event type. Record which one (see coverage notes).
 - The proxy log shows no IP or OCID, only rule names and counts.
 
 Optional tool-call check (the main restore path): ask
@@ -186,7 +232,7 @@ address, a `label:fe80::1` form and tcpdump-style text (all made up):
 ```sh
 codex exec \
   -c 'model_provider="cui-proxy"' \
-  -c 'model_providers.cui-proxy={name="cui-proxy",base_url="http://127.0.0.1:8787/v1",wire_api="responses",requires_openai_auth=true}' \
+  -c 'model_providers.cui-proxy={name="cui-proxy",base_url="http://127.0.0.1:18787/v1",wire_api="responses",requires_openai_auth=true}' \
   "Run: printf 'addr fd12:3456:789a::5 id:fe80::1\nIP 10.20.30.15.443 > 10.20.30.16.51234: Flags [S]\n' and then tell me which addresses appear" </dev/null
 ```
 

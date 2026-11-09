@@ -196,3 +196,16 @@ For a useful report, include the binary version, fabricated minimal input,
 profile/effective rule action, error reason/kind, and which local or end-to-end
 check reproduced it. Share no real sensitive values. Report suspected bypasses
 through the repository's private vulnerability-reporting process.
+
+### Repeated policy blocks after reading a fixture
+
+A fabricated identifier or credential example can match an explicit blocking
+rule. If a tool prints it into a proxied assistant session, the next request
+can fail with HTTP 422, `reason=policy kind=rule_match`. Retrying can repeat the
+failure because conversation history includes the same tool output.
+
+Reproduce with `cui-proxy test-rules` locally, capture stdout and stderr, and
+report only the status and rule name. Keep matching fixtures and full config
+responses out of the session. Start a fresh session if the existing history
+contains the trigger, and avoid reading that fixture back into it. Preserve
+intentional blocking rules. See the [active-policy verification check](verification.md#check-the-active-policy-before-repeating-a-smoke).
