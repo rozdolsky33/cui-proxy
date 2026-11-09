@@ -1,0 +1,2365 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Local, fail-closed proxy for Codex CLI that replaces sensitive data with synthetic values before it reaches the model and restores the originals in streamed responses, so your coding agent's tool calls still run against real systems.">
+      
+      
+      
+        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.5.1/verification/">
+      
+      
+        <link rel="prev" href="../assurance/">
+      
+      
+        <link rel="next" href="../documentation-status/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Verification evidence - cui-proxy</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../assets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#manual-verification-against-the-real-codex-cli" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="cui-proxy" class="md-header__button md-logo" aria-label="cui-proxy" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 11c0 5.55-3.84 10.74-9 12-5.16-1.26-9-6.45-9-12V5l9-4 9 4zm-9 10c3.75-1 7-5.46 7-9.78V6.3l-7-3.12L5 6.3v4.92C5 15.54 8.25 20 12 21m-2-4-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            cui-proxy
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Verification evidence
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/rozdolsky33/cui-proxy" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    rozdolsky33/cui-proxy
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../configuration/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Configure
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../dashboard/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Operate
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../architecture/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Understand
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../development/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Contribute
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="cui-proxy" class="md-nav__button md-logo" aria-label="cui-proxy" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 11c0 5.55-3.84 10.74-9 12-5.16-1.26-9-6.45-9-12V5l9-4 9 4zm-9 10c3.75-1 7-5.46 7-9.78V6.3l-7-3.12L5 6.3v4.92C5 15.54 8.25 20 12 21m-2-4-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9"/></svg>
+
+    </a>
+    cui-proxy
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/rozdolsky33/cui-proxy" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    rozdolsky33/cui-proxy
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href=".." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install and upgrade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    End-to-end tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../codex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connect Codex
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configure
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configure
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration walkthrough
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rules and synthetic values
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cloud-cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OCI and AWS CLI rules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../policy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sanitize and strict policies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../attachments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PDF and image inspection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../recipes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration recipes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    YAML and CLI reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operate
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operate
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard walkthrough
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../menubar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    macOS menu bar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test your setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-log/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decision log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../block-diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Block diagnostics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Understand
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Understand
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Life of a request
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../limitations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capabilities and limitations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../assurance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security and assurance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Verification evidence
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Verification evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#recorded-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recorded results
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workspace-metadata-smoke-2026-11-08" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workspace metadata smoke (2026-11-08)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#json-escape-dataflow-regression-2026-11-08" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        JSON escape dataflow regression (2026-11-08)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#check-the-active-policy-before-repeating-a-smoke" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check the active policy before repeating a smoke
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#repeat-the-isolated-sanitizing-smoke" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Repeat the isolated sanitizing smoke
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0-before-you-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0. Before you start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Build
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-minimal-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Minimal config
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-start-the-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Start the proxy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-point-a-throwaway-codex-run-at-the-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Point a throwaway Codex run at the proxy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-what-to-look-for-first-prompt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. What to look for (first prompt)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-second-prompt-made-up-ip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Second prompt: made-up IP
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Second prompt: made-up IP">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#6a-tool-output-with-addresses-downgrade-and-addrport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6a. Tool output with addresses (downgrade and addr.port)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6b-long-session-remote-compaction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6b. Long session (remote compaction)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6c-decision-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6c. Decision log
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-record-the-result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Record the result
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#coverage-notes-and-follow-up-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coverage notes and follow-up checks
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../documentation-status/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation status
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contribute
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build and release
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing-docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintain the documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#recorded-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recorded results
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workspace-metadata-smoke-2026-11-08" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workspace metadata smoke (2026-11-08)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#json-escape-dataflow-regression-2026-11-08" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        JSON escape dataflow regression (2026-11-08)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#check-the-active-policy-before-repeating-a-smoke" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check the active policy before repeating a smoke
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#repeat-the-isolated-sanitizing-smoke" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Repeat the isolated sanitizing smoke
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0-before-you-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0. Before you start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Build
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-minimal-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Minimal config
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-start-the-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Start the proxy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-point-a-throwaway-codex-run-at-the-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Point a throwaway Codex run at the proxy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-what-to-look-for-first-prompt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. What to look for (first prompt)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-second-prompt-made-up-ip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Second prompt: made-up IP
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Second prompt: made-up IP">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#6a-tool-output-with-addresses-downgrade-and-addrport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6a. Tool output with addresses (downgrade and addr.port)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6b-long-session-remote-compaction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6b. Long session (remote compaction)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6c-decision-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6c. Decision log
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-record-the-result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Record the result
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#coverage-notes-and-follow-up-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coverage notes and follow-up checks
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/rozdolsky33/cui-proxy/edit/main/docs/verification.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="manual-verification-against-the-real-codex-cli">Manual verification against the real Codex CLI<a class="headerlink" href="#manual-verification-against-the-real-codex-cli" title="Permanent link">&para;</a></h1>
+<p><strong>Status: live backend smoke passed on 2026-11-07.</strong> Built from this checkout
+on macOS arm64 with Go 1.26.10; exercised Codex CLI 0.167.0, ChatGPT login,
+model <code>gpt-6-astra</code>, and reasoning effort <code>low</code>. Only fabricated prompts were
+used, from an empty scratch directory, with command-line provider overrides;
+the global Codex configuration was unchanged.</p>
+<h2 id="recorded-results">Recorded results<a class="headerlink" href="#recorded-results" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/rozdolsky33/cui-proxy/blob/main/docs/verification-results/2026-11-07-live-smoke.json">Recorded run summary</a>
+contains versions, case outcomes, metrics, and scope without session credentials.</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Observed result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Live routing and authentication</td>
+<td><code>GET /v1/models</code> and <code>POST /v1/responses</code> returned HTTP 200</td>
+</tr>
+<tr>
+<td>Greeting</td>
+<td>Exact reply <code>CUI_PROXY_LIVE_OK</code></td>
+</tr>
+<tr>
+<td>IP and OCID restoration</td>
+<td>Exact fabricated originals returned: <code>10.20.30.15</code> and <code>the fabricated instance identifier</code></td>
+</tr>
+<tr>
+<td>Shell tool round trip</td>
+<td>Codex executed <code>printf "host=10.20.30.15 done\n"</code>; shell output and final reply contained the original fabricated IP</td>
+</tr>
+<tr>
+<td>Resent history</td>
+<td>The second tool-turn request recorded three IPv4 replacements, covering the restored history/tool output</td>
+</tr>
+<tr>
+<td>Decision log</td>
+<td>The baseline live-run chain passed <code>audit verify</code>; logs contained no fabricated prompt values</td>
+</tr>
+</tbody>
+</table>
+<p>The baseline run recorded 8 requests, 6 replacements and 16 rewritten events.
+It reported zero errors, zero passthroughs, and zero audit-write failures.
+<code>restores</code> counts rewritten events, including buffered delta re-chunking; it is
+not the number of distinct restored values.</p>
+<p>Live testing found that the Responses endpoint can omit <code>Content-Type</code> on
+its SSE response. Header-only classification skipped restoration. The proxy
+now probes an unlabelled, unencoded response on a sanitizing route and applies
+SSE restoration when its framing matches. Regression tests cover the missing
+header, comments, BOM, leading blank lines, and unchanged JSON error bodies.</p>
+<p>This smoke covers text and a function tool call over HTTP/SSE. Long-session
+compaction, websocket transport, image input, and custom <code>apply_patch</code> events
+are outside this run's coverage. Existing content restrictions still apply.</p>
+<h2 id="workspace-metadata-smoke-2026-11-08">Workspace metadata smoke (2026-11-08)<a class="headerlink" href="#workspace-metadata-smoke-2026-11-08" title="Permanent link">&para;</a></h2>
+<p>The <a href="https://github.com/rozdolsky33/cui-proxy/blob/main/docs/verification-results/2026-11-08-metadata-fix.json">recorded metadata run</a>
+used a synthetic Git repository with an SSH remote and the saved default
+routing, without provider overrides. The installed v0.3.1 returned HTTP 422
+with reason <code>header</code>; the local v0.3.1+metadata.1 patch returned HTTP 200 and
+exact reply <code>PROBE_OK 10.20.30.15</code> under the same eight-rule policy. Its
+temporary audit chain verified. This is evidence for workspace metadata and
+fabricated prompt restoration, not every possible request body or transport.
+The metadata fix is included in v0.3.2.</p>
+<p>To repeat, use a scratch Git repository with a fabricated SSH remote such as
+<code>git@github.com:example/demo.git</code>, keep email detection enabled, and ask for
+an exact fabricated IP reply. Confirm successful restoration and metadata
+replacement counts. Strict or explicit block rules should still reject a
+matching remote. Never put real restricted values in a probe or its report.</p>
+<h2 id="json-escape-dataflow-regression-2026-11-08">JSON escape dataflow regression (2026-11-08)<a class="headerlink" href="#json-escape-dataflow-regression-2026-11-08" title="Permanent link">&para;</a></h2>
+<p>The <a href="https://github.com/rozdolsky33/cui-proxy/blob/main/docs/verification-results/2026-11-08-json-escape-dataflow.md">dataflow report</a>
+covers the later <code>reason=sanitize kind=bad_body</code> failure after tool execution.
+The repair scans decoded JSON content, preserves structure, and restores
+function arguments using complete JSON tokens. Automated HTTP/SSE tests cover
+nested tool output, metadata, repeated sanitization and exact restoration;
+chunk-split tests compare streamed and completed arguments. An offline replay
+of the failing local tool output succeeds with the existing policy. This is
+separate from the live backend runs above; no live service was upgraded.</p>
+<h2 id="check-the-active-policy-before-repeating-a-smoke">Check the active policy before repeating a smoke<a class="headerlink" href="#check-the-active-policy-before-repeating-a-smoke" title="Permanent link">&para;</a></h2>
+<p>The results above describe dated, isolated runs, not the installed policy.
+On 2026-11-09 the local installation reported v0.5.0 and 13 configured rules,
+including five custom OCI rules with <code>action: block</code>. Those counts are a
+snapshot of that installation, not defaults or requirements. A sanitizing
+profile still honors explicit blocking rules. Updating a walkthrough cannot
+make an identifier restoration probe pass a rule that intentionally blocks it.</p>
+<p>Check the installed version with <code>cui-proxy version</code>. Inspect live configuration
+locally in the dashboard; avoid copying the full <code>/api/config</code> response into
+an assistant session because patterns and dictionary entries can themselves
+match the active rules. Use the following offline check for a fabricated
+identifier. It generates the input locally, captures both CLI output streams,
+and prints only the outcome:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python3<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;'PYCODE'</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="s">from pathlib import Path</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="s">import subprocess</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="s">config = Path.home() / ".config/cui-proxy/config.yaml"</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="s">identifier = ".".join(["ocid1", "instance", "oc1", "", "fabricated123"])</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="s">result = subprocess.run(</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="s">    ["cui-proxy", "test-rules", "-config", str(config)],</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="s">    input=identifier.encode(), capture_output=True,</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="s">)</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="s">if result.returncode == 0:</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="s">    print("Identifier probe: accepted; inspect replacement counts locally.")</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="s">elif b"blocked by policy" in result.stderr:</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="s">    print("Identifier probe: blocked by the configured policy (expected for block rules).")</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="s">else:</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="s">    raise SystemExit("Identifier probe failed; inspect the CLI error locally.")</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="s">PYCODE</span>
+</code></pre></div>
+<p>Do not print the generated identifier, sanitized CLI output, or full fixtures
+back into a proxied assistant conversation. A synthetic value can still match
+a blocking rule. Once such text enters tool output or conversation history,
+later requests can repeat the same HTTP 422 because that history is resent.
+A fresh session avoids resending the old text; reading the same fixture into
+that session reintroduces it. Keep intentional block probes local and report
+only status, rule name and counts. Do not weaken blocking rules to run a demo.</p>
+<h2 id="repeat-the-isolated-sanitizing-smoke">Repeat the isolated sanitizing smoke<a class="headerlink" href="#repeat-the-isolated-sanitizing-smoke" title="Permanent link">&para;</a></h2>
+<p>You run this by hand, once, on your own machine, with your own Codex login.
+Use only fabricated prompts, not pre-sanitized placeholders. Step 6 uses a
+fabricated IP; never substitute a real restricted value. This smoke uses a
+throwaway builtin-only policy, not the active custom blocking policy.</p>
+<h2 id="0-before-you-start">0. Before you start<a class="headerlink" href="#0-before-you-start" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Codex CLI is installed and signed in with ChatGPT (<code>codex login</code>).</li>
+<li>Your global <code>~/.codex/config.toml</code> is never edited. The provider is passed
+  with <code>-c</code> flags only, so nothing persists after this test.</li>
+<li>Keep a second terminal free for the proxy's log.</li>
+</ul>
+<h2 id="1-build">1. Build<a class="headerlink" href="#1-build" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">cd</span><span class="w"> </span>cui-proxy
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>make<span class="w"> </span>build<span class="w">                      </span><span class="c1"># -&gt; bin/cui-proxy</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>bin/cui-proxy<span class="w"> </span>version
+</code></pre></div>
+<h2 id="2-minimal-config">2. Minimal config<a class="headerlink" href="#2-minimal-config" title="Permanent link">&para;</a></h2>
+<p>Use a throwaway directory and unused ports (18787/18788 below) so the
+existing proxy and its policy stay active. Stop if either port is occupied:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>/tmp/cui-verify<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>/tmp/cui-verify
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>cat<span class="w"> </span>&gt;<span class="w"> </span>config.yaml<span class="w"> </span><span class="s">&lt;&lt;'YAML'</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="s">listen: 127.0.0.1:18787</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="s">ui: { listen: 127.0.0.1:18788 }</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="s">upstreams:</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="s">  codex: https://chatgpt.com/backend-api/codex</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="s">policy: { on_error: block }</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="s">vault: { mode: memory }</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="s">rules:</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="s">  - name: builtin</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="s">    type: builtin</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="s">YAML</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>/path/to/cui-proxy/bin/cui-proxy<span class="w"> </span>check-config<span class="w"> </span>-config<span class="w"> </span>config.yaml<span class="w">   </span><span class="c1"># expect: ok: 1 rules</span>
+</code></pre></div>
+<h2 id="3-start-the-proxy">3. Start the proxy<a class="headerlink" href="#3-start-the-proxy" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>/path/to/cui-proxy/bin/cui-proxy<span class="w"> </span>serve<span class="w"> </span>-config<span class="w"> </span>config.yaml
+</code></pre></div>
+<p>Expect startup lines like <code>proxy listening on http://127.0.0.1:18787</code>,
+<code>dashboard on http://127.0.0.1:18788/</code> and <code>upstream: https://chatgpt.com</code>.
+Open <a href="http://127.0.0.1:18788/">http://127.0.0.1:18788/</a> in a browser.</p>
+<h2 id="4-point-a-throwaway-codex-run-at-the-proxy">4. Point a throwaway Codex run at the proxy<a class="headerlink" href="#4-point-a-throwaway-codex-run-at-the-proxy" title="Permanent link">&para;</a></h2>
+<p>In a second terminal, from an empty scratch directory:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>/tmp/cui-verify/work<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>/tmp/cui-verify/work
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>codex<span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>-c<span class="w"> </span><span class="s1">'model_provider="cui-proxy"'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span>-c<span class="w"> </span><span class="s1">'model_providers.cui-proxy={name="cui-proxy",base_url="http://127.0.0.1:18787/v1",wire_api="responses",requires_openai_auth=true}'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span><span class="s2">"say hi"</span><span class="w"> </span>&lt;/dev/null
+</code></pre></div>
+<p><code>&lt;/dev/null</code> matters: without it <code>codex exec</code> waits for stdin.</p>
+<h2 id="5-what-to-look-for-first-prompt">5. What to look for (first prompt)<a class="headerlink" href="#5-what-to-look-for-first-prompt" title="Permanent link">&para;</a></h2>
+<p>On success, Codex prints a short greeting. Then check:</p>
+<ul>
+<li>The dashboard's request feed has a <code>POST /v1/responses</code> with status 200 and
+  no <code>blocked</code> reason. One or two <code>GET /v1/models</code> may appear before it (they
+  are passed through).</li>
+<li>The proxy log has no <code>request blocked</code> or <code>upstream request failed</code> line,
+  and contains no token, account id, prompt text or URL query.</li>
+<li><code>replacements</code> stays near 0 for this prompt. The Codex system prompt can
+  still match a rule; if so, the feed shows the rule names and counts only.</li>
+</ul>
+<p>If something fails, check these in order:</p>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Meaning / what to change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Codex prints a 404 from the upstream, or the feed shows status 404</td>
+<td>The path mapping is wrong. The proxy sends <code>POST &lt;upstream base&gt; + /responses</code>, i.e. <code>https://chatgpt.com/backend-api/codex/responses</code>. Find the path Codex uses without the proxy (e.g. <code>RUST_LOG=codex_core=debug codex exec "say hi" &lt;/dev/null</code> against the default provider, and look for the request URL; debug logs can contain auth headers, so do not share them and delete them afterwards). Then change either <code>upstreams.codex</code> in the config (the base) or the route's <code>UpstreamPath</code> in <code>internal/adapter/codex/codex.go</code> (<code>Match</code>), and the "Point Codex at the proxy" section of <a href="../configuration/">configuration.md</a> to match. <code>GET /v1/models</code> maps to <code>&lt;base&gt;/models</code> the same way.</td>
+</tr>
+<tr>
+<td>401 / 403 from the upstream</td>
+<td>The auth headers did not arrive. Check that <code>requires_openai_auth=true</code> is in the <code>-c</code> flag. The proxy forwards <code>Authorization</code> and <code>Chatgpt-Account-Id</code> untouched.</td>
+</tr>
+<tr>
+<td>422 <code>policy</code> / <code>rule_match</code> block</td>
+<td>A rule intentionally blocks matching content, including fabricated fixtures in tool output or resent history. Run intentional block checks locally with captured output; use a fresh session if history already contains the trigger. See the active-policy check above.</td>
+</tr>
+<tr>
+<td>422 <code>header</code> block</td>
+<td>Codex <code>workspaces</code> and <code>cwd</code> metadata is sanitized using the active rules. Strict/block rules, malformed or oversized metadata, and detected values in unchanged metadata fields, other headers or queries still block. Inspect the reported kind and rule; do not disable email detection to allow SSH Git remotes.</td>
+</tr>
+<tr>
+<td>422 <code>sanitize</code> / <code>unrestorable</code> block</td>
+<td>The body could not be sanitized. The error message and the log line name a kind and the rule, e.g. <code>reason=sanitize kind=pool_exhausted rule=builtin.ipv4</code>; see <a href="../block-diagnostics/">Block diagnostics</a>. No value is ever printed.</td>
+</tr>
+<tr>
+<td>403 <code>route</code> on an unexpected POST path, typically after a long session</td>
+<td>Codex called an endpoint the adapter does not know, most likely remote compaction (it advertises <code>X-Codex-Beta-Features: remote_compaction_v2</code>; the path may be e.g. <code>/v1/responses/compact</code>). The feed shows the path as <code>(unmatched)</code>; find the real path with the debug log as in the 404 row. Add it as a <code>KindSanitize</code> route in <code>Match</code> in <code>internal/adapter/codex/codex.go</code> (its body is the same kind of history, so the request sanitizer applies). Note that a successful non-SSE response is refused until the adapter supports safe restoration for that format.</td>
+</tr>
+<tr>
+<td>502 <code>upstream_redirect</code></td>
+<td>The upstream answered with a 3xx. The proxy never relays redirects, so the base URL is probably wrong (see the 404 row).</td>
+</tr>
+<tr>
+<td>502 <code>stream_rewrite</code> or a stream cut mid-answer</td>
+<td>An SSE event the rewriter could not handle. Note the event names from the open items below and report them.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="6-second-prompt-made-up-ip">6. Second prompt: made-up IP<a class="headerlink" href="#6-second-prompt-made-up-ip" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>codex<span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>-c<span class="w"> </span><span class="s1">'model_provider="cui-proxy"'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span>-c<span class="w"> </span><span class="s1">'model_providers.cui-proxy={name="cui-proxy",base_url="http://127.0.0.1:18787/v1",wire_api="responses",requires_openai_auth=true}'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span><span class="s2">"Reply with exactly this text and nothing else: host 10.20.30.15"</span><span class="w"> </span>&lt;/dev/null
+</code></pre></div>
+<p>Expect:</p>
+<ul>
+<li>The dashboard records at least one <code>builtin.ipv4</code> replacement.
+  <code>vault_size</code> grows by at least one mapping.</li>
+<li>Codex's answer shows the original fabricated IP, <code>10.20.30.15</code>.
+  The model received a synthetic address and the proxy restored it.
+  If the answer still contains a synthetic address, restoration missed an
+  event type. Record which one (see coverage notes).</li>
+<li>The proxy log shows no IP or OCID, only rule names and counts.</li>
+</ul>
+<p>Optional tool-call check (the main restore path): ask
+<code>"Run: echo 10.20.30.15"</code> in a sandboxed run. The command Codex executes,
+and the <code>function_call_output</code> it sends back next turn, must show the
+original value locally, while the dashboard counts the value again on the
+second request (the resent history is sanitized again).</p>
+<h3 id="6a-tool-output-with-addresses-downgrade-and-addrport">6a. Tool output with addresses (downgrade and addr.port)<a class="headerlink" href="#6a-tool-output-with-addresses-downgrade-and-addrport" title="Permanent link">&para;</a></h3>
+<p>In a sandboxed run, ask Codex to run a command whose output holds an IPv6
+address, a <code>label:fe80::1</code> form and tcpdump-style text (all made up):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>codex<span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span>-c<span class="w"> </span><span class="s1">'model_provider="cui-proxy"'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span>-c<span class="w"> </span><span class="s1">'model_providers.cui-proxy={name="cui-proxy",base_url="http://127.0.0.1:18787/v1",wire_api="responses",requires_openai_auth=true}'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="s2">"Run: printf 'addr fd12:3456:789a::5 id:fe80::1\nIP 10.20.30.15.443 &gt; 10.20.30.16.51234: Flags [S]\n' and then tell me which addresses appear"</span><span class="w"> </span>&lt;/dev/null
+</code></pre></div>
+<p>Expect:</p>
+<ul>
+<li>No <code>unrestorable</code> or <code>sanitize</code> block in the feed or the log, on this
+  request or on the following ones (the history with the tool output is
+  resent every turn).</li>
+<li>The <code>Downgraded</code> card counts at least 1 (<code>id:fe80::1</code> is masked as a
+  <code>REDACTED-&lt;8hex&gt;</code> token because an address synthetic glued to <code>id:</code> would
+  not restore) and grows again on each later request of the same session.</li>
+<li>The tcpdump endpoints are counted under <code>builtin.secret</code> (each
+  <code>addr.port</code> token is masked whole); <code>fd12:3456:789a::5</code> under <code>builtin.ipv6</code>.</li>
+<li>Codex's answer and the local command output show the original values.</li>
+</ul>
+<h3 id="6b-long-session-remote-compaction">6b. Long session (remote compaction)<a class="headerlink" href="#6b-long-session-remote-compaction" title="Permanent link">&para;</a></h3>
+<p>Run one interactive session (plain <code>codex</code> with the same <code>-c</code> flags) long
+enough for Codex to compact its context, for example by asking it to read
+and summarize several large files in the scratch directory. Watch the feed
+for any request other than <code>POST /v1/responses</code> and <code>GET /v1/models</code>:</p>
+<ul>
+<li>A 403 <code>route</code> with path <code>(unmatched)</code> means a compaction (or other)
+  endpoint is not routed; see the 403 row in the table above.</li>
+<li>If compaction goes through <code>POST /v1/responses</code>, note it under the open
+  items.</li>
+</ul>
+<p>Stop the proxy with Ctrl-C. Memory mode discards every mapping.</p>
+<h3 id="6c-decision-log">6c. Decision log<a class="headerlink" href="#6c-decision-log" title="Permanent link">&para;</a></h3>
+<p>With the proxy stopped (Ctrl-C), check that every request of the session was
+recorded and that the chain verifies. Use the same <code>-config</code> as <code>serve</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>/path/to/cui-proxy/bin/cui-proxy<span class="w"> </span>audit<span class="w"> </span>verify<span class="w"> </span>-config<span class="w"> </span>config.yaml<span class="w">   </span><span class="c1"># expect: Result: OK, exit 0</span>
+</code></pre></div>
+<p>Expect <code>Records checked</code> to be at least the number of requests in the feed, and
+the decision log (default <code>~/.local/state/cui-proxy/decisions.jsonl</code>, mode
+<code>0600</code>) to contain no IP, OCID, prompt text, header or path, only rule names
+and counts. Copy a <code>request_id</code> from a blocked request's error message
+(or from the <code>X-Cui-Proxy-Request-Id</code> header) and run
+<code>cui-proxy explain -config config.yaml &lt;id&gt;</code>: it should name the reason and
+the rule. Then make a copy of the log, delete one middle line from the copy
+and run <code>cui-proxy audit verify -file &lt;copy&gt;</code>: it must report the first
+break at that line and exit 1. See <a href="../decision-log/">decision-log.md</a>.</p>
+<h2 id="7-record-the-result">7. Record the result<a class="headerlink" href="#7-record-the-result" title="Permanent link">&para;</a></h2>
+<p>Write down, for this repo:</p>
+<ol>
+<li>Whether <code>https://chatgpt.com/backend-api/codex</code> + <code>/responses</code> worked. If
+   not, the base and path that did, plus the code/docs change made.</li>
+<li>Codex CLI version (<code>codex --version</code>).</li>
+<li>Answers to the open items below, including the compaction path (6b) and
+   the <code>X-Codex-Turn-Metadata</code> shape.</li>
+</ol>
+<h2 id="coverage-notes-and-follow-up-checks">Coverage notes and follow-up checks<a class="headerlink" href="#coverage-notes-and-follow-up-checks" title="Permanent link">&para;</a></h2>
+<p>The live smoke established the core route and restoration path; broader
+sessions can exercise the additional cases below:</p>
+<ul>
+<li><strong>Confirmed routing</strong>: <code>/v1/responses</code> -&gt; <code>/backend-api/codex/responses</code> and
+  <code>/v1/models</code> -&gt; <code>/backend-api/codex/models</code> returned HTTP 200 in the live smoke.</li>
+<li><strong>Trailing-delta fields</strong>: real delta events carry <code>sequence_number</code> and
+  <code>obfuscation</code>. When the restorer re-chunks a held-back delta, it reuses the
+  last delta event's fields. Codex accepted the text and function-tool streams
+  in the live smoke; continue watching sequence handling in longer sessions.</li>
+<li><strong>Event names</strong>: reasoning-summary events
+  (<code>response.reasoning_summary_text.delta</code>,
+  <code>response.reasoning_summary_part.done</code>) and the custom-tool input event
+  (<code>response.custom_tool_call_input.delta</code>, used by <code>apply_patch</code>). Any other
+  <code>*.delta</code> event passes through unrestored, so a synthetic in it would reach
+  the user as is.</li>
+<li><strong>Redirects</strong>: whether Codex follows redirects (the proxy turns every 3xx
+  except 304 into a 502 anyway).</li>
+<li><strong>Header shapes</strong>: the exact names and contents of <code>Session-Id</code>,
+  <code>Thread-Id</code>, <code>X-Codex-Turn-Metadata</code> and <code>X-Codex-Beta-Features</code>. These are
+  inspected and can cause a <code>header</code> block; <code>workspaces</code> and <code>cwd</code> in turn
+  metadata are sanitized. Additional client shapes need synthetic verification.</li>
+<li><strong>Additional transports and content</strong>: non-streaming, websocket, compaction
+  and image requests are outside the recorded smoke coverage. Image parts are blocked by design. Remote compaction
+  (<code>remote_compaction_v2</code>) probably uses its own endpoint, which today
+  returns 403 <code>route</code> (step 6b); a route is added only once the real path
+  is confirmed.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../assurance/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Security and assurance">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Security and assurance
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../documentation-status/" class="md-footer__link md-footer__link--next" aria-label="Next: Documentation status">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Documentation status
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      cui-proxy · MIT licensed · Documentation for v0.5.0
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.footer", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "toc.follow"], "search": "../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>

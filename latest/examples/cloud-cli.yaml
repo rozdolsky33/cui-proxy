@@ -1,0 +1,43 @@
+# Complete configuration. Save hosts.txt beside this file.
+# These rules inspect text in supported model requests, not local cloud files.
+listen: localhost:8787
+ui:
+  listen: localhost:8788
+upstreams:
+  codex: https://chatgpt.com/backend-api/codex
+policy:
+  profile: sanitize
+  on_error: block
+  unsupported: block
+  max_body_bytes: 20971520
+vault:
+  mode: memory
+audit:
+  enabled: true
+  file: .state/cloud-cli-decisions.jsonl
+  on_error: block
+rules:
+  - name: builtin
+    type: builtin
+  - name: service-hosts
+    type: dictionary
+    file: hosts.txt
+    synth: hostname
+  - name: aws-keys
+    type: regex
+    pattern: '\b(?:AKIA|ASIA)[0-9A-Z]{16}\b'
+    synth: secret
+  - name: ticket-ids
+    type: regex
+    pattern: '\bDEMO-[0-9]{6}\b'
+    synth: secret
+  # Whole INI/env assignment lines, including labels and trailing comments.
+  # OCIDs and PEM private-key blocks are already in the built-in bundle.
+  - name: oci-config-fields
+    type: regex
+    pattern: '(?im)^[ \t]*(?:export[ \t]+)?(?:fingerprint|key_file|pass_phrase|security_token_file|OCI_CLI_FINGERPRINT|OCI_CLI_KEY_FILE|OCI_CLI_PASSPHRASE|OCI_CLI_SECURITY_TOKEN_FILE)[ \t]*=[ \t]*[^\r\n]+'
+    synth: secret
+  - name: aws-credential-fields
+    type: regex
+    pattern: '(?im)^[ \t]*(?:export[ \t]+)?(?:aws_secret_access_key|aws_session_token)[ \t]*=[ \t]*[^\r\n]+'
+    synth: secret

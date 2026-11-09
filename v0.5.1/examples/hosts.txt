@@ -1,0 +1,4 @@
+# Fabricated demonstration entries. Replace/add names for your own environment.
+# One literal per line; blank lines and whole-line comments are ignored.
+db.demo.example
+build.demo.example
