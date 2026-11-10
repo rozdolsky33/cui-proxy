@@ -202,11 +202,11 @@ type reqWalker struct {
 
 type scope struct {
 	pos         pos
-	userContent bool // direct elements of an unambiguous user message content array
-	inner       bool // inside JSON carried in a string: nothing opaque, no binary checks
-	schema      bool // inside a tool/format schema: no binary checks
-	tools       bool // under top-level tools
-	depth       int  // containers enclosing the value
+	attachments attachmentContext // direct parts of a validated attachment-bearing envelope
+	inner       bool              // inside JSON carried in a string: nothing opaque, no binary checks
+	schema      bool              // inside a tool/format schema: no binary checks
+	tools       bool              // under top-level tools
+	depth       int               // containers enclosing the value
 }
 
 // checkBlocked refuses text that a blocking rule matches, without rewriting
@@ -237,7 +237,7 @@ func (w reqWalker) walk(n *node, sc scope) error {
 			if !sc.inner && ep == posInclude && kid.kind == '"' && protocolInclude(kid.str) {
 				continue // include entries are protocol values
 			}
-			if err := w.walk(kid, scope{pos: ep, userContent: sc.userContent, inner: sc.inner, schema: sc.schema, tools: sc.tools, depth: sc.depth + 1}); err != nil {
+			if err := w.walk(kid, scope{pos: ep, attachments: sc.attachments, inner: sc.inner, schema: sc.schema, tools: sc.tools, depth: sc.depth + 1}); err != nil {
 				return err
 			}
 			n.dirty = n.dirty || kid.dirty
@@ -287,7 +287,15 @@ func (w reqWalker) object(n *node, sc scope) error {
 		tools := sc.tools || sc.pos == posTop && k == "tools"
 		schema := sc.schema || !sc.inner && (k == "parameters" || k == "format" || k == "schema") &&
 			(sc.tools || sc.pos == posText)
-		if err := w.walk(kid, scope{pos: childPos(sc.pos, k), userContent: sc.pos == posItem && k == "content" && userMessage(n), inner: sc.inner, schema: schema, tools: tools, depth: sc.depth + 1}); err != nil {
+		ac := attachmentNone
+		if !sc.inner && !sc.schema && sc.pos == posItem {
+			if k == "content" && userMessage(n) {
+				ac = attachmentUser
+			} else if k == "output" && toolOutput(n) {
+				ac = attachmentTool
+			}
+		}
+		if err := w.walk(kid, scope{pos: childPos(sc.pos, k), attachments: ac, inner: sc.inner, schema: schema, tools: tools, depth: sc.depth + 1}); err != nil {
 			return err
 		}
 		n.dirty = n.dirty || kid.dirty

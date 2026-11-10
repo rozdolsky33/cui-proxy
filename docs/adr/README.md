@@ -10,6 +10,7 @@ Earlier decisions made while building v0.1 are in
 |---|---|---|
 | [0001](0001-govsec-policy-enforcement.md) | Policy enforcement for restricted data: block by default, verified approval, auditable decisions | Accepted (phase 3 blocked on 0002) |
 | [0002](0002-approval-record-format.md) | Approval record format and verification | Deferred (needs input from the approving authority) |
+| [0003](0003-tool-result-image-extraction.md) | Extract text from images in Codex tool results | Accepted |
 
 ## Conventions
 

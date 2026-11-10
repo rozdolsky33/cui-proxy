@@ -47,13 +47,29 @@ with the original image or document layout.
 
 ## Supported input and local tools
 
-Only direct content parts of unambiguous Responses API **user messages** are
-converted:
+Direct content parts of unambiguous Responses API **user messages** support:
 
 - `input_file` with `file_data: "data:application/pdf;base64,..."` and optional
   string `filename`.
 - `input_image` with `image_url: "data:image/png;base64,..."` or
   `"data:image/jpeg;base64,..."` and optional `detail: auto|low|high`.
+
+Images in **function and custom tool results** are also converted when they
+are direct parts of an array-valued `output` in a top-level `input` item of
+type `function_call_output` or `custom_tool_call_output`. The item must have
+a nonempty string `call_id` and no duplicate fields. The same `input_image`
+formats and detail values listed above apply. Each image becomes an
+`input_text` part; surrounding text, output order and call identity are
+preserved. Extracted tool text follows the same sanitization and blocking
+rules as user attachments. All attachments share the request's extraction
+budgets. This supports tools returning screenshots without forwarding the
+screenshots themselves.
+
+Tool-result PDFs, computer-use output items, images nested in arbitrary
+objects, and attachments in assistant messages remain unsupported. Objects
+encoded inside text are inspected as text/embedded JSON and do not acquire
+attachment conversion privileges. Tool names do not affect eligibility.
+This is a protocol-position allowlist, not a restriction to particular tools.
 
 Uploaded `file_id` references, remote URLs, audio, other MIME types, bare base64,
 duplicate or unknown fields, and attachments in other positions are refused.
@@ -99,7 +115,7 @@ Categories are `pdf`, `image`, `file`, `audio` or `binary`. The cause explains t
 | `disabled` | Attachment processing is off | Enable `extract_text` only for the supported inline formats, or paste text |
 | `reference` | A URL or uploaded file ID cannot be inspected locally | Send inline data or paste text; the proxy does not fetch it |
 | `unsupported` | Unsupported format or encrypted PDF | Export an unlocked PDF or PNG/JPEG image, or paste text |
-| `shape` | Duplicate, unknown or misplaced attachment fields | Use a supported user-message content part |
+| `shape` | Duplicate, unknown or misplaced attachment fields or tool envelope | Use a supported user-message content part or direct function/custom tool-result image |
 | `invalid` | Invalid encoding, image or document | Re-export a valid document/image |
 | `limit` | A count, size, page, pixel or text limit was exceeded | Split or reduce the input |
 | `missing_tool` | Local extractor executable is unavailable | Install Poppler/Tesseract and check the service PATH |
@@ -112,3 +128,10 @@ No filenames, URLs, extracted contents or tool error text are logged. Existing
 records retain their original hashes; older proxy binaries cannot verify new
 records carrying the detail field. Historical records without details cannot
 recover an attachment's exact failure cause.
+
+If a client retries the same rejected image history, retrying alone cannot
+repair its placement or encoding. Use text output or begin a fresh session
+without the unsupported result. Do not disable blocking rules or enable
+passthrough to recover. Install the updated proxy binary and restart the
+running service to use tool-result image extraction; reloading configuration
+alone cannot add support to an older binary.

@@ -71,7 +71,7 @@ func Explain(s string) string {
 				"Attachments are blocked by default. Set policy.attachments to extract_text for supported inline PDFs and PNG or JPEG images.",
 				"Remote URLs and uploaded file IDs cannot be inspected. Supply an inline base64 PDF or PNG or JPEG image, or paste text.",
 				"This attachment format is unsupported. Use an inline PDF or PNG or JPEG image, or paste text.",
-				"The attachment has duplicate, unknown, or misplaced fields. Use a supported user input attachment or paste text.",
+				"The attachment has duplicate, unknown, or misplaced fields. Use a supported user-message attachment or function/custom tool-result image, or paste text.",
 				"The attachment encoding or document is invalid. Export a valid PDF or PNG or JPEG image, or paste text.",
 				"Attachment processing exceeded a size, page, count, pixel, or text limit. Split or reduce the attachment.",
 				"A local extraction tool is missing. Install Poppler for PDFs and Tesseract with English data for images or scanned pages, then restart the proxy.",
