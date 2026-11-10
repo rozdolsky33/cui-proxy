@@ -1653,14 +1653,28 @@ English and may misrecognize sensitive text, affecting detection. Review the
 applicability of your rules to extracted text. This mode cannot provide the model
 with the original image or document layout.</p>
 <h2 id="supported-input-and-local-tools">Supported input and local tools<a class="headerlink" href="#supported-input-and-local-tools" title="Permanent link">&para;</a></h2>
-<p>Only direct content parts of unambiguous Responses API <strong>user messages</strong> are
-converted:</p>
+<p>Direct content parts of unambiguous Responses API <strong>user messages</strong> support:</p>
 <ul>
 <li><code>input_file</code> with <code>file_data: "data:application/pdf;base64,..."</code> and optional
   string <code>filename</code>.</li>
 <li><code>input_image</code> with <code>image_url: "data:image/png;base64,..."</code> or
   <code>"data:image/jpeg;base64,..."</code> and optional <code>detail: auto|low|high</code>.</li>
 </ul>
+<p>Images in <strong>function and custom tool results</strong> are also converted when they
+are direct parts of an array-valued <code>output</code> in a top-level <code>input</code> item of
+type <code>function_call_output</code> or <code>custom_tool_call_output</code>. The item must have
+a nonempty string <code>call_id</code> and no duplicate fields. The same <code>input_image</code>
+formats and detail values listed above apply. Each image becomes an
+<code>input_text</code> part; surrounding text, output order and call identity are
+preserved. Extracted tool text follows the same sanitization and blocking
+rules as user attachments. All attachments share the request's extraction
+budgets. This supports tools returning screenshots without forwarding the
+screenshots themselves.</p>
+<p>Tool-result PDFs, computer-use output items, images nested in arbitrary
+objects, and attachments in assistant messages remain unsupported. Objects
+encoded inside text are inspected as text/embedded JSON and do not acquire
+attachment conversion privileges. Tool names do not affect eligibility.
+This is a protocol-position allowlist, not a restriction to particular tools.</p>
 <p>Uploaded <code>file_id</code> references, remote URLs, audio, other MIME types, bare base64,
 duplicate or unknown fields, and attachments in other positions are refused.
 There are no remote downloads or cloud OCR calls.</p>
@@ -1717,8 +1731,8 @@ code and a fixed explanation, for example:</p>
 </tr>
 <tr>
 <td><code>shape</code></td>
-<td>Duplicate, unknown or misplaced attachment fields</td>
-<td>Use a supported user-message content part</td>
+<td>Duplicate, unknown or misplaced attachment fields or tool envelope</td>
+<td>Use a supported user-message content part or direct function/custom tool-result image</td>
 </tr>
 <tr>
 <td><code>invalid</code></td>
@@ -1782,6 +1796,12 @@ code and a fixed explanation, for example:</p>
 </tr>
 </tbody>
 </table>
+<p>If a client retries the same rejected image history, retrying alone cannot
+repair its placement or encoding. Use text output or begin a fresh session
+without the unsupported result. Do not disable blocking rules or enable
+passthrough to recover. Install the updated proxy binary and restart the
+running service to use tool-result image extraction; reloading configuration
+alone cannot add support to an older binary.</p>
 
 
 
