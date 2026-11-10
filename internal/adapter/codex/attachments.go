@@ -42,6 +42,45 @@ func userMessage(n *node) bool {
 	return role == "user"
 }
 
+type attachmentContext uint8
+
+const (
+	attachmentNone attachmentContext = iota
+	attachmentUser
+	attachmentTool
+)
+
+// toolOutput grants attachment eligibility only to direct output arrays of
+// unambiguous function/custom call results. Other retained fields are still
+// inspected by the ordinary walker; they cannot grant attachment privileges.
+func toolOutput(n *node) bool {
+	seen := map[string]bool{}
+	var typ, callID string
+	outputArray := false
+	for i, k := range n.keys {
+		if seen[k] {
+			return false
+		}
+		seen[k] = true
+		v := n.kids[i]
+		switch k {
+		case "type":
+			if v.kind != '"' {
+				return false
+			}
+			typ = v.str
+		case "call_id":
+			if v.kind != '"' {
+				return false
+			}
+			callID = v.str
+		case "output":
+			outputArray = v.kind == '['
+		}
+	}
+	return (typ == "function_call_output" || typ == "custom_tool_call_output") && callID != "" && outputArray
+}
+
 func (w reqWalker) attachment(n *node, sc scope, original error) error {
 	var ae *attachment.Error
 	if w.extract == nil || !errors.As(original, &ae) {
@@ -51,11 +90,14 @@ func (w reqWalker) attachment(n *node, sc scope, original error) error {
 	fail := func(why attachment.Cause) error {
 		return fmt.Errorf("%w: %w", adapter.ErrBadBody, &attachment.Error{Category: c, Cause: why})
 	}
-	if sc.pos != posPart || !sc.userContent {
+	if sc.inner || sc.pos != posPart || sc.attachments == attachmentNone {
 		return fail(attachment.Shape)
 	}
 	typ := itemType(n)
 	if typ != "input_file" && typ != "input_image" {
+		return fail(attachment.Unsupported)
+	}
+	if sc.attachments == attachmentTool && typ != "input_image" {
 		return fail(attachment.Unsupported)
 	}
 	dataKey := "file_data"
