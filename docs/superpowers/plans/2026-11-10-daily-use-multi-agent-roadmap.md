@@ -1,8 +1,8 @@
 # Daily-use and multi-agent reliability roadmap
 
-**Created:** 2026-11-10  
-**Status:** Ready for task-by-task execution; improvement tasks are not yet implemented.  
-**First milestone:** Reliable daily use with four concurrent agents on one trusted workstation.  
+**Created:** 2026-11-10
+**Status:** Task 01 complete; Task 02 ready. Runtime improvements are not yet implemented.
+**First milestone:** Reliable daily use with four concurrent agents on one trusted workstation.
 **Owner:** Project maintainer; record an implementer and reviewer when starting each task.
 
 This is the follow-up to the repository assessment and the tool-result image
@@ -71,8 +71,9 @@ two global subprocess slots. None is designated a proven bottleneck yet.
 
 ## Definition of the first milestone
 
-Task 01 finalizes a versioned workload and reference-machine specification.
-The following are **proposed starting targets**, not measured guarantees.
+Task 01 defines the [version 1 workload and acceptance contract](../specs/2026-11-10-daily-use-workload-contract.md).
+That contract is authoritative for workload definitions, denominators and gates;
+the table below is a summary. These are **initial engineering targets**, not measured guarantees.
 If the baseline shows they are unrealistic, document the data and the tradeoff
 and have the maintainer accept a revised target before using it as a gate.
 
@@ -104,8 +105,8 @@ permission between already authorized tasks.
 
 | ID | Task | Priority | Depends on | Status |
 |---|---|---|---|---|
-| 01 | Define workloads and acceptance contract | P0 | — | ready |
-| 02 | Build deterministic workflow harness | P0 | 01 | blocked |
+| 01 | Define workloads and acceptance contract | P0 | — | done |
+| 02 | Build deterministic workflow harness | P0 | 01 | ready |
 | 03 | Add stage timings and safe workload correlation | P0 | 01, 02 | blocked |
 | 04 | Establish concurrent performance baseline | P0 | 02, 03 | blocked |
 | 05 | Verify task semantics and long-session compatibility | P0 | 02 | blocked |
@@ -125,22 +126,22 @@ if measured targets already pass without the proposed optimizations.
 
 **Outcome:** A reproducible definition of useful, efficient daily operation.
 
-- [ ] Inventory intended workflows using metadata only: coding, tests,
+- [x] Inventory intended workflows using metadata only: coding, tests,
       infrastructure commands, screenshots, delegated work and long sessions.
-- [ ] Define normal/stress tiers, concurrency, request arrival rates, stream
+- [x] Define normal/stress tiers, concurrency, request arrival rates, stream
       chunking, backend latency, rule sizes and vault cardinality.
-- [ ] Specify the reference hardware, OS, Go/client versions, dependencies,
+- [x] Specify the reference hardware, OS, Go/client versions, dependencies,
       power settings, warm-up, sample counts and repetition methodology.
-- [ ] Define failure taxonomy and how proxy-added latency is separated from
+- [x] Define failure taxonomy and how proxy-added latency is separated from
       network/model time. Separate policy-expected blocks from unwanted blocks.
-- [ ] Finalize the milestone targets above, including a fixed memory budget
+- [x] Finalize the milestone targets above, including a fixed memory budget
       for the reference workstation and explicit OCR latency/queue targets.
 
 **Acceptance:** Every metric has a workload, denominator, measurement method
 and threshold. No claim of an unwanted block relies on whether a request
 happened to pass the current implementation.
 
-**Artifact:** A versioned workload specification referenced from this tracker.
+**Artifact:** [Daily-use workload and acceptance contract — version 1](../specs/2026-11-10-daily-use-workload-contract.md).
 
 ## Task 02 — Build deterministic workflow harness
 
@@ -361,8 +362,31 @@ Remaining limitations / rollback:
 Next ready task:
 ```
 
+## Task 01 completion record — 2026-11-10
+
+- **Implementer / reviewer:** Codex primary agent / independent specification reviewer.
+- **Status:** Done; specification acceptance criteria met, runtime gates unmeasured.
+- **Commit / PR:** Pending on `docs/daily-use-workload-contract`; base `8c7edea`.
+- **Deliverable:** [Version 1 workload and acceptance contract](../specs/2026-11-10-daily-use-workload-contract.md).
+- **Environment:** Observed 8-core M1 Pro, 32 GiB RAM, macOS 26.7.2,
+  Go 1.26.10, Codex CLI 0.167.0, Tesseract 5.5.4 and Poppler 26.09.0.
+- **Evidence:** Metadata-only local probes and prior request-size evidence;
+  sources and representativeness limitations recorded in contract sections 1–2.
+- **Behavior changed:** None. Defined 12 workflow cases, independent semantic
+  oracles, normal/stress tiers, reproducible load/streams, failure taxonomy,
+  measurement methods, initial numerical gates and Task 02 boundaries.
+- **Validation:** Reviewed task coverage and metric definitions; checked document
+  links/structure and whitespace. Independent review's live-completion denominator
+  and cold-image generation findings were addressed.
+- **Before / after performance:** Not measured; this task defines the experiment.
+- **Limitations:** Reference workload is designed from limited observations,
+  not a representative production trace. Proposed targets may expose failures;
+  revisions must retain prior evidence and explain changed criteria.
+- **Rollback:** Documentation-only change; no running service or policy changes.
+- **Next ready task:** 02, deterministic workflow harness.
+
 ## Next action
 
-Start **Task 01**. Its deliverable is the workload and acceptance contract,
-not a performance optimization. Use it to make Task 02 executable and keep
-the rest of the roadmap grounded in observable daily work.
+Start **Task 02** using section 10 of the version 1 contract. Build the
+deterministic correctness harness first; performance benchmarking, stage
+instrumentation and optimizations remain later tasks with explicit dependencies.
