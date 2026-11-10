@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.5.1/verification/">
+        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.5.2/verification/">
       
       
         <link rel="prev" href="../assurance/">
@@ -1332,6 +1332,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#before-reading-demo-materials-in-an-assistant-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Before reading demo materials in an assistant session
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#recorded-results" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1716,6 +1727,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#before-reading-demo-materials-in-an-assistant-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Before reading demo materials in an assistant session
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#recorded-results" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1934,6 +1956,41 @@
 
 
 <h1 id="manual-verification-against-the-real-codex-cli">Manual verification against the real Codex CLI<a class="headerlink" href="#manual-verification-against-the-real-codex-cli" title="Permanent link">&para;</a></h1>
+<h2 id="before-reading-demo-materials-in-an-assistant-session">Before reading demo materials in an assistant session<a class="headerlink" href="#before-reading-demo-materials-in-an-assistant-session" title="Permanent link">&para;</a></h2>
+<p>When the assistant itself connects through the proxy, reading a file is part
+of the next model request: tool output is sent back as conversation history.
+Keep configuration, <code>/api/config</code>, cloud CLI examples, fixture-runner source
+and detailed test reports local. Even a regex definition or a fabricated
+assignment can match an explicit blocking rule. A passing demo guide does
+not imply that the files it links to will pass.</p>
+<p>Capture both output streams when running fixture checks. For example, this
+checks a local demo guide without returning its contents or replacement text:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python3<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;'PYCODE'</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="s">from pathlib import Path</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="s">import re</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="s">import subprocess</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="s">config = Path.home() / ".config/cui-proxy/config.yaml"</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="s">guide = Path.home() / "cui-proxy-demo.md"</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="s">result = subprocess.run(</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="s">    ["cui-proxy", "test-rules", "-config", str(config)],</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="s">    input=guide.read_bytes(), capture_output=True,</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="s">)</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="s">rules = sorted(set(re.findall(rb"rule=([A-Za-z0-9_.-]+)", result.stderr)))</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="s">print("Guide preview exit:", result.returncode)</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="s">print("Blocking rules:", ", ".join(r.decode() for r in rules) or "none reported")</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="s">if result.returncode and not rules:</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="s">    print("Preview failed; inspect the captured error locally.")</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="s">PYCODE</span>
+</code></pre></div>
+<p>Apply the same capture discipline to fixture runners; report only status,
+rule names and counts. Do not print their source or full JSON reports to
+understand a failure. Run intentional block probes outside the assistant's
+conversation and inspect detailed results locally.</p>
+<p>For a repeated HTTP 422 with <code>reason=policy kind=rule_match</code>, confirm the
+decision using <code>cui-proxy explain</code> and the request ID. Once triggering text
+is in history, start a fresh session with these precautions. Keep the active
+blocking policy; retrying the same history will not remove the trigger.</p>
 <p><strong>Status: live backend smoke passed on 2026-11-07.</strong> Built from this checkout
 on macOS arm64 with Go 1.26.10; exercised Codex CLI 0.167.0, ChatGPT login,
 model <code>gpt-6-astra</code>, and reasoning effort <code>low</code>. Only fabricated prompts were
@@ -2024,23 +2081,23 @@ an assistant session because patterns and dictionary entries can themselves
 match the active rules. Use the following offline check for a fabricated
 identifier. It generates the input locally, captures both CLI output streams,
 and prints only the outcome:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python3<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;'PYCODE'</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="s">from pathlib import Path</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="s">import subprocess</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="s">config = Path.home() / ".config/cui-proxy/config.yaml"</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="s">identifier = ".".join(["ocid1", "instance", "oc1", "", "fabricated123"])</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="s">result = subprocess.run(</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="s">    ["cui-proxy", "test-rules", "-config", str(config)],</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="s">    input=identifier.encode(), capture_output=True,</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="s">)</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="s">if result.returncode == 0:</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="s">    print("Identifier probe: accepted; inspect replacement counts locally.")</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="s">elif b"blocked by policy" in result.stderr:</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="s">    print("Identifier probe: blocked by the configured policy (expected for block rules).")</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="s">else:</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="s">    raise SystemExit("Identifier probe failed; inspect the CLI error locally.")</span>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="s">PYCODE</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python3<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;'PYCODE'</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="s">from pathlib import Path</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="s">import subprocess</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="s">config = Path.home() / ".config/cui-proxy/config.yaml"</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="s">identifier = ".".join(["ocid1", "instance", "oc1", "", "fabricated123"])</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="s">result = subprocess.run(</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="s">    ["cui-proxy", "test-rules", "-config", str(config)],</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="s">    input=identifier.encode(), capture_output=True,</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="s">)</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="s">if result.returncode == 0:</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="s">    print("Identifier probe: accepted; inspect replacement counts locally.")</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="s">elif b"blocked by policy" in result.stderr:</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="s">    print("Identifier probe: blocked by the configured policy (expected for block rules).")</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="s">else:</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="s">    raise SystemExit("Identifier probe failed; inspect the CLI error locally.")</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="s">PYCODE</span>
 </code></pre></div>
 <p>Do not print the generated identifier, sanitized CLI output, or full fixtures
 back into a proxied assistant conversation. A synthetic value can still match
@@ -2062,40 +2119,40 @@ throwaway builtin-only policy, not the active custom blocking policy.</p>
 <li>Keep a second terminal free for the proxy's log.</li>
 </ul>
 <h2 id="1-build">1. Build<a class="headerlink" href="#1-build" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">cd</span><span class="w"> </span>cui-proxy
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>make<span class="w"> </span>build<span class="w">                      </span><span class="c1"># -&gt; bin/cui-proxy</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>bin/cui-proxy<span class="w"> </span>version
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">cd</span><span class="w"> </span>cui-proxy
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>make<span class="w"> </span>build<span class="w">                      </span><span class="c1"># -&gt; bin/cui-proxy</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>bin/cui-proxy<span class="w"> </span>version
 </code></pre></div>
 <h2 id="2-minimal-config">2. Minimal config<a class="headerlink" href="#2-minimal-config" title="Permanent link">&para;</a></h2>
 <p>Use a throwaway directory and unused ports (18787/18788 below) so the
 existing proxy and its policy stay active. Stop if either port is occupied:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>/tmp/cui-verify<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>/tmp/cui-verify
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>cat<span class="w"> </span>&gt;<span class="w"> </span>config.yaml<span class="w"> </span><span class="s">&lt;&lt;'YAML'</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="s">listen: 127.0.0.1:18787</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="s">ui: { listen: 127.0.0.1:18788 }</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="s">upstreams:</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="s">  codex: https://chatgpt.com/backend-api/codex</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="s">policy: { on_error: block }</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="s">vault: { mode: memory }</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="s">rules:</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="s">  - name: builtin</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="s">    type: builtin</span>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="s">YAML</span>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>/path/to/cui-proxy/bin/cui-proxy<span class="w"> </span>check-config<span class="w"> </span>-config<span class="w"> </span>config.yaml<span class="w">   </span><span class="c1"># expect: ok: 1 rules</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>/tmp/cui-verify<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>/tmp/cui-verify
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>cat<span class="w"> </span>&gt;<span class="w"> </span>config.yaml<span class="w"> </span><span class="s">&lt;&lt;'YAML'</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="s">listen: 127.0.0.1:18787</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="s">ui: { listen: 127.0.0.1:18788 }</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="s">upstreams:</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="s">  codex: https://chatgpt.com/backend-api/codex</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="s">policy: { on_error: block }</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="s">vault: { mode: memory }</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="s">rules:</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="s">  - name: builtin</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="s">    type: builtin</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="s">YAML</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>/path/to/cui-proxy/bin/cui-proxy<span class="w"> </span>check-config<span class="w"> </span>-config<span class="w"> </span>config.yaml<span class="w">   </span><span class="c1"># expect: ok: 1 rules</span>
 </code></pre></div>
 <h2 id="3-start-the-proxy">3. Start the proxy<a class="headerlink" href="#3-start-the-proxy" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>/path/to/cui-proxy/bin/cui-proxy<span class="w"> </span>serve<span class="w"> </span>-config<span class="w"> </span>config.yaml
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>/path/to/cui-proxy/bin/cui-proxy<span class="w"> </span>serve<span class="w"> </span>-config<span class="w"> </span>config.yaml
 </code></pre></div>
 <p>Expect startup lines like <code>proxy listening on http://127.0.0.1:18787</code>,
 <code>dashboard on http://127.0.0.1:18788/</code> and <code>upstream: https://chatgpt.com</code>.
 Open <a href="http://127.0.0.1:18788/">http://127.0.0.1:18788/</a> in a browser.</p>
 <h2 id="4-point-a-throwaway-codex-run-at-the-proxy">4. Point a throwaway Codex run at the proxy<a class="headerlink" href="#4-point-a-throwaway-codex-run-at-the-proxy" title="Permanent link">&para;</a></h2>
 <p>In a second terminal, from an empty scratch directory:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>/tmp/cui-verify/work<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>/tmp/cui-verify/work
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>codex<span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>-c<span class="w"> </span><span class="s1">'model_provider="cui-proxy"'</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span>-c<span class="w"> </span><span class="s1">'model_providers.cui-proxy={name="cui-proxy",base_url="http://127.0.0.1:18787/v1",wire_api="responses",requires_openai_auth=true}'</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span><span class="s2">"say hi"</span><span class="w"> </span>&lt;/dev/null
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>/tmp/cui-verify/work<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>/tmp/cui-verify/work
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>codex<span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span>-c<span class="w"> </span><span class="s1">'model_provider="cui-proxy"'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span>-c<span class="w"> </span><span class="s1">'model_providers.cui-proxy={name="cui-proxy",base_url="http://127.0.0.1:18787/v1",wire_api="responses",requires_openai_auth=true}'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span><span class="s2">"say hi"</span><span class="w"> </span>&lt;/dev/null
 </code></pre></div>
 <p><code>&lt;/dev/null</code> matters: without it <code>codex exec</code> waits for stdin.</p>
 <h2 id="5-what-to-look-for-first-prompt">5. What to look for (first prompt)<a class="headerlink" href="#5-what-to-look-for-first-prompt" title="Permanent link">&para;</a></h2>
@@ -2153,10 +2210,10 @@ Open <a href="http://127.0.0.1:18788/">http://127.0.0.1:18788/</a> in a browser.
 </tbody>
 </table>
 <h2 id="6-second-prompt-made-up-ip">6. Second prompt: made-up IP<a class="headerlink" href="#6-second-prompt-made-up-ip" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>codex<span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>-c<span class="w"> </span><span class="s1">'model_provider="cui-proxy"'</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span>-c<span class="w"> </span><span class="s1">'model_providers.cui-proxy={name="cui-proxy",base_url="http://127.0.0.1:18787/v1",wire_api="responses",requires_openai_auth=true}'</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span><span class="s2">"Reply with exactly this text and nothing else: host 10.20.30.15"</span><span class="w"> </span>&lt;/dev/null
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>codex<span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span>-c<span class="w"> </span><span class="s1">'model_provider="cui-proxy"'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span>-c<span class="w"> </span><span class="s1">'model_providers.cui-proxy={name="cui-proxy",base_url="http://127.0.0.1:18787/v1",wire_api="responses",requires_openai_auth=true}'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="s2">"Reply with exactly this text and nothing else: host 10.20.30.15"</span><span class="w"> </span>&lt;/dev/null
 </code></pre></div>
 <p>Expect:</p>
 <ul>
@@ -2176,10 +2233,10 @@ second request (the resent history is sanitized again).</p>
 <h3 id="6a-tool-output-with-addresses-downgrade-and-addrport">6a. Tool output with addresses (downgrade and addr.port)<a class="headerlink" href="#6a-tool-output-with-addresses-downgrade-and-addrport" title="Permanent link">&para;</a></h3>
 <p>In a sandboxed run, ask Codex to run a command whose output holds an IPv6
 address, a <code>label:fe80::1</code> form and tcpdump-style text (all made up):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>codex<span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span>-c<span class="w"> </span><span class="s1">'model_provider="cui-proxy"'</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span>-c<span class="w"> </span><span class="s1">'model_providers.cui-proxy={name="cui-proxy",base_url="http://127.0.0.1:18787/v1",wire_api="responses",requires_openai_auth=true}'</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="s2">"Run: printf 'addr fd12:3456:789a::5 id:fe80::1\nIP 10.20.30.15.443 &gt; 10.20.30.16.51234: Flags [S]\n' and then tell me which addresses appear"</span><span class="w"> </span>&lt;/dev/null
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>codex<span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>-c<span class="w"> </span><span class="s1">'model_provider="cui-proxy"'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span>-c<span class="w"> </span><span class="s1">'model_providers.cui-proxy={name="cui-proxy",base_url="http://127.0.0.1:18787/v1",wire_api="responses",requires_openai_auth=true}'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span><span class="s2">"Run: printf 'addr fd12:3456:789a::5 id:fe80::1\nIP 10.20.30.15.443 &gt; 10.20.30.16.51234: Flags [S]\n' and then tell me which addresses appear"</span><span class="w"> </span>&lt;/dev/null
 </code></pre></div>
 <p>Expect:</p>
 <ul>
@@ -2208,7 +2265,7 @@ for any request other than <code>POST /v1/responses</code> and <code>GET /v1/mod
 <h3 id="6c-decision-log">6c. Decision log<a class="headerlink" href="#6c-decision-log" title="Permanent link">&para;</a></h3>
 <p>With the proxy stopped (Ctrl-C), check that every request of the session was
 recorded and that the chain verifies. Use the same <code>-config</code> as <code>serve</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>/path/to/cui-proxy/bin/cui-proxy<span class="w"> </span>audit<span class="w"> </span>verify<span class="w"> </span>-config<span class="w"> </span>config.yaml<span class="w">   </span><span class="c1"># expect: Result: OK, exit 0</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>/path/to/cui-proxy/bin/cui-proxy<span class="w"> </span>audit<span class="w"> </span>verify<span class="w"> </span>-config<span class="w"> </span>config.yaml<span class="w">   </span><span class="c1"># expect: Result: OK, exit 0</span>
 </code></pre></div>
 <p>Expect <code>Records checked</code> to be at least the number of requests in the feed, and
 the decision log (default <code>~/.local/state/cui-proxy/decisions.jsonl</code>, mode

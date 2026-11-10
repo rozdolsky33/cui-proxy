@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.5.1/rules/">
+        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.5.2/rules/">
       
       
         <link rel="prev" href="../configuration/">
@@ -1965,6 +1965,10 @@ be non-real. The vault stops allocating overflow addresses after observing a
 real value in that range. A detected value equal to an overflow synthetic can
 block rather than pass as already sanitized. Pools and collision retries are
 finite; allocation failures block with the default policy.</p>
+<p>Broad CIDRs, including default routes, can still use documentation-address
+replacements when overflow allocation is disabled. A replacement's address
+determines its pool; its prefix length does not. Real prefixes overlapping
+the overflow range continue to disable overflow allocation.</p>
 <p>Mappings are stable within the same vault. A new memory vault after a restart
 does not retain the previous mapping. File mode retains mappings encrypted
 locally. See <a href="../architecture/#the-vault-and-response-restoration">architecture</a>.</p>
