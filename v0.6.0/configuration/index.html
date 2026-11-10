@@ -1,0 +1,2669 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Local, fail-closed proxy for Codex CLI that replaces sensitive data with synthetic values before it reaches the model and restores the originals in streamed responses, so your coding agent's tool calls still run against real systems.">
+      
+      
+      
+        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.6.0/configuration/">
+      
+      
+        <link rel="prev" href="../codex/">
+      
+      
+        <link rel="next" href="../rules/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Configuration walkthrough - cui-proxy</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../assets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#configuration-walkthrough-and-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="cui-proxy" class="md-header__button md-logo" aria-label="cui-proxy" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 11c0 5.55-3.84 10.74-9 12-5.16-1.26-9-6.45-9-12V5l9-4 9 4zm-9 10c3.75-1 7-5.46 7-9.78V6.3l-7-3.12L5 6.3v4.92C5 15.54 8.25 20 12 21m-2-4-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            cui-proxy
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Configuration walkthrough
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/rozdolsky33/cui-proxy" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    rozdolsky33/cui-proxy
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Configure
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../dashboard/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Operate
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../architecture/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Understand
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../development/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Contribute
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="cui-proxy" class="md-nav__button md-logo" aria-label="cui-proxy" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 11c0 5.55-3.84 10.74-9 12-5.16-1.26-9-6.45-9-12V5l9-4 9 4zm-9 10c3.75-1 7-5.46 7-9.78V6.3l-7-3.12L5 6.3v4.92C5 15.54 8.25 20 12 21m-2-4-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9"/></svg>
+
+    </a>
+    cui-proxy
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/rozdolsky33/cui-proxy" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    rozdolsky33/cui-proxy
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href=".." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install and upgrade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    End-to-end tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../codex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connect Codex
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configure
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configure
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration walkthrough
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration walkthrough
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#which-file-to-edit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Which file to edit
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#first-setup-and-a-safe-edit-cycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        First setup and a safe edit cycle
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sanitize-strict-and-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sanitize, strict, and overrides
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sanitize, strict, and overrides">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#flexible-masking-with-selected-hard-blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flexible masking with selected hard blocks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overrides-that-exist-and-ones-that-do-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overrides that exist, and ones that do not
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#git-and-ssh-troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Git and SSH troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#defaults-and-all-configurable-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Defaults and all configurable fields
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Defaults and all configurable fields">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rule-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rule fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#point-codex-at-the-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Point Codex at the proxy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commands
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dashboard
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hot-reload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hot reload
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vault" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vault
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Vault">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#synthetic-address-pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synthetic address pool
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rules and synthetic values
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cloud-cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OCI and AWS CLI rules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../policy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sanitize and strict policies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../attachments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PDF and image inspection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../recipes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration recipes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    YAML and CLI reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operate
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operate
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard walkthrough
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../menubar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    macOS menu bar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test your setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-log/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decision log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../block-diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Block diagnostics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Understand
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Understand
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Life of a request
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../limitations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capabilities and limitations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../assurance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security and assurance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Verification evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../documentation-status/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation status
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contribute
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build and release
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing-docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintain the documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#which-file-to-edit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Which file to edit
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#first-setup-and-a-safe-edit-cycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        First setup and a safe edit cycle
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sanitize-strict-and-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sanitize, strict, and overrides
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sanitize, strict, and overrides">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#flexible-masking-with-selected-hard-blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flexible masking with selected hard blocks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overrides-that-exist-and-ones-that-do-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overrides that exist, and ones that do not
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#git-and-ssh-troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Git and SSH troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#defaults-and-all-configurable-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Defaults and all configurable fields
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Defaults and all configurable fields">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rule-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rule fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#point-codex-at-the-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Point Codex at the proxy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commands
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dashboard
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hot-reload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hot reload
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vault" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vault
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Vault">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#synthetic-address-pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synthetic address pool
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/rozdolsky33/cui-proxy/edit/main/docs/configuration.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="configuration-walkthrough-and-reference">Configuration walkthrough and reference<a class="headerlink" href="#configuration-walkthrough-and-reference" title="Permanent link">&para;</a></h1>
+<p>Checked against v0.5.0 on 2026-11-08. This guide describes implemented
+settings. Planned approval/account allowlists in the ADRs are not available.</p>
+<p>Start with <a href="#which-file-to-edit">which file to edit</a>, then
+<a href="#sanitize-strict-and-overrides">choose a policy</a>. For a blocked Git operation,
+go to <a href="#git-and-ssh-troubleshooting">Git and SSH troubleshooting</a>.</p>
+<h2 id="which-file-to-edit">Which file to edit<a class="headerlink" href="#which-file-to-edit" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>File / setting</th>
+<th>Controls</th>
+<th>Does not control</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Proxy <code>config.yaml</code>, normally <code>~/.config/cui-proxy/config.yaml</code></td>
+<td>Detection rules, masking/blocking, listeners, upstream, vault, audit</td>
+<td>SSH keys or the agent's permission to run a command</td>
+</tr>
+<tr>
+<td>Dictionary files, normally <code>hosts.txt</code> beside the YAML</td>
+<td>Literal sensitive names used by a <code>type: dictionary</code> rule</td>
+<td>An allowlist: adding a name increases detection</td>
+</tr>
+<tr>
+<td><code>~/.codex/config.toml</code></td>
+<td>Codex's model-provider selection and URL; separate Codex settings</td>
+<td>Proxy rule actions: Codex <code>-c</code> cannot override the proxy YAML</td>
+</tr>
+<tr>
+<td>Git repository <code>.git/config</code>, SSH configuration/agent</td>
+<td>Git remote URL and SSH authentication/transport</td>
+<td>Whether model requests pass proxy inspection</td>
+</tr>
+</tbody>
+</table>
+<p><code>cui-proxy init</code> creates <code>config.yaml</code> and <code>hosts.txt</code> in
+<code>$XDG_CONFIG_HOME/cui-proxy</code>, if set, otherwise <code>~/.config/cui-proxy</code>.
+<code>init -dir PATH</code> chooses another directory. It writes starter files; it does
+not select them for an already running service. Do not use <code>init -force</code> to
+change one setting: it overwrites both files, including your dictionary.</p>
+<p><code>serve</code>, <code>check-config</code>, <code>policy check</code> and <code>test-rules</code> require an explicit
+<code>-config PATH</code>. The menu-bar installer chooses the default config directory
+unless installed with <code>menubar install -config PATH</code>; <strong>Open Config Folder</strong>
+opens the folder for that installation. Edit the file used by the running
+proxy, not an unused copy in a repository. Check the dashboard's effective
+configuration and startup log after applying changes.</p>
+<p>The proxy loads one YAML document. It does not merge global and project
+files, interpolate environment variables inside YAML, or implement
+<code>--set</code>/per-request policy overrides. Unknown YAML fields are rejected.
+Dictionary, vault and audit relative paths resolve against the YAML file's
+directory. <code>~</code> inside YAML is not expanded; use an absolute or relative path.
+Shell <code>~</code> in a command argument is expanded by your shell.</p>
+<h2 id="first-setup-and-a-safe-edit-cycle">First setup and a safe edit cycle<a class="headerlink" href="#first-setup-and-a-safe-edit-cycle" title="Permanent link">&para;</a></h2>
+<p>For a new installation only:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>cui-proxy<span class="w"> </span>init
+</code></pre></div>
+<p>For an existing installation, edit its YAML directly. These commands assume
+the default location; substitute your actual path if it differs:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>cp<span class="w"> </span>~/.config/cui-proxy/config.yaml<span class="w"> </span>~/.config/cui-proxy/config.yaml.backup
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>cui-proxy<span class="w"> </span>version
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>cui-proxy<span class="w"> </span>check-config<span class="w"> </span>-config<span class="w"> </span>~/.config/cui-proxy/config.yaml
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>cui-proxy<span class="w"> </span>policy<span class="w"> </span>check<span class="w"> </span>-config<span class="w"> </span>~/.config/cui-proxy/config.yaml
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s1">'git@github.com:example/demo.git host=10.20.30.15'</span><span class="w"> </span><span class="p">|</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span>cui-proxy<span class="w"> </span>test-rules<span class="w"> </span>-config<span class="w"> </span>~/.config/cui-proxy/config.yaml
+</code></pre></div>
+<p><code>test-rules</code> uses a temporary vault and tests text detection, not a complete
+HTTP request, header parsing, SSH connection or round trip. Use fabricated
+input: its output is intended for the operator and can include original
+unmatched text. <code>check-config</code> may also print detailed configuration errors.</p>
+<p>After validation, choose <strong>Reload rules</strong> in the menu bar or dashboard for
+reloadable settings. Restart for the settings marked below. A reload failure
+leaves the old rules active. For rollback, restore the backup, validate it,
+and reload or restart as appropriate. Avoid running a second proxy on the
+same ports or file vault.</p>
+<h2 id="sanitize-strict-and-overrides">Sanitize, strict, and overrides<a class="headerlink" href="#sanitize-strict-and-overrides" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th><code>sanitize</code> (default)</th>
+<th><code>strict</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Detected value in supported content or workspace metadata</td>
+<td>Mask it; restore eligible model-response text locally</td>
+<td>Reject the entire request</td>
+</tr>
+<tr>
+<td>Rule explicitly says <code>action: block</code></td>
+<td>Reject the entire request</td>
+<td>Reject the entire request</td>
+</tr>
+<tr>
+<td>Rule explicitly says <code>action: sanitize</code></td>
+<td>Mask it</td>
+<td>Invalid configuration</td>
+</tr>
+<tr>
+<td>Unsupported content, invalid metadata, unknown route</td>
+<td>Reject</td>
+<td>Reject</td>
+</tr>
+<tr>
+<td>Detection in another header/query or unchanged metadata field</td>
+<td>Reject; those fields cannot be safely rewritten</td>
+<td>Reject</td>
+</tr>
+<tr>
+<td>Audit write fails, with defaults</td>
+<td>Warn and continue</td>
+<td>Reject</td>
+</tr>
+</tbody>
+</table>
+<p><code>sanitize</code> means "mask what matches", not "allow everything". <code>strict</code> means
+"block detections", not "guarantee that nothing sensitive gets through".
+Unrecognized values are not protected by either profile.</p>
+<p>For everyday work where masking is appropriate, edit the existing blocks:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">policy</span><span class="p">:</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sanitize</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">on_error</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">block</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">unsupported</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">block</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span><span class="nt">max_body_bytes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20971520</span>
+</code></pre></div>
+<p>Keep your current <code>rules</code>, upstream, vault and audit settings. Remove an
+explicit <code>action: block</code> only from rules you intend to change to masking,
+or set those rules to <code>action: sanitize</code>. Changing the profile alone does
+not override explicit blocking rules.</p>
+<p>For strict operation, set <code>policy.profile: strict</code>, retain
+<code>policy.on_error: block</code>, remove all explicit <code>action: sanitize</code> entries,
+and ensure audit is enabled with <code>audit.on_error: block</code> (or omitted so the
+profile default applies). At least one rule is required. To make a separate
+starter without overwriting your live files:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>cui-proxy<span class="w"> </span>init<span class="w"> </span>-dir<span class="w"> </span>/tmp/cui-strict-example<span class="w"> </span>-profile<span class="w"> </span>strict
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>cui-proxy<span class="w"> </span>check-config<span class="w"> </span>-config<span class="w"> </span>/tmp/cui-strict-example/config.yaml
+</code></pre></div>
+<h3 id="flexible-masking-with-selected-hard-blocks">Flexible masking with selected hard blocks<a class="headerlink" href="#flexible-masking-with-selected-hard-blocks" title="Permanent link">&para;</a></h3>
+<p>This is a complete example. Save it beside a <code>restricted-names.txt</code> dictionary
+containing fabricated entries such as <code>restricted-project</code> before testing:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">listen</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">127.0.0.1:8787</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nt">ui</span><span class="p">:</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="nt">listen</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">127.0.0.1:8788</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="nt">upstreams</span><span class="p">:</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span><span class="nt">codex</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://chatgpt.com/backend-api/codex</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="nt">policy</span><span class="p">:</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">  </span><span class="nt">profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sanitize</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">  </span><span class="nt">on_error</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">block</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="nt">vault</span><span class="p">:</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">  </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">memory</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="nt">audit</span><span class="p">:</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">  </span><span class="nt">on_error</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">block</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="nt">rules</span><span class="p">:</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">builtin</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">builtin</span>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sanitize</span>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">restricted-names</span>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dictionary</span>
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a><span class="w">    </span><span class="nt">file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">restricted-names.txt</span>
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="w">    </span><span class="nt">synth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hostname</span>
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a><span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">block</span>
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">aws-keys</span>
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">regex</span>
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a><span class="w">    </span><span class="nt">pattern</span><span class="p">:</span><span class="w"> </span><span class="s">'\b(?:AKIA|ASIA)[0-9A-Z]{16}\b'</span>
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a><span class="w">    </span><span class="nt">synth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">secret</span>
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a><span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">block</span>
+</code></pre></div>
+<p>Built-in matches are masked, while the two explicit rules block. A block
+wins if it overlaps a sanitizing rule; a later rule cannot cancel it.
+This example sets audit failure to block explicitly, which is stronger
+than the sanitize profile's default <code>warn</code>.</p>
+<h3 id="overrides-that-exist-and-ones-that-do-not">Overrides that exist, and ones that do not<a class="headerlink" href="#overrides-that-exist-and-ones-that-do-not" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Want to change</th>
+<th>Supported way / limit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Block a category while masking others</td>
+<td><code>profile: sanitize</code> plus <code>action: block</code> on selected rules</td>
+</tr>
+<tr>
+<td>Change a custom match</td>
+<td>Edit its regex or dictionary and reload</td>
+</tr>
+<tr>
+<td>Stop using a rule</td>
+<td>Remove its YAML entry and reload; this stops that detection everywhere the rule applied</td>
+</tr>
+<tr>
+<td>Allow one public value while keeping the same detector</td>
+<td>No <code>allow</code>, <code>exclude</code>, exceptions list, or <code>action: allow</code> in v0.5.0</td>
+</tr>
+<tr>
+<td>Disable just <code>builtin.email</code></td>
+<td>No selector for individual built-in detectors. <code>type: builtin</code> expands to the entire bundle</td>
+</tr>
+<tr>
+<td>Override a strict detection</td>
+<td>Not supported; <code>action: sanitize</code> under strict is invalid</td>
+</tr>
+<tr>
+<td>Use a custom set instead of the built-in bundle</td>
+<td>Remove the bundle and supply custom rules, but this removes every built-in protection not recreated; adding a narrower regex alongside the bundle does not narrow it</td>
+</tr>
+<tr>
+<td>Different policies for different repositories</td>
+<td>Separate YAML files and proxy instances on different ports, with separate file vaults/audit logs, and explicit client routing; no automatic repository profiles</td>
+</tr>
+<tr>
+<td>Allow unsupported input or malformed metadata</td>
+<td>Not configurable; <code>unsupported: block</code> is the only value</td>
+</tr>
+<tr>
+<td>Approve <code>git push</code> / allow an SSH destination</td>
+<td>No proxy option; execution permission and Git/SSH transport are separate</td>
+</tr>
+</tbody>
+</table>
+<p>There is no general "ignore this block" switch. <code>policy.on_error:
+passthrough</code> only forwards the original body for eligible sanitizer failures
+(such as synthetic pool exhaustion). It does not override policy matches,
+metadata failures, <code>bad_body</code>, depth/size limits, or unsupported content.
+It is invalid with strict or any blocking rule, and can expose original
+values when used. It is not a remedy for Git remote detection.</p>
+<h2 id="git-and-ssh-troubleshooting">Git and SSH troubleshooting<a class="headerlink" href="#git-and-ssh-troubleshooting" title="Permanent link">&para;</a></h2>
+<p>There are two paths:</p>
+<pre class="mermaid"><code>flowchart LR
+    C[Codex] --&gt;|Model request| P[cui-proxy]
+    P --&gt; M[Model backend]
+    C --&gt;|Local command permission| G[git / ssh]
+    G --&gt; H[GitHub]</code></pre>
+<p>The proxy does not open, authorize or filter the SSH socket. It can block a
+model request containing a remote URL, proposed command, or earlier tool
+output. That can stop the agent's next turn even though SSH itself works.</p>
+<table>
+<thead>
+<tr>
+<th>What you see</th>
+<th>Where to investigate</th>
+<th>Can proxy YAML fix it?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>422 reason=header ... rule=builtin.email</code></td>
+<td>Workspace metadata, another header, or query</td>
+<td>v0.3.2 sanitizes <code>workspaces</code> and <code>cwd</code>; strict/explicit blocks and other header matches still block</td>
+</tr>
+<tr>
+<td><code>422 reason=policy kind=rule_match</code></td>
+<td>Active profile and named blocking rule</td>
+<td>Use masking only if appropriate, or narrow the offending custom rule; a strict exception is unavailable</td>
+</tr>
+<tr>
+<td><code>422 reason=sanitize kind=bad_body</code></td>
+<td>Request shape/content</td>
+<td>No blanket override. Attachments (see <a href="../attachments/">safe text extraction</a>), audio, invalid JSON, or other unsupported representations can trigger it; capture a synthetic reproduction</td>
+</tr>
+<tr>
+<td><code>Permission denied (publickey)</code></td>
+<td>SSH key/agent, GitHub identity and repository permissions</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Connection timeout, DNS failure, connection refused</td>
+<td>Network, firewall, VPN, SSH endpoint</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Codex command approval/sandbox denial</td>
+<td>The agent's execution permissions</td>
+<td>No; approve the needed action through the supported permission flow</td>
+</tr>
+<tr>
+<td><code>non-fast-forward</code> or repository authorization error</td>
+<td>Git branch state or repository access</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<p>Codex command and network approvals are separate from proxy content policy;
+use the narrow permission appropriate to the intended operation. See
+<a href="https://developers.openai.com/blog/mastering-codex-remote-for-engineering#6-treat-permissions-as-part-of-the-workflow">OpenAI's explanation of command and network permissions</a>.</p>
+<p>For <code>git@github.com:example/demo.git</code>, the email detector matches the
+<code>git@github.com</code> portion. In v0.3.2 with <code>sanitize</code> and no applicable blocking
+rule, supported prompt text and workspace metadata are masked rather than
+rejected. No SSH allowlist or disabled email detector is needed. Eligible
+response text is restored before the local command runs.</p>
+<p>A separate defect in v0.3.2 and earlier can reject tool output containing
+JSON with an escaped newline immediately before a matched value, such as
+<code>git@github.com</code>. It reports <code>reason=sanitize kind=bad_body</code>, even under
+<code>sanitize</code>. The JSON escape repair in v0.3.3 fixes this in code;
+changing SSH permissions, disabling email detection, or enabling passthrough
+is not the remedy. See the <a href="https://github.com/rozdolsky33/cui-proxy/blob/main/docs/verification-results/2026-11-08-json-escape-dataflow.md">dataflow regression report</a>
+for the affected paths and verification scope. Upgrade to v0.3.3 or later and
+restart the running proxy to use the repair.</p>
+<p>Work through these checks:</p>
+<ol>
+<li>Confirm <code>cui-proxy version</code>, then restart the running service after an
+   upgrade. A new binary on your shell's PATH does not update an old process;
+   the menu-bar app may also use a different binary path. Check its startup log.</li>
+<li>Run <code>policy check</code> with the actual service config and check the dashboard's
+   active profile. Look for <code>strict</code> or explicit blocking rules.</li>
+<li>Use <code>explain -config PATH REQUEST-ID</code> and the proxy log's reason/kind/rule.
+   <code>header</code> does not prove the workspace field was responsible; other headers
+   and queries remain blocking. Do not post raw headers or credentials.</li>
+<li>Test the fabricated remote above with <code>test-rules</code>. For full metadata
+   handling, use the <a href="../verification/#workspace-metadata-smoke-2026-11-08">workspace smoke</a>.</li>
+<li>If the error is from Git/SSH rather than the proxy, inspect that separately.
+   A read-only <code>git ls-remote origin</code> from the same repository tests remote
+   access without pushing or changing local branches. It contacts the remote
+   and may still need the agent's network approval. If it works in your terminal
+   but not the agent, compare execution permissions and SSH-agent environment.</li>
+</ol>
+<p>Switching an SSH remote to HTTPS is a transport choice, not a proxy policy
+exception. It does not fix unsupported request bodies or other sensitive
+content. Changing a remote is unnecessary for the v0.3.2 metadata fix.</p>
+<h2 id="defaults-and-all-configurable-fields">Defaults and all configurable fields<a class="headerlink" href="#defaults-and-all-configurable-fields" title="Permanent link">&para;</a></h2>
+<p>Defaults below are loader defaults, not every value in the starter file.
+Omitting <code>rules</code> does <strong>not</strong> enable built-ins automatically. <code>init</code> writes
+three entries: the built-in bundle, a dictionary, and an AWS-key regex.
+A sanitize config with no rules can validate but masks no detected values;
+strict refuses an empty rule list. The selected adapter needs an upstream;
+there is no default upstream in the loader.</p>
+<table>
+<thead>
+<tr>
+<th>YAML field</th>
+<th>Default</th>
+<th>Meaning / accepted values</th>
+<th>Apply</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>listen</code></td>
+<td><code>127.0.0.1:8787</code></td>
+<td>Proxy bind address</td>
+<td>Restart</td>
+</tr>
+<tr>
+<td><code>ui.listen</code></td>
+<td><code>127.0.0.1:8788</code></td>
+<td>Dashboard bind address; empty uses default, not disabled</td>
+<td>Restart</td>
+</tr>
+<tr>
+<td><code>allow_non_loopback</code></td>
+<td><code>false</code></td>
+<td>Permit non-loopback bind addresses; does not add auth/TLS; menu-bar app requires loopback</td>
+<td>Restart</td>
+</tr>
+<tr>
+<td><code>upstreams.codex</code></td>
+<td>None; starter uses ChatGPT backend</td>
+<td>Absolute base URL; no embedded credentials, query or fragment; HTTPS, or HTTP loopback for testing</td>
+<td>Restart</td>
+</tr>
+<tr>
+<td><code>policy.profile</code></td>
+<td><code>sanitize</code></td>
+<td><code>sanitize</code> or <code>strict</code></td>
+<td>Reload</td>
+</tr>
+<tr>
+<td><code>policy.on_error</code></td>
+<td><code>block</code></td>
+<td><code>block</code> or restricted, unsafe <code>passthrough</code> behavior above</td>
+<td>Reload</td>
+</tr>
+<tr>
+<td><code>policy.attachments</code> (from v0.4.0)</td>
+<td><code>block</code></td>
+<td><code>block</code> or <code>extract_text</code>; see <a href="../attachments/">Attachment inspection</a></td>
+<td>Reloadable; local tools required for extraction</td>
+</tr>
+<tr>
+<td><code>policy.unsupported</code></td>
+<td><code>block</code></td>
+<td>Only <code>block</code> accepted</td>
+<td>Fixed behavior</td>
+</tr>
+<tr>
+<td><code>policy.max_body_bytes</code></td>
+<td><code>20971520</code> (20 MiB)</td>
+<td>Request body limit in bytes; positive integer; zero uses default, not unlimited</td>
+<td>Reload</td>
+</tr>
+<tr>
+<td><code>vault.mode</code></td>
+<td><code>memory</code></td>
+<td><code>memory</code> or encrypted <code>file</code></td>
+<td>Restart</td>
+</tr>
+<tr>
+<td><code>vault.file</code></td>
+<td>None</td>
+<td>Required with file mode</td>
+<td>Restart</td>
+</tr>
+<tr>
+<td><code>vault.key_file</code></td>
+<td>None</td>
+<td>Required with file mode; 32-byte key, created 0600</td>
+<td>Restart</td>
+</tr>
+<tr>
+<td><code>audit.enabled</code></td>
+<td><code>true</code></td>
+<td><code>false</code> allowed only under sanitize</td>
+<td>Restart</td>
+</tr>
+<tr>
+<td><code>audit.file</code></td>
+<td><code>$XDG_STATE_HOME/cui-proxy/decisions.jsonl</code> if absolute; otherwise <code>~/.local/state/cui-proxy/decisions.jsonl</code></td>
+<td>Value-free decision log, private directory</td>
+<td>Restart</td>
+</tr>
+<tr>
+<td><code>audit.on_error</code></td>
+<td><code>warn</code> under sanitize; <code>block</code> under strict</td>
+<td>Write-failure handling; strict requires block</td>
+<td>Restart for explicit setting changes</td>
+</tr>
+<tr>
+<td><code>audit.max_size_mb</code></td>
+<td><code>50</code></td>
+<td>Rotation size, 1–1048576; binary MiB</td>
+<td>Restart</td>
+</tr>
+<tr>
+<td><code>audit.retention_days</code></td>
+<td><code>90</code></td>
+<td>0–106751; 0 retains indefinitely; newest rotated file kept</td>
+<td>Restart</td>
+</tr>
+<tr>
+<td><code>rules</code></td>
+<td>Empty list</td>
+<td>Rules below; not merged with starter rules</td>
+<td>Reload</td>
+</tr>
+</tbody>
+</table>
+<p>The 64 KiB turn-metadata limit and JSON depth limit are not YAML options.
+Function-call argument restoration also has a fixed 20 MiB limit on cumulative
+argument delta input per response, and on each completed argument document.
+JSON tokens are buffered until complete so escaping and numeric boundaries
+can be restored correctly. Invalid or unfinished arguments cut the response
+stream; this does not change ordinary text streaming.
+Increasing <code>max_body_bytes</code> does not increase those limits.</p>
+<h3 id="rule-fields">Rule fields<a class="headerlink" href="#rule-fields" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Applies to</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>All, required</td>
+<td>Unique rule name; recorded in diagnostics, so use category names rather than secrets</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td>All, required</td>
+<td><code>builtin</code>, <code>dictionary</code>, <code>regex</code></td>
+</tr>
+<tr>
+<td><code>action</code></td>
+<td>All</td>
+<td>Omitted follows profile; <code>sanitize</code> or <code>block</code>; cannot weaken strict</td>
+</tr>
+<tr>
+<td><code>pattern</code></td>
+<td>Regex, required</td>
+<td>Go regexp syntax; whole match is masked, not just capture group 1; no lookaround/backreferences</td>
+</tr>
+<tr>
+<td><code>validate</code></td>
+<td>Regex, optional</td>
+<td><code>ipv4</code>, <code>ssn</code>, <code>luhn</code>, or <code>ocid</code>; rejects invalid candidates; omitted means no extra validator</td>
+</tr>
+<tr>
+<td><code>file</code></td>
+<td>Dictionary, required</td>
+<td>Dictionary filename, relative to YAML directory or absolute</td>
+</tr>
+<tr>
+<td><code>synth</code></td>
+<td>Regex/dictionary, required</td>
+<td>Replacement class: <code>ipv4</code>, <code>ipv6</code>, <code>cidr</code>, <code>hostname</code>, <code>email</code>, <code>ocid</code>, <code>ssn</code>, <code>card</code>, <code>secret</code></td>
+</tr>
+</tbody>
+</table>
+<p>Built-in rules choose their own patterns and classes; <code>pattern</code>, <code>validate</code>,
+<code>file</code> and <code>synth</code> are not ways to customize that bundle. The bundle detects
+OCIDs, IPv4/IPv6/CIDR, address-plus-port tokens, emails, SSNs, card numbers,
+bearer tokens, JWTs and private-key blocks. It does not detect arbitrary
+usernames, repository paths or hostnames without suitable custom rules.</p>
+<p>Dictionary files use one literal per line, ignore blank lines and lines
+starting with <code>#</code>, and match case-insensitively at alphanumeric boundaries.
+They are not regex files. A dictionary with no usable entries is rejected.
+Use <code>synth: secret</code> for opaque custom identifiers; choose address classes only
+when the matched value is a suitable address. A mischosen class can fail
+sanitization. All rules run: order is not an allow/block firewall list.</p>
+<h2 id="point-codex-at-the-proxy">Point Codex at the proxy<a class="headerlink" href="#point-codex-at-the-proxy" title="Permanent link">&para;</a></h2>
+<p>In <code>~/.codex/config.toml</code> (or a profile):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">model_provider</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"cui-proxy"</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">[model_providers.cui-proxy]</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"cui-proxy"</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">base_url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"http://127.0.0.1:8787/v1"</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="n">wire_api</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"responses"</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="n">requires_openai_auth</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+</code></pre></div>
+<p>Or for a single run:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>codex<span class="w"> </span>-c<span class="w"> </span><span class="s1">'model_provider="cui-proxy"'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">      </span>-c<span class="w"> </span><span class="s1">'model_providers.cui-proxy={name="cui-proxy",base_url="http://127.0.0.1:8787/v1",wire_api="responses",requires_openai_auth=true}'</span>
+</code></pre></div>
+<p><code>requires_openai_auth = true</code> makes Codex send its ChatGPT login headers to
+the proxy, which forwards them unchanged to the upstream.</p>
+<p>The upstream mapping (<code>/v1/responses</code> -&gt;
+<code>https://chatgpt.com/backend-api/codex/responses</code>) passed a live smoke test
+on 2026-11-07 with Codex CLI 0.167.0 and <code>gpt-6-astra</code>, including streamed
+restoration and a shell tool round trip. See <a href="../verification/">verification.md</a>
+for evidence, scope, and repeatable checks.</p>
+<h2 id="commands">Commands<a class="headerlink" href="#commands" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>init [-dir PATH] [-force] [-profile sanitize\|strict]</code></td>
+<td>Write a starter <code>config.yaml</code> and <code>hosts.txt</code> (mode 0600) into <code>$XDG_CONFIG_HOME/cui-proxy</code>, else <code>~/.config/cui-proxy</code>. Never overwrites without <code>-force</code>.</td>
+</tr>
+<tr>
+<td><code>policy init [-profile ...]</code> / <code>policy check -config PATH [-require-strict]</code></td>
+<td><code>init</code> is the same as above; <code>check</code> validates the policy and says what is and is not enforced.</td>
+</tr>
+<tr>
+<td><code>menubar install\|uninstall\|status</code></td>
+<td>macOS only: build and manage the menu-bar app that runs the proxy in the background.</td>
+</tr>
+<tr>
+<td><code>info -config PATH</code></td>
+<td>Print the proxy and dashboard URLs for a config (used by the menu-bar app).</td>
+</tr>
+<tr>
+<td><code>serve -config PATH [-adapter codex]</code></td>
+<td>Run the proxy (default <code>127.0.0.1:8787</code>) and the dashboard (default <code>127.0.0.1:8788</code>).</td>
+</tr>
+<tr>
+<td><code>check-config -config PATH [-adapter NAME]</code></td>
+<td>Validate the config, rule files and selected adapter/upstream; prints <code>ok: &lt;N&gt; rules</code>, exits 1 on error.</td>
+</tr>
+<tr>
+<td><code>audit verify [-file PATH \| -config PATH]</code></td>
+<td>Check the decision log's hash chain across the active and rotated files; exit 1 on a break.</td>
+</tr>
+<tr>
+<td><code>explain [-config PATH] REQUEST-ID</code></td>
+<td>Say in plain words why a request was forwarded, sanitized or blocked, from the decision log.</td>
+</tr>
+<tr>
+<td><code>test-rules -config PATH</code></td>
+<td>Read stdin (max 8 MiB), print the sanitized text to stdout and a rule/class/count table to stderr. Uses a throwaway vault.</td>
+</tr>
+<tr>
+<td><code>version</code></td>
+<td>Print the version.</td>
+</tr>
+</tbody>
+</table>
+<p>Exit codes: 0 ok, 1 failure, 2 usage error.</p>
+<p>The upstream for ChatGPT-login Codex is configured in the proxy config:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">upstreams</span><span class="p">:</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">codex</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://chatgpt.com/backend-api/codex</span>
+</code></pre></div>
+<p>The upstream must be <code>https</code> (plain <code>http</code> is accepted only for a loopback
+host, for testing). See <code>examples/config.yaml</code> for the full, commented
+config. Relative dictionary and vault paths resolve against the config
+file's directory.</p>
+<h2 id="dashboard">Dashboard<a class="headerlink" href="#dashboard" title="Permanent link">&para;</a></h2>
+<p><a href="http://127.0.0.1:8788/">http://127.0.0.1:8788/</a> shows the live request feed (rule names and counts,
+never values), metrics, the effective config, a "test a string" box, and a
+reload button. It is bound to localhost and refuses non-localhost <code>Host</code>
+headers and cross-origin POSTs.</p>
+<h2 id="hot-reload">Hot reload<a class="headerlink" href="#hot-reload" title="Permanent link">&para;</a></h2>
+<p><code>kill -HUP &lt;pid&gt;</code> or the dashboard's reload button re-reads the config file
+and the dictionary files. The new rules apply only if the whole config is
+valid; otherwise the running rules stay and the error is shown. Requests
+already in flight finish with the rules they started with. The vault (and so
+every existing mapping) is kept.</p>
+<p>Applied on reload: <code>rules</code> (and dictionary contents), <code>policy.profile</code>, <code>policy.on_error</code>,
+<code>policy.max_body_bytes</code>.
+Need a restart (a reload logs <code>WARN restart required for: ...</code> and keeps the
+running values): <code>listen</code>, <code>ui.listen</code>, <code>upstreams</code>, <code>vault.*</code>,
+<code>allow_non_loopback</code>, all <code>audit.*</code> settings.</p>
+<p>When audit failure handling was omitted, a profile change is not treated as
+an explicit audit-setting edit. Strict still forces audit failures to block.
+A reload to strict is refused if audit was disabled at startup; enable it
+and restart first. See <a href="../decision-log/">decision-log.md</a> for details.</p>
+<p><code>SIGINT</code> / <code>SIGTERM</code> stop the proxy with a 10 s drain for in-flight requests;
+a second signal closes at once.</p>
+<h2 id="vault">Vault<a class="headerlink" href="#vault" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>vault.mode: memory</code> (default): mappings live only in the process, under a
+  random key that never touches disk. After a restart, synthetic values in
+  history that Codex resends are unknown to the new vault and pass through
+  unrestored.</li>
+<li><code>vault.mode: file</code>: mappings are stored encrypted (AES-256-GCM, file format
+  <code>CUIV2</code>) in <code>vault.file</code>, keyed by <code>vault.key_file</code> (32 bytes, created with
+  mode 0600 on first run; a key file with wider permissions is refused). The
+  vault is saved every 30 s when it changed and on shutdown. A vault file that
+  cannot be read (wrong key, missing key file, older format, corruption) stops
+  startup; it is never silently replaced. To start over, remove the vault
+  file yourself. Only one process may own a file vault: a lifetime lock
+  prevents stale writers from overwriting mappings. Keep its parent directory
+  private. A crash can still lose changes since the last periodic save.</li>
+</ul>
+<h3 id="synthetic-address-pool">Synthetic address pool<a class="headerlink" href="#synthetic-address-pool" title="Permanent link">&para;</a></h3>
+<p>IPv4 (and CIDR) synthetics come from the 762 RFC 5737 documentation
+addresses (<code>192.0.2.x</code>, <code>198.51.100.x</code>, <code>203.0.113.x</code>). When those are
+used up, the vault falls back to an overflow pool of 130,048 addresses in
+<code>198.18.0.0/15</code> (RFC 2544 benchmarking).</p>
+<ul>
+<li>Exhaustion: when no synthetic is left, the request is blocked (HTTP 422,
+  code <code>sanitize</code>, kind <code>pool_exhausted</code>; nothing is forwarded; see
+  <a href="../block-diagnostics/#block-diagnostics">Block diagnostics</a>). Mappings are never
+  freed: the vault keeps growing for the life of the process (and of the
+  vault file in file mode), and even a blocked request may have used up
+  addresses.</li>
+<li>Under <code>policy.on_error: passthrough</code>, exhaustion is a sanitize failure, so
+  the original body, with its real IPs, can be forwarded. Successfully
+  sanitized workspace metadata stays masked; metadata failures still block.</li>
+<li><code>198.18.0.0/15</code> can carry real traffic (lab and benchmark networks, and
+  proxies or VPNs with a "fake-IP" mode). To keep a real address there from
+  being confused with a synthetic: once the vault has seen any real address
+  in that range, it stops coining overflow addresses (it then fails closed
+  after the 762 RFC 5737 addresses); and a request containing an address
+  that equals an existing overflow synthetic is blocked, because the proxy
+  cannot tell whether it is real. Leading-zero spellings
+  (<code>198.018.001.001</code>) count as the same address, and an IPv4/CIDR value that
+  cannot be parsed also disables the overflow pool. In file mode this
+  decision is saved with the vault and survives restarts. Each exact
+  spelling still gets its own synthetic and restores byte for byte (some
+  tools read leading-zero octets as octal); no synthetic ever equals any
+  spelling of a known real. Residual risk: if your real traffic uses
+  that range, expect blocks. A model reply that names a real
+  <code>198.18.0.0/15</code> address the proxy has issued as a synthetic is restored to
+  the wrong value.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../codex/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Connect Codex">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Connect Codex
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../rules/" class="md-footer__link md-footer__link--next" aria-label="Next: Rules and synthetic values">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Rules and synthetic values
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      cui-proxy · MIT licensed · Documentation for v0.5.0
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.footer", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "toc.follow"], "search": "../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>
