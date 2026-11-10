@@ -1,5 +1,47 @@
 # Manual verification against the real Codex CLI
 
+## Before reading demo materials in an assistant session
+
+When the assistant itself connects through the proxy, reading a file is part
+of the next model request: tool output is sent back as conversation history.
+Keep configuration, `/api/config`, cloud CLI examples, fixture-runner source
+and detailed test reports local. Even a regex definition or a fabricated
+assignment can match an explicit blocking rule. A passing demo guide does
+not imply that the files it links to will pass.
+
+Capture both output streams when running fixture checks. For example, this
+checks a local demo guide without returning its contents or replacement text:
+
+```sh
+python3 - <<'PYCODE'
+from pathlib import Path
+import re
+import subprocess
+
+config = Path.home() / ".config/cui-proxy/config.yaml"
+guide = Path.home() / "cui-proxy-demo.md"
+result = subprocess.run(
+    ["cui-proxy", "test-rules", "-config", str(config)],
+    input=guide.read_bytes(), capture_output=True,
+)
+rules = sorted(set(re.findall(rb"rule=([A-Za-z0-9_.-]+)", result.stderr)))
+print("Guide preview exit:", result.returncode)
+print("Blocking rules:", ", ".join(r.decode() for r in rules) or "none reported")
+if result.returncode and not rules:
+    print("Preview failed; inspect the captured error locally.")
+PYCODE
+```
+
+Apply the same capture discipline to fixture runners; report only status,
+rule names and counts. Do not print their source or full JSON reports to
+understand a failure. Run intentional block probes outside the assistant's
+conversation and inspect detailed results locally.
+
+For a repeated HTTP 422 with `reason=policy kind=rule_match`, confirm the
+decision using `cui-proxy explain` and the request ID. Once triggering text
+is in history, start a fresh session with these precautions. Keep the active
+blocking policy; retrying the same history will not remove the trigger.
+
 **Status: live backend smoke passed on 2026-11-07.** Built from this checkout
 on macOS arm64 with Go 1.26.10; exercised Codex CLI 0.167.0, ChatGPT login,
 model `gpt-6-astra`, and reasoning effort `low`. Only fabricated prompts were
