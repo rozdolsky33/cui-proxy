@@ -105,7 +105,7 @@ func (v *Vault) Pseudonym(class, real string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("vault: %s: %w", class, err)
 		}
-		if v.noOverflow && synth.InOverflow(cand) {
+		if v.noOverflow && synth.UsesOverflowAddress(cand) {
 			break // overflow attempts come last: the usable pool is used up
 		}
 		if cand == c || cand == real || v.taken(cand) {

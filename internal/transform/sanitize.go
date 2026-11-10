@@ -157,7 +157,7 @@ func (s *Sanitizer) WithSink(sink Sink) *Sanitizer {
 // pass as already sanitized. Overflow-range synthetics never do: they are
 // indistinguishable from a real address in that range.
 func (s *Sanitizer) passSynthetic(t string) bool {
-	return s.v.IsSynthetic(t) && !synth.InOverflow(t)
+	return s.v.IsSynthetic(t) && !synth.UsesOverflowAddress(t)
 }
 
 // Detect returns the detected spans of in whose text is not already a vault

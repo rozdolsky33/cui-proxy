@@ -118,6 +118,18 @@ func InOverflow(s string) bool {
 	return err == nil && overflowNet.Contains(a.Unmap())
 }
 
+// UsesOverflowAddress reports whether a synthetic's address was drawn from
+// the overflow pool. For CIDRs, only the address identifies the pool: a
+// documentation address with a broad prefix may cover the overflow range
+// without having been allocated from it. Use InOverflow for real inputs,
+// where any overlapping prefix must still disable overflow allocation.
+func UsesOverflowAddress(s string) bool {
+	if i := strings.LastIndexByte(s, '/'); i >= 0 {
+		s = s[:i]
+	}
+	return InOverflow(s)
+}
+
 // Canonical returns the one spelling of an ipv4 or cidr real used for vault
 // keys and collision checks ("198.018.001.001" -> "198.18.1.1"; IPv6 CIDRs
 // in netip form). ok is false when an ipv4/cidr value cannot be parsed.

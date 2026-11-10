@@ -177,6 +177,11 @@ real value in that range. A detected value equal to an overflow synthetic can
 block rather than pass as already sanitized. Pools and collision retries are
 finite; allocation failures block with the default policy.
 
+Broad CIDRs, including default routes, can still use documentation-address
+replacements when overflow allocation is disabled. A replacement's address
+determines its pool; its prefix length does not. Real prefixes overlapping
+the overflow range continue to disable overflow allocation.
+
 Mappings are stable within the same vault. A new memory vault after a restart
 does not retain the previous mapping. File mode retains mappings encrypted
 locally. See [architecture](architecture.md#the-vault-and-response-restoration).
