@@ -191,3 +191,9 @@ Full Task 04 qualification remains outstanding; this increment is diagnostic inf
 ## Long-run extraction readiness
 
 Extraction phases now use the shared continuous stage collector, retaining early timings across recent-history expiration while keeping strict completeness validation. The extraction CLI checks declared font metadata before measurement, resolving the previously deferred provenance check. Full Task 04 reference qualification remains outstanding.
+
+## Reference campaign orchestration
+
+Add a fairness CLI and a sequential, resumable campaign around the existing isolated runners. Each repetition receives an independent job identity; repetition offsets preserve alternating arms. Use aggregate minimum text counts, preserve failed attempts, verify source/binary/fixture/report hashes on resume, retain private logs and atomic checkpoints, and stop on failure. Reference conditions are checked before/after jobs; completion never implies qualification.
+
+Implementation verification covers locks, interruption cleanup, identity/tamper rejection, retained failure evidence, no repeated completed work, native workload partitioning, real text comparisons and a complete six-job native smoke campaign. Stress/churn, profiles and the final reference acceptance report remain outstanding.

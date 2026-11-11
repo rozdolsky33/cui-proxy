@@ -23,7 +23,10 @@ def main(argv=None):
     parser.add_argument("--max-outstanding", type=int, default=16)
     parser.add_argument("--warmup-seconds", type=float, default=60)
     parser.add_argument("--warmup-count", type=int, default=100)
+    parser.add_argument("--repetition", type=int, default=0)
     args = parser.parse_args(argv)
+    if args.repetition < 0:
+        parser.error("repetition must be nonnegative")
     workload = Workload()
     report = dict(schema_version=1, measurements=[], completed=False, performance_qualified=False)
     reserved = False
@@ -41,8 +44,8 @@ def main(argv=None):
         write_report(args.output, report)
         for size in args.sizes:
             for rate in args.rates:
-                for bypass in (True, False):
-                    active = dict(size_bytes=size, offered_rate=rate,
+                for bypass in ((True, False) if args.repetition % 2 == 0 else (False, True)):
+                    active = dict(size_bytes=size, offered_rate=rate, repetition=args.repetition,
                                   requested_duration_s=args.duration,
                                   max_outstanding=args.max_outstanding,
                                   mode="bypass" if bypass else "proxy")

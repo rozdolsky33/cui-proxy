@@ -284,3 +284,7 @@ Use `scripts/workflow/overload_performance.py` with `--binary`, `--seed-binary`,
 The runner refuses to overwrite an existing report, saves progress atomically after each phase, and exits unsuccessfully on unexpected outcomes or collection failures. See [the overload increment record](docs/verification-results/2026-11-11-overload-diagnostic-increment.md).
 
 Extraction phases now retain stage timings continuously across recent-history expiration and validate fixture font metadata before running. See [the long-run retention record](docs/verification-results/2026-11-11-extraction-stage-retention.md).
+
+### Resumable performance campaigns
+
+`performance_campaign.py` runs the normal text, throughput, extraction, fairness and overload matrix sequentially with private logs and atomic checkpoints. Use `--profile smoke` for a short integration check, or `--profile reference` for contract-sized measurements. Resume verifies source/input/report identities and skips only completed, verified jobs. See [the campaign guide](docs/verification-results/2026-11-11-reference-campaign-runner.md) for commands and qualification limits.

@@ -394,6 +394,9 @@ REPORT_KEYS.update({"collection_failed", "collection_error_kind", "offered_rate"
                     "requested_duration_s", "max_outstanding", "error_kind"})
 
 
+REPORT_KEYS.add("fixture_manifest_sha256")
+
+
 def write_report(path, report):
     allowed_top = {"schema_version", "settings", "environment", "source", "executable_sha256",
                    "workload", "measurements", "comparison", "performance_qualified", "unmet_requirements", "setup_failure"}
@@ -717,7 +720,10 @@ def main():
     parser.add_argument("--warmup-count", type=int, default=1)
     parser.add_argument("--report", type=Path)
     parser.add_argument("--prepare", type=Path, help="create private fixtures for component profiles, then exit")
+    parser.add_argument("--repetition-offset", type=int, default=0)
     args = parser.parse_args()
+    if args.repetition_offset < 0:
+        parser.error("repetition offset must be nonnegative")
     if args.upstream:
         with FakeBackend() as backend:
             (args.upstream / "ready.json").write_text(json.dumps(dict(url=backend.url)))
@@ -746,7 +752,7 @@ def main():
                   executable_sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest(), workload=workload.metadata(),
                   measurements=measurements, comparison=comparisons)
     try:
-        for repetition in range(args.repetitions):
+        for repetition in range(args.repetition_offset, args.repetition_offset + args.repetitions):
             phases = {}
             for bypass in ([True, False] if repetition % 2 == 0 else [False, True]):
                 result = run_phase(args.binary.resolve(), args.seed_binary.resolve(), workload, size,
