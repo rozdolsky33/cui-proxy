@@ -272,3 +272,7 @@ model, verification evidence, operating requirements, and remaining limits.
   **Never paste real sensitive data into an issue or log excerpt**; use made-up values of the same shape.
 - Security problems (a way around the protections, a leak): report privately, see [SECURITY.md](SECURITY.md).
 - Best-effort software under the [MIT license](LICENSE), no warranty, and not an approved compliance control.
+
+### Stream timing and mixed-load diagnostics
+
+The workflow benchmark records upstream write/flush timing and paired relay delay. The load module adds continuous stage collection and an isolated four-client text/image fairness phase. These are diagnostic infrastructure, not a performance qualification. See [the increment record](docs/verification-results/2026-11-11-stream-fairness-increment.md) for accounting semantics, validation and remaining work.

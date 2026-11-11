@@ -3,7 +3,7 @@
 import math
 
 
-def _index(samples):
+def _index(samples, allow_negative=False):
     if not isinstance(samples, (list, tuple)):
         raise ValueError("invalid_sample_collection")
     values = {}
@@ -22,13 +22,13 @@ def _index(samples):
             value = float(value)
         except OverflowError:
             raise ValueError("invalid_first_byte_ms") from None
-        if not math.isfinite(value) or value < 0:
+        if not math.isfinite(value) or (value < 0 and not allow_negative):
             raise ValueError("invalid_first_byte_ms")
         values[ident] = value
     return values
 
 
-def summarize_pairs(proxy, bypass):
+def summarize_pairs(proxy, bypass, *, allow_negative=False):
     """Return nearest-rank quantiles of matched first-byte differences in ms.
 
     Each input is a list of operation_id/first_byte_ms records. Pair sets must
@@ -36,7 +36,7 @@ def summarize_pairs(proxy, bypass):
     this function never subtracts separately computed proxy/bypass quantiles.
     Errors contain fixed identifiers, never sample contents.
     """
-    left, right = _index(proxy), _index(bypass)
+    left, right = _index(proxy, allow_negative=allow_negative), _index(bypass, allow_negative=allow_negative)
     if not left or left.keys() != right.keys():
         raise ValueError("incomplete_pair_set")
     differences = sorted(value - right[ident] for ident, value in left.items())

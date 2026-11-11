@@ -15,7 +15,7 @@ def measured_stages(recent, warm_sessions, count):
     return result
 
 
-def attachment_case(workload, serial, size, fixture, directory, mappings, session):
+def attachment_case(workload, serial, size, fixture, directory, mappings, session, text_only_reply=False):
     import base64
     import copy
     import hashlib
@@ -39,10 +39,22 @@ def attachment_case(workload, serial, size, fixture, directory, mappings, sessio
     part = dict(type="input_file",filename="reference.pdf",file_data=inline) if pdf else dict(type="input_image",image_url=inline)
     body["input"].append(dict(role="user",content=[part]))
     expected["input"].append(dict(role="user",content=[dict(type="input_text",text=text)]))
+    replacements={original:mappings[original] for original in set(case["occurrences"])}
+    def replaced(text):
+        for original,replacement in replacements.items():
+            text=text.replace(original,replacement)
+        return text
+    for item in expected["input"]:
+        if item.get("type")=="function_call_output" and isinstance(item.get("output"),str):
+            item["output"]=replaced(item["output"])
+        for content in item.get("content",[]):
+            if content.get("type")=="input_text" and isinstance(content.get("text"),str):
+                content["text"]=replaced(content["text"])
     expected_bytes = encode(expected)
-    for original,replacement in mappings.items():
-        expected_bytes=expected_bytes.replace(original.encode(),replacement.encode())
     case.update(body=encode(body),occurrences=case["occurrences"]+[text.splitlines()[0]],benchmark_session=session)
+    if text_only_reply:
+        case["occurrences"]=case["occurrences"][:-1]
+        case["benchmark_text_only"]=True
     return case,perf.text_layout_hash(expected_bytes)
 
 
