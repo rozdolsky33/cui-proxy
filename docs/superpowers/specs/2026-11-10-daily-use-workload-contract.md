@@ -377,3 +377,14 @@ Revisions must record date, rationale, affected scenario/metric, old/new target
 and whether previous results remain comparable. Version 1 is the initial
 contract derived from the limited local evidence and explicit engineering
 choices described above.
+
+### 2026-11-11 security maintenance revision
+
+Go 1.26.11 replaces Go 1.26.10 for new reference builds because
+[GO-2026-6859](https://pkg.go.dev/vuln/GO-2026-6859) reports a reachable
+HTTP/1 server crash in the older standard library. The reference table above
+retains the originally observed version; record the exact patched version in
+each new run. No workload, denominator or numerical gate changes. Historical
+Go 1.26.10 diagnostics remain labeled with their original toolchain; do not
+pool them with patched-toolchain repetitions or treat them as qualification
+of the patched build. Rerun required measurements with the patched binary.

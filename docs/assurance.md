@@ -29,10 +29,11 @@ controls; `allow_non_loopback` does not provide those controls.
 | Parser errors expose configuration values through service logs/reload responses | Service-facing errors suppress values; explicit `check-config` retains diagnostics; CLI regression tests |
 | Concurrent processes overwrite a shared file vault | Hold an exclusive vault lock from load through final save; `cmd/cui-proxy/vault_lock_test.go` |
 
-The minimum toolchain is Go 1.26.10. An initial `govulncheck` scan of Go 1.26.0
+The minimum toolchain is Go 1.26.11. An initial `govulncheck` scan of Go 1.26.0
 reported standard-library vulnerabilities; a scan using the patched toolchain
 reported none. For example, the Go advisory for
 [GO-2026-6809](https://pkg.go.dev/vuln/GO-2026-6809) identifies 1.26.10 as fixed.
+Go 1.26.11 additionally fixes [GO-2026-6859](https://pkg.go.dev/vuln/GO-2026-6859).
 CI and release jobs run `make vuln` against the current advisory database;
 a clean scan is time-specific evidence, not a guarantee of absence of bugs.
 
