@@ -1,7 +1,7 @@
 # Daily-use and multi-agent reliability roadmap
 
 **Created:** 2026-11-10
-**Status:** Task 01 complete; Task 02 ready. Runtime improvements are not yet implemented.
+**Status:** Tasks 01–02 complete; Task 03 ready. Performance targets remain unmeasured.
 **First milestone:** Reliable daily use with four concurrent agents on one trusted workstation.
 **Owner:** Project maintainer; record an implementer and reviewer when starting each task.
 
@@ -106,10 +106,10 @@ permission between already authorized tasks.
 | ID | Task | Priority | Depends on | Status |
 |---|---|---|---|---|
 | 01 | Define workloads and acceptance contract | P0 | — | done |
-| 02 | Build deterministic workflow harness | P0 | 01 | ready |
-| 03 | Add stage timings and safe workload correlation | P0 | 01, 02 | blocked |
+| 02 | Build deterministic workflow harness | P0 | 01 | done |
+| 03 | Add stage timings and safe workload correlation | P0 | 01, 02 | ready |
 | 04 | Establish concurrent performance baseline | P0 | 02, 03 | blocked |
-| 05 | Verify task semantics and long-session compatibility | P0 | 02 | blocked |
+| 05 | Verify task semantics and long-session compatibility | P0 | 02 | ready |
 | 06 | Improve refusal recovery and dependency preflight | P0 | 03, 05 | blocked |
 | 07 | Fix the largest measured processing cost | P1 | 04, 05 | blocked |
 | 08 | Bound contention and protect text-workload fairness | P1 | 04, 07 | blocked |
@@ -147,15 +147,15 @@ happened to pass the current implementation.
 
 **Likely areas:** `scripts/`, `internal/proxy/`, adapter tests and local test utilities.
 
-- [ ] Exercise the real proxy against a controlled fake upstream with captured
+- [x] Exercise the real proxy against a controlled fake upstream with captured
       request inspection and deterministic SSE output.
-- [ ] Cover text requests, structured tool arguments/results, metadata,
+- [x] Cover text requests, structured tool arguments/results, metadata,
       mixed text/images, policy refusals, malformed responses and cancellation.
-- [ ] Simulate multiple independent conversations and an explicitly shared
+- [x] Simulate multiple independent conversations and an explicitly shared
       parent/child conversation. Preserve tool call IDs and output ordering.
-- [ ] Include bypass/control mode and fixed seeds; keep environment and backend
+- [x] Include bypass/control mode and fixed seeds; keep environment and backend
       behavior identical between comparisons.
-- [ ] Emit a machine-readable local report plus a safe summary; include commit,
+- [x] Emit a machine-readable local report plus a safe summary; include commit,
       versions, sample counts and expected/actual outcomes.
 
 **Acceptance:** An intentional missing sanitization, incorrect restoration,
@@ -366,7 +366,7 @@ Next ready task:
 
 - **Implementer / reviewer:** Codex primary agent / independent specification reviewer.
 - **Status:** Done; specification acceptance criteria met, runtime gates unmeasured.
-- **Commit / PR:** Pending on `docs/daily-use-workload-contract`; base `8c7edea`.
+- **Commit / PR:** `d4d6dfb`, [PR #18](https://github.com/rozdolsky33/cui-proxy/pull/18), merged as `373264c`.
 - **Deliverable:** [Version 1 workload and acceptance contract](../specs/2026-11-10-daily-use-workload-contract.md).
 - **Environment:** Observed 8-core M1 Pro, 32 GiB RAM, macOS 26.7.2,
   Go 1.26.10, Codex CLI 0.167.0, Tesseract 5.5.4 and Poppler 26.09.0.
@@ -385,8 +385,22 @@ Next ready task:
 - **Rollback:** Documentation-only change; no running service or policy changes.
 - **Next ready task:** 02, deterministic workflow harness.
 
+## Task 02 completion record — 2026-11-10
+
+- **Implementer / reviewer:** Codex primary agent / independent harness reviewer.
+- **Status:** Done for the deterministic correctness scope in contract section 10.
+- **Commit / PR:** Pending on `test/deterministic-workflow-harness`, isolated worktree; base `373264c`.
+- **Deliverable:** [Harness guide](../../../scripts/workflow/README.md), versioned scenario manifest, runner and oracle/lifecycle unit tests.
+- **Behavior changed:** Developer verification only. Real built proxy and separate fake upstream exercise W01–W08/W11/W12 at one/four clients, including parent/child context flow, semantic file effects, strict/disabled modes, mixed-image budget refusal, error and cancellation paths.
+- **Validation:** 125 local operations passed; three actual-boundary injected faults rejected; 13 oracle/lifecycle unit tests and all 17 Go race-test packages passed.
+- **Review:** Addressed skipped boundary checks on error/cancellation paths, escaped-original detection and cleanup of descendants after their parent exits; added regression tests.
+- **Evidence:** Captured local report `/private/tmp/cui-workflow-result.json`; terminal output limited to statuses and counts. Raw temporary fixtures are removed at exit.
+- **Before / after performance:** Not qualified. Diagnostic durations only; stage/resource data explicitly unavailable.
+- **Limitations:** Compact correctness fixtures use two regex rules and a small growing vault. Real OCR quality, normal-tier benchmarks, compaction/resume, restart qualification and the soak remain later tasks. Bypass controls cover supported text/tool cases only.
+- **Rollback:** Remove developer harness changes; production proxy behavior is unchanged.
+- **Next ready task:** 03, stage timings and safe workload correlation. Task 05's dependencies are also satisfied; recommended sequence remains Task 03 first.
+
 ## Next action
 
-Start **Task 02** using section 10 of the version 1 contract. Build the
-deterministic correctness harness first; performance benchmarking, stage
-instrumentation and optimizations remain later tasks with explicit dependencies.
+Start **Task 03**. Use the deterministic harness to verify stage timing and
+bounded workload attribution before collecting the Task 04 performance baseline.
