@@ -1004,6 +1004,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#workload-observability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workload observability
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1776,6 +1787,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#workload-observability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workload observability
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2300,6 +2322,12 @@ these configuration and control endpoints publicly.</p>
 unfinished function-call argument documents terminate the response stream.
 See <a href="../architecture/">architecture</a>, <a href="../limitations/">limitations</a> and
 <a href="../glossary/">glossary</a> for context.</p>
+<h2 id="workload-observability">Workload observability<a class="headerlink" href="#workload-observability" title="Permanent link">&para;</a></h2>
+<p><code>observability.correlate</code> defaults to <code>false</code> and can be changed by config reload.
+Enable it for temporary pseudonymous session/workspace records in <code>/api/metrics</code>.
+Stage timings and bounded gauges are always available. See the <a href="../dashboard/#stage-metrics-api">metrics API and
+correlation contract</a> for fields, attribution
+limits and retention.</p>
 
 
 

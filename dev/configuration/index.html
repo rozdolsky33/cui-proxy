@@ -2337,6 +2337,12 @@ there is no default upstream in the loader.</p>
 <td>Restart</td>
 </tr>
 <tr>
+<td><code>observability.correlate</code></td>
+<td><code>false</code></td>
+<td>Optional process-local session/workspace pseudonyms in the <a href="../dashboard/#optional-workload-correlation">metrics API</a>; no payload retention</td>
+<td>Reload</td>
+</tr>
+<tr>
 <td><code>rules</code></td>
 <td>Empty list</td>
 <td>Rules below; not merged with starter rules</td>
@@ -2502,7 +2508,7 @@ valid; otherwise the running rules stay and the error is shown. Requests
 already in flight finish with the rules they started with. The vault (and so
 every existing mapping) is kept.</p>
 <p>Applied on reload: <code>rules</code> (and dictionary contents), <code>policy.profile</code>, <code>policy.on_error</code>,
-<code>policy.max_body_bytes</code>.
+<code>policy.max_body_bytes</code>, <code>observability.correlate</code>.
 Need a restart (a reload logs <code>WARN restart required for: ...</code> and keeps the
 running values): <code>listen</code>, <code>ui.listen</code>, <code>upstreams</code>, <code>vault.*</code>,
 <code>allow_non_loopback</code>, all <code>audit.*</code> settings.</p>
