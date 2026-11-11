@@ -390,9 +390,14 @@ class PhaseFailure(Exception):
         return dict(phase=self.phase, records=self.records, **summarize_outcomes(self.records))
 
 
+REPORT_KEYS.update({"collection_failed", "collection_error_kind", "offered_rate",
+                    "requested_duration_s", "max_outstanding", "error_kind"})
+
+
 def write_report(path, report):
     allowed_top = {"schema_version", "settings", "environment", "source", "executable_sha256",
                    "workload", "measurements", "comparison", "performance_qualified", "unmet_requirements", "setup_failure"}
+    allowed_top.update({"completed", "error_kind"})
     if set(report) - allowed_top: raise ValueError("invalid report fields")
     forbidden = {"body", "input", "output", "originals", "occurrences", "near_misses", "oracle", "image", "credentials"}
     def check(value):

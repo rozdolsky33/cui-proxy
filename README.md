@@ -276,3 +276,9 @@ model, verification evidence, operating requirements, and remaining limits.
 ### Stream timing and mixed-load diagnostics
 
 The workflow benchmark records upstream write/flush timing and paired relay delay. The load module adds continuous stage collection and an isolated four-client text/image fairness phase. These are diagnostic infrastructure, not a performance qualification. See [the increment record](docs/verification-results/2026-11-11-stream-fairness-increment.md) for accounting semantics, validation and remaining work.
+
+### Open-loop overload diagnostics
+
+Use `scripts/workflow/overload_performance.py` with `--binary`, `--seed-binary`, and a new `--output` path to run the declared text sizes at 1, 2, 4 and 8 requests/second, 120 seconds per rate, against an isolated fake upstream and proxy. It caps outstanding client requests at 16 and records unsent slots separately. `--sizes`, `--rates`, `--duration`, `--max-outstanding`, `--warmup-seconds`, and `--warmup-count` support short diagnostics. Reduced runs do not qualify performance.
+
+The runner refuses to overwrite an existing report, saves progress atomically after each phase, and exits unsuccessfully on unexpected outcomes or collection failures. See [the overload increment record](docs/verification-results/2026-11-11-overload-diagnostic-increment.md).
