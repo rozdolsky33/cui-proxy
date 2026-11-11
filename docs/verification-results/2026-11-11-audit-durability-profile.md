@@ -33,3 +33,19 @@ go test -run '^$' -bench '^BenchmarkAuditDurability$' -benchtime=3s \
 Record the clean source, Go toolchain, flags, host conditions and artifact
 hashes. Interpret CPU/allocation/heap/lock profiles as attribution, not as
 end-to-end release gates. Actual optimized measurements remain pending.
+
+## CI execution follow-up
+
+The first draft CI stopped in the existing Python descendant-cleanup
+regression, before the audit benchmark ran. Linux was cancelled and packaging
+skipped. Its helper exit differed from the expected interrupt exit, but the
+old assertion discarded captured stderr; the exact CI error cannot be recovered
+from that failure. Local probes of the original test passed.
+
+The test had overridden the production five-second cleanup grace to 200 ms.
+It now exercises the production deadline, retaining its descendant-termination
+assertions and a bounded 25-second outer wait (four cleanup waits plus launch
+margin). Unexpected exits report a fixed failure category, never raw captured
+source. Both isolated cleanup regressions passed locally after this change.
+Fresh full CI remains required before integration; no production cleanup
+behavior or numerical performance gate changes.
