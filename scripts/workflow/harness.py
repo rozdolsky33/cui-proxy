@@ -122,8 +122,17 @@ def upstream_main(directory):
             if not isinstance(ident, str) or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{0,127}", ident) is None:
                 self.send_error(400)
                 return
+            root = os.path.join(os.path.realpath(folder), "")
+            capture_path = os.path.realpath(os.path.join(root, ident + ".json"))
+            cancel_path = os.path.realpath(os.path.join(root, ident + ".cancelled"))
+            if not capture_path.startswith(root):
+                self.send_error(400)
+                return
+            if not cancel_path.startswith(root):
+                self.send_error(400)
+                return
             capture = {"body": body, "headers": dict(self.headers)}
-            (folder / (ident + ".json")).write_text(json.dumps(capture))
+            (Path(capture_path)).write_text(json.dumps(capture))
             fault = meta.get("fault", "")
             if fault in ("upstream", "non_sse"):
                 self.send_response(503 if fault == "upstream" else 200)
@@ -158,7 +167,7 @@ def upstream_main(directory):
                     self.wfile.write(b'event: response.completed\ndata: {"type":"response.completed"}\n\n')
                     self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
-                (folder / (ident + ".cancelled")).touch()
+                (Path(cancel_path)).touch()
 
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     server.daemon_threads = True

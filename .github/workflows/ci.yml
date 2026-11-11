@@ -56,6 +56,8 @@ jobs:
       - name: go test -race
         run: go test -race -count=1 ./...
 
+      - name: workflow harness regressions
+        run: python3 -m unittest discover -s scripts/workflow
       - name: reachable vulnerability scan
         run: make vuln
 
