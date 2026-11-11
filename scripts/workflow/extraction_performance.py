@@ -190,7 +190,10 @@ def main():
     parser.add_argument("--warmup-count",type=int,default=100)
     parser.add_argument("--repetitions",type=int,default=3)
     parser.add_argument("--repeated",action="store_true")
+    parser.add_argument("--repetition-offset", type=int, default=0)
     args=parser.parse_args()
+    if args.repetition_offset < 0:
+        parser.error("repetition offset must be nonnegative")
     if args.repetitions < 1:
         parser.error("repetitions must be positive")
     try:
@@ -217,7 +220,7 @@ def main():
         for name,file in (("extraction_generator_sha256","extraction_fixtures.py"),("extraction_runner_sha256","extraction_performance.py"),("renderer_sha256","render_extraction.swift")):
             report["workload"][name]=hashlib.sha256(Path(__file__).with_name(file).read_bytes()).hexdigest()
         template=int(args.template) if args.template.isdigit() else args.template
-        for repetition in range(args.repetitions):
+        for repetition in range(args.repetition_offset, args.repetition_offset + args.repetitions):
             result=run_phase(args.binary,args.seed_binary,workload,args.fixtures,manifest,template,
                              args.clients,args.count,args.warmup_seconds,args.warmup_count,args.repeated)
             result["repetition"]=repetition
