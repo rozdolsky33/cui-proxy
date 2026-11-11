@@ -175,3 +175,9 @@ limitations before qualification. Full fairness, overload, stream send timing
 and sustained reference repetitions still remain.
 
 [Diagnostic verification record](../../verification-results/2026-11-11-real-extraction-increment.md).
+
+## Stream and fairness diagnostic increment
+
+Implemented semantic stream prefix alignment, actual upstream write/flush timing and signed paired relay statistics. Added mixed closed-loop and bounded open-loop schedulers, continuous stage-history collection, and an isolated native mixed text/image phase. The portable discovery run completed 102 tests successfully; the native mixed-load suite completed 12 successfully. See `docs/verification-results/2026-11-11-stream-fairness-increment.md` for measurement semantics and limits.
+
+Task 04 remains in progress. The native overload phase/CLI, full reference measurements, repetitions, churn/stress and consolidated evidence are still required. Short diagnostic tests do not satisfy performance gates.

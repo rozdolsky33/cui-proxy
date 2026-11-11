@@ -46,20 +46,62 @@ def response_text(values):
 
 
 def stream_chunks(values):
-    """Split two protected values across separate events, then emit 28 tails."""
+    """Keep logical boundaries stable when corpus substitutions change length."""
+    import re
     text = response_text(values)
-    first = max(1, len(values[0]) // 2)
-    second_start = len(values[0]) + 1
-    second = second_start + max(1, len(values[1]) // 2)
-    cuts = [0, first, second_start, second, second_start + len(values[1]) + 1]
-    start = cuts[-1]
-    cuts += [start + (len(text) - start) * i // 28 for i in range(1, 29)]
-    return [text[a:b] for a, b in zip(cuts, cuts[1:])]
+    cuts = []
+    offset = 0
+    for value in values[:2]:
+        start = text.find(value, offset)
+        if start < 0 or not value:
+            raise ValueError("invalid_stream_value")
+        middle = start + max(1, len(value) // 2)
+        end = start + len(value)
+        cuts.append(middle)
+        if end != middle:
+            cuts.append(end)
+        offset = end
+    remaining = 32 - len(cuts)
+    boundaries = [offset + match.end() for match in re.finditer(r"\s+", text[offset:])]
+    if len(boundaries) < remaining:
+        raise ValueError("insufficient_stream_words")
+    # Fixture originals and their substitutes have identical whitespace shape.
+    # Word boundaries therefore preserve association after complete restoration.
+    for index in range(1, remaining):
+        cuts.append(boundaries[math.ceil(index * len(boundaries) / remaining) - 1])
+    cuts.append(len(text))
+    start = 0
+    result = []
+    for end in cuts:
+        result.append(text[start:end])
+        start = end
+    return result
 
 
-def values_from_body(body):
+def relay_timings(started_s, prefix_ms, send_started_s, send_finished_s):
+    result = dict(upstream_send_ms=None, upstream_flush_ms=None, relay_ms=None, relay_flush_ms=None)
+    arrays = (prefix_ms, send_started_s, send_finished_s)
+    if any(not isinstance(values, list) or len(values) != len(prefix_ms) or not values for values in arrays):
+        return result
+    if any(type(value) not in (int,float) or not math.isfinite(value) for values in arrays for value in values):
+        return result
+    if any(end < start for start,end in zip(send_started_s,send_finished_s)) or any(start < previous for previous,start in zip(send_finished_s,send_started_s[1:])):
+        return result
+    sent = [(value-started_s)*1000 for value in send_started_s]
+    flushed = [(value-started_s)*1000 for value in send_finished_s]
+    return dict(upstream_send_ms=sent,upstream_flush_ms=flushed,
+                relay_ms=[prefix-send for prefix,send in zip(prefix_ms,sent)],
+                relay_flush_ms=[prefix-flush for prefix,flush in zip(prefix_ms,flushed)])
+
+
+
+def values_from_body(body, *, allow_attachments=False):
     values = []
     for item in body["input"]:
+        if allow_attachments and item.get("type") != "function_call_output":
+            content = item.get("content", [])
+            if content and content[0].get("type") in ("input_image", "input_file"):
+                continue
         text = item.get("output")
         if text is None: text = item["content"][0]["text"]
         values.append(text.split("\n", 1)[0])
@@ -111,7 +153,9 @@ class FakeBackend:
                     if not 0 < length <= 12 * 1024 * 1024:
                         self.send_error(400); return
                     raw = self.rfile.read(length)
-                    values = values_from_body(json.loads(raw))
+                    values = values_from_body(json.loads(raw), allow_attachments=self.headers.get("X-Benchmark-Text-Only-Reply") == "1")
+                    if self.headers.get("X-Benchmark-Text-Only-Reply") == "1":
+                        values = values[:40]
                     if len(values) < 2: values *= 2
                     chunks = stream_chunks(values)
                     time.sleep(outer.delay)
@@ -121,12 +165,16 @@ class FakeBackend:
                     if self.headers.get("X-Benchmark-Text-Layout") == "1":
                         self.send_header("X-Benchmark-Text-Layout-SHA256", text_layout_hash(raw))
                     self.end_headers()
+                    send_started = []
+                    send_finished = []
                     for chunk in chunks:
                         event = dict(type="response.output_text.delta", delta=chunk)
+                        send_started.append(time.monotonic())
                         self.wfile.write(b"data: " + encode(event) + b"\n\n")
                         self.wfile.flush()
+                        send_finished.append(time.monotonic())
                         time.sleep(outer.interval)
-                    self.wfile.write(b'data: {"type":"response.completed"}\n\n')
+                    self.wfile.write(b"data: " + encode(dict(type="response.completed", benchmark_send_started_s=send_started, benchmark_send_finished_s=send_finished)) + b"\n\n")
                     self.wfile.flush()
                 except (BrokenPipeError, ConnectionResetError, OSError): pass
                 except (KeyError, ValueError, TypeError):
@@ -146,12 +194,27 @@ class FakeBackend:
 
 
 class StreamObserver:
-    def __init__(self, expected):
+    def __init__(self, expected, *, prefix_lengths=None):
         self.expected = expected
         self.pending = b""
         self.text = ""
         self.terminal = False
         self.prefix_ms = [None] * 32
+        self.send_started_s = None
+        self.send_finished_s = None
+        self.prefix_lengths = prefix_lengths if prefix_lengths is not None else [
+            math.ceil(len(expected) * (i + 1) / 32) for i in range(32)]
+        if (len(self.prefix_lengths) != 32 or
+                any(type(n) is not int or n < 0 or n > len(expected) for n in self.prefix_lengths) or
+                self.prefix_lengths != sorted(self.prefix_lengths) or
+                self.prefix_lengths[-1] != len(expected)):
+            raise ValueError("invalid logical prefix lengths")
+
+    def observe_terminal(self, event):
+        self.terminal = True
+        self.send_started_s = event.get("benchmark_send_started_s")
+        self.send_finished_s = event.get("benchmark_send_finished_s")
+
 
     def feed(self, chunk, elapsed_ms):
         self.pending += chunk
@@ -169,10 +232,10 @@ class StreamObserver:
                     self.text += event["delta"]
                     if not self.expected.startswith(self.text): raise ValueError("wrong restoration")
                     for i in range(32):
-                        length = math.ceil(len(self.expected) * (i + 1) / 32)
+                        length = self.prefix_lengths[i]
                         if self.prefix_ms[i] is None and len(self.text) >= length:
                             self.prefix_ms[i] = elapsed_ms
-                elif kind == "response.completed": self.terminal = True
+                elif kind == "response.completed": self.observe_terminal(event)
                 else: raise ValueError("unexpected stream event")
 
     def valid(self):
@@ -213,13 +276,15 @@ def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None
             super().__init__(Wrapper(), *args, **kwargs)
     conn.response_class = Response
     expected = response_text(case.get("occurrences", ["page", "page"]))
-    observer = StreamObserver(expected)
+    chunks = stream_chunks(case.get('occurrences', ['page', 'page']))
+    observer = StreamObserver(expected, prefix_lengths=[
+        sum(map(len, chunks[:i + 1])) for i in range(len(chunks))])
     try:
         conn.connect()
         remaining = deadline - time.monotonic()
         if remaining <= 0: raise TimeoutError()
         conn.sock.settimeout(remaining)
-        conn.request("POST", "/v1/responses", body=case["body"], headers={'Content-Type': 'application/json', 'Authorization': 'Bearer benchmark-only', 'X-Benchmark-Text-Layout': '1' if expected_layout_hash is not None else '0', 'session_id': case.get('benchmark_session', '')})
+        conn.request("POST", "/v1/responses", body=case["body"], headers={'Content-Type': 'application/json', 'Authorization': 'Bearer benchmark-only', 'X-Benchmark-Text-Layout': '1' if expected_layout_hash is not None else '0', 'session_id': case.get('benchmark_session', ''), 'X-Benchmark-Text-Only-Reply': '1' if case.get('benchmark_text_only') else '0'})
         response = conn.getresponse()
         row["status"] = response.status
         boundary_ok = expected_hash is None or response.getheader("X-Benchmark-Body-SHA256") == expected_hash
@@ -244,6 +309,7 @@ def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None
         row["duration_ms"] = (row["finished_s"] - start) * 1000
         row["first_byte_ms"] = (first[0] - start) * 1000 if first else None
         row["prefix_ms"] = observer.prefix_ms
+        row.update(relay_timings(start, observer.prefix_ms, observer.send_started_s, observer.send_finished_s))
     return row
 
 
@@ -311,7 +377,8 @@ REPORT_KEYS = frozenset("""
  before after runner_sha256 generator_sha256
 """.split()) | OUTCOMES
 
-REPORT_KEYS = set(REPORT_KEYS) | {"template", "repeated", "stage_samples", "warmup_count", "warmup_completed", "fixture_generator_version", "tool_versions", "swift", "tesseract", "pdftotext", "pdftoppm", "extraction_generator_sha256", "extraction_runner_sha256", "renderer_sha256", "request_bytes", "resources", "extraction_run", "extraction_wait", "achieved_concurrency"}
+REPORT_KEYS = set(REPORT_KEYS) | {"template", "repeated", "stage_samples", "relay_samples_valid", "added_relay_ms", "added_relay_flush_ms", "upstream_send_ms", "upstream_flush_ms", "relay_ms", "relay_flush_ms", "warmup_count", "warmup_completed", "fixture_generator_version", "tool_versions", "swift", "tesseract", "pdftotext", "pdftoppm", "extraction_generator_sha256", "extraction_runner_sha256", "renderer_sha256", "request_bytes", "resources", "extraction_run", "extraction_wait", "achieved_concurrency"}
+REPORT_KEYS = set(REPORT_KEYS) | {"workload_kind", "text_records", "image_records", "text_unsent", "aborted", "window_start_s", "stage_poll_errors", "text_outcomes", "image_outcomes", "text_completions_per_second", "correlation_enabled", "scheduled", "sent", "completed", "rejected", "client_unsent", "unsent_records", "scheduled_s", "dispatched_s", "reason"}
 
 
 
@@ -354,6 +421,30 @@ def window_successes(rows, start, duration):
     return sum(r["outcome"] == "supported_success" and start <= r["finished_s"] <= start + duration for r in rows)
 
 
+def compare_relay(proxy, bypass):
+    result = dict(relay_samples_valid=False, added_relay_ms=None, added_relay_flush_ms=None)
+    try:
+        paired = {}
+        for field in ("relay_ms", "relay_flush_ms"):
+            arms = []
+            for records in (proxy, bypass):
+                samples = []
+                for row in records:
+                    values = row.get(field)
+                    prefixes = row.get("prefix_ms")
+                    if row.get("outcome") != "supported_success" or not isinstance(values, list) or not isinstance(prefixes, list) or not values or len(values) != len(prefixes):
+                        raise ValueError("incomplete_relay_samples")
+                    for index, value in enumerate(values):
+                        samples.append(dict(operation_id=f"{row['operation_id']}:{index}", first_byte_ms=value))
+                arms.append(samples)
+            paired["added_"+field] = summarize_pairs(*arms, allow_negative=True)
+        result.update(paired)
+        result["relay_samples_valid"] = True
+    except (ValueError, TypeError, KeyError):
+        pass
+    return result
+
+
 def compare_runs(proxy, bypass):
     result = dict(paired_samples_valid=False, added_first_byte_ms=None,
                   added_prefix_ms=None, added_completion_ms=None)
@@ -375,6 +466,7 @@ def compare_runs(proxy, bypass):
     except (ValueError, KeyError, TypeError):
         result = dict(paired_samples_valid=False, added_first_byte_ms=None,
                       added_prefix_ms=None, added_completion_ms=None)
+    result.update(compare_relay(proxy, bypass))
     return result
 
 
