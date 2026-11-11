@@ -187,3 +187,7 @@ Task 04 remains in progress. The native overload phase/CLI, full reference measu
 Connected bounded open-loop scheduling to isolated proxy/bypass phases and added an atomic, fail-fast CLI. Native and CLI smoke runs retained all four scheduled slots per arm (two completed, two client-unsent). Collection/cleanup failures preserve scheduler denominators and return a failed command status. Existing report paths are refused before backend work.
 
 Full Task 04 qualification remains outstanding; this increment is diagnostic infrastructure only. See `docs/verification-results/2026-11-11-overload-diagnostic-increment.md`.
+
+## Long-run extraction readiness
+
+Extraction phases now use the shared continuous stage collector, retaining early timings across recent-history expiration while keeping strict completeness validation. The extraction CLI checks declared font metadata before measurement, resolving the previously deferred provenance check. Full Task 04 reference qualification remains outstanding.
