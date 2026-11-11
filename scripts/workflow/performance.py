@@ -695,7 +695,7 @@ def _run_phase(measured, binary, seed_binary, workload, size, clients, bypass, c
         successes = window_successes(rows, started, duration) if duration is not None else outcomes["supported_success"]
         return dict(mode="bypass" if bypass else "proxy", size_bytes=size, clients=clients,
                     environment=dict(before=before, after=environment_info(binary)), population=env.population,
-                    window_seconds=duration, elapsed_s=elapsed, warmup_seconds=warmup_elapsed,
+                    window_seconds=duration, window_start_s=started, elapsed_s=elapsed, warmup_seconds=warmup_elapsed,
                     warmup_completed=sum(r["outcome"] == "supported_success" for r in warm),
                     achieved_client_concurrency=peak_concurrency(rows),
                     successful_completions_per_second=successes / (duration or elapsed),

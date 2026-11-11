@@ -98,6 +98,7 @@ def run_phase(binary,seed_binary,workload,directory,manifest,template,clients=1,
                 warm.extend(rows)
                 if any(row["outcome"]!="supported_success" for row in rows):
                     raise perf.PhaseFailure("warmup",warm)
+            warmup_elapsed = time.monotonic() - start
             warm_sessions={row.get("identity",{}).get("session") for row in env.metrics(include_recent=True)["recent_requests"]}
             if not warm_sessions or None in warm_sessions:
                 raise ValueError("stage_coverage_invalid")
@@ -114,7 +115,7 @@ def run_phase(binary,seed_binary,workload,directory,manifest,template,clients=1,
             recent = collector.records
             stages=measured_stages(recent,warm_sessions,count)
             result=dict(stage_poll_errors=collector.errors, records=records,outcomes=summarize_outcomes(records),stage_samples=stages,
-                        resources=perf.resource_summary(sampler.samples),warmup_completed=len(warm),
+                        resources=perf.resource_summary(sampler.samples),warmup_completed=len(warm), warmup_seconds=warmup_elapsed,
                         achieved_concurrency=perf.peak_concurrency(records),performance_qualified=False)
         return result
     except perf.PhaseFailure:
