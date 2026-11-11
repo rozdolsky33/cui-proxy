@@ -5,6 +5,13 @@ import tempfile
 from pathlib import Path
 import extraction_fixtures as fixtures
 
+def manifest_for_integrity():
+    images=fixtures.recipes("warmup",1)+fixtures.recipes("measurement",1)
+    pdfs=fixtures.pdf_recipes()
+    for row in images+pdfs:
+        row.update(file=row["id"]+"."+row.get("format","pdf"),bytes=1,sha256="unused")
+    return dict(version=fixtures.VERSION,seed=1102026,count=1,images=images,pdfs=pdfs)
+
 class ExtractionFixtureTests(unittest.TestCase):
     def test_cold_samples_have_distinct_printed_indices_and_disjoint_warmup(self):
         warm = fixtures.recipes("warmup", 100)
@@ -42,6 +49,10 @@ class ExtractionFixtureTests(unittest.TestCase):
     def test_real_renderer_and_extractors_match_independent_text(self):
         with tempfile.TemporaryDirectory() as root:
             result = fixtures.generate(Path(root) / "fixtures", count=2)
+            self.assertEqual(result["font_name"],"Menlo-Regular")
+            self.assertEqual(set(result["tool_versions"]),{"swift","tesseract","pdftotext","pdftoppm"})
+            self.assertTrue(all(result["tool_versions"].values()))
+            self.assertRegex(result["traineddata_sha256"],r"^[a-f0-9]{64}$")
             self.assertEqual(len(result["images"]),16)
             self.assertEqual(len(result["pdfs"]),2)
             self.assertEqual(len({r["sha256"] for r in result["images"]}),16)
@@ -56,7 +67,9 @@ class ExtractionFixtureTests(unittest.TestCase):
             root = Path(root)
             image = root / "sample.png"
             image.write_bytes(b"changed")
-            (root / "manifest.json").write_text(json.dumps(dict(images=[dict(file="sample.png",sha256=hashlib.sha256(b"original").hexdigest(),bytes=8,expected="reference")],pdfs=[])))
+            manifest=manifest_for_integrity()
+            manifest["images"][0].update(file="sample.png",sha256=hashlib.sha256(b"original").hexdigest(),bytes=8)
+            (root / "manifest.json").write_text(json.dumps(manifest))
             with self.assertRaisesRegex(RuntimeError,"fixture_integrity_invalid"):
                 fixtures.validate(root)
 
@@ -65,6 +78,24 @@ class ExtractionFixtureTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             root=Path(root)
             directory=root / "fixtures";directory.mkdir()
-            (directory / "manifest.json").write_text(json.dumps(dict(images=[dict(file="../outside.png",sha256="",bytes=1,expected="reference")],pdfs=[])))
+            manifest=manifest_for_integrity()
+            manifest["images"][0]["file"]="../outside.png"
+            (directory / "manifest.json").write_text(json.dumps(manifest))
             with self.assertRaisesRegex(RuntimeError,"fixture_path_invalid"):
                 fixtures.validate(directory)
+
+    def test_manifest_coverage_rejects_empty_missing_duplicate_or_changed_recipe(self):
+        import copy
+        rows=fixtures.recipes("warmup",2)+fixtures.recipes("measurement",2)
+        manifest=dict(version=fixtures.VERSION,seed=1102026,count=2,images=rows,pdfs=fixtures.pdf_recipes())
+        fixtures.validate_coverage(manifest)
+        for change in ["empty","missing","duplicate","expectation","version","phase"]:
+            bad=copy.deepcopy(manifest)
+            if change=="empty": bad["images"]=[]
+            if change=="missing": bad["pdfs"].pop()
+            if change=="duplicate": bad["images"][1]=bad["images"][0]
+            if change=="expectation": bad["images"][0]["expected"]="different"
+            if change=="version": bad["version"]=-1
+            if change=="phase": bad["images"][0]["index"]=100000
+            with self.subTest(change=change),self.assertRaisesRegex(ValueError,"fixture_coverage_invalid"):
+                fixtures.validate_coverage(bad)

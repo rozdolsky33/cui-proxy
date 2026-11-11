@@ -74,6 +74,28 @@ class _LoopbackHTTPServer(http.server.ThreadingHTTPServer):
         self.server_name, self.server_port = self.server_address[:2]
 
 
+def text_layout_hash(body):
+    """Canonical fixture boundary check: normalize declared text whitespace only."""
+    value = json.loads(body)
+    items = value.get("input", [])
+    if isinstance(items, str):
+        value["input"] = " ".join(items.split())
+    elif isinstance(items, list):
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            content = item.get("content", [])
+            if item.get("type") == "function_call_output":
+                content = item.get("output", [])
+                if isinstance(content, str):
+                    item["output"] = " ".join(content.split())
+            if isinstance(content, list):
+                for part in content:
+                    if isinstance(part, dict) and part.get("type") == "input_text" and isinstance(part.get("text"), str):
+                        part["text"] = " ".join(part["text"].split())
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+
+
 class FakeBackend:
     """The real runner runs this in a separate process without the oracle."""
     def __init__(self, delay=1.0, interval=0.02):
@@ -96,6 +118,8 @@ class FakeBackend:
                     self.send_response(200)
                     self.send_header("Content-Type", "text/event-stream")
                     self.send_header("X-Benchmark-Body-SHA256", hashlib.sha256(raw).hexdigest())
+                    if self.headers.get("X-Benchmark-Text-Layout") == "1":
+                        self.send_header("X-Benchmark-Text-Layout-SHA256", text_layout_hash(raw))
                     self.end_headers()
                     for chunk in chunks:
                         event = dict(type="response.output_text.delta", delta=chunk)
@@ -172,7 +196,7 @@ class _TimedRaw(io.RawIOBase):
         super().close()
 
 
-def request(url, case, expected_hash=None, timeout=45):
+def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None):
     start = time.monotonic()
     row = dict(operation_id=case["operation_id"], supported=True, completed=False, started_s=start,
                outcome="unresolved", duration_ms=0.0, first_byte_ms=None, prefix_ms=[], status=None)
@@ -195,10 +219,11 @@ def request(url, case, expected_hash=None, timeout=45):
         remaining = deadline - time.monotonic()
         if remaining <= 0: raise TimeoutError()
         conn.sock.settimeout(remaining)
-        conn.request("POST", "/v1/responses", body=case["body"], headers={"Content-Type":"application/json", "Authorization":"Bearer benchmark-only"})
+        conn.request("POST", "/v1/responses", body=case["body"], headers={'Content-Type': 'application/json', 'Authorization': 'Bearer benchmark-only', 'X-Benchmark-Text-Layout': '1' if expected_layout_hash is not None else '0', 'session_id': case.get('benchmark_session', '')})
         response = conn.getresponse()
         row["status"] = response.status
         boundary_ok = expected_hash is None or response.getheader("X-Benchmark-Body-SHA256") == expected_hash
+        boundary_ok = boundary_ok and (expected_layout_hash is None or response.getheader("X-Benchmark-Text-Layout-SHA256") == expected_layout_hash)
         size = 0
         while True:
             data = response.read1(65536)
@@ -286,6 +311,9 @@ REPORT_KEYS = frozenset("""
  before after runner_sha256 generator_sha256
 """.split()) | OUTCOMES
 
+REPORT_KEYS = set(REPORT_KEYS) | {"template", "repeated", "stage_samples", "warmup_count", "warmup_completed", "fixture_generator_version", "tool_versions", "swift", "tesseract", "pdftotext", "pdftoppm", "extraction_generator_sha256", "extraction_runner_sha256", "renderer_sha256", "request_bytes", "resources", "extraction_run", "extraction_wait", "achieved_concurrency"}
+
+
 
 class PhaseFailure(Exception):
     def __init__(self, phase, records):
@@ -350,7 +378,7 @@ def compare_runs(proxy, bypass):
     return result
 
 
-def prepare(directory, workload, seed_binary, proxy_port, ui_port, upstream_url, size):
+def prepare(directory, workload, seed_binary, proxy_port, ui_port, upstream_url, size, correlate=False):
     directory = Path(directory)
     def private(name, data):
         path = directory / name
@@ -365,6 +393,8 @@ def prepare(directory, workload, seed_binary, proxy_port, ui_port, upstream_url,
         vault=dict(mode="file", key_file=str(directory / "vault.key"), file=str(directory / "vault.enc")),
         audit=dict(enabled=True, file=str(directory / "audit.jsonl"), on_error="block"),
         rules=workload.rules)
+    if correlate:
+        config["observability"] = dict(correlate=True)
     private("config.json", encode(config))
     seeded = subprocess.run([str(seed_binary), str(directory)], capture_output=True, timeout=60)
     private("seed.log", seeded.stdout + seeded.stderr)
@@ -373,7 +403,8 @@ def prepare(directory, workload, seed_binary, proxy_port, ui_port, upstream_url,
 
 
 class Environment(harness.Environment):
-    def __init__(self, binary, seed_binary, workload, size):
+    def __init__(self, binary, seed_binary, workload, size, correlate=False):
+        self.correlate = correlate
         super().__init__(binary)
         self.seed_binary, self.workload, self.size = seed_binary, workload, size
 
@@ -401,8 +432,7 @@ class Environment(harness.Environment):
                 raise RuntimeError(f"backend_start: {state}; error-kind={kind}; stage={stage}") from error
             self.upstream_url = json.loads(ready.read_text())["url"]
             proxy_port, ui_port = harness.port(), harness.port()
-            self.mappings = prepare(self.directory, self.workload, self.seed_binary, proxy_port, ui_port,
-                                    self.upstream_url, self.size)
+            self.mappings = prepare(self.directory, self.workload, self.seed_binary, proxy_port, ui_port, self.upstream_url, self.size, correlate=self.correlate)
             population_file = self.directory / "population.json"
             self.population = json.loads(population_file.read_text()) if population_file.exists() else dict(vault_entries=len(self.mappings), compiled_detectors=None)
             self.proxy = self.spawn([str(self.binary), "serve", "-config", str(self.directory / "config.json")], "proxy.log")
@@ -420,13 +450,13 @@ class Environment(harness.Environment):
             self.__exit__(*sys.exc_info())
             raise
 
-    def metrics(self):
+    def metrics(self, include_recent=False):
         with harness.OPENER.open(self.ui + "/api/metrics", timeout=2) as response:
             value = json.load(response)
         # Explicit projection: neither correlation data nor audit values enter
         # benchmark evidence. Unavailable runtime heap data remains unavailable.
         fields = ("stages_ms", "active_requests", "extractor_active", "extractor_queued", "vault_size", "runtime")
-        return {key: value[key] for key in fields if key in value}
+        return ({key: value[key] for key in fields if key in value}) | ({"recent_requests": value.get("recent_requests", [])} if include_recent else {})
 
 
 class ResourceSampler:
