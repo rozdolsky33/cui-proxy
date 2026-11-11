@@ -52,6 +52,7 @@ OUTCOMES = frozenset((
     "proxy_overload", "upstream_failure", "client_cancelled",
     "client_or_model_failure", "harness_invalid", "unresolved",
 ))
+OUTCOMES = OUTCOMES | frozenset(['boundary_evidence_missing', 'boundary_pending'])
 EXPECTED_BLOCKS = frozenset(("expected_policy_block", "expected_representation_block"))
 
 

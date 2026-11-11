@@ -259,7 +259,9 @@ class _TimedRaw(io.RawIOBase):
         super().close()
 
 
-def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None):
+def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None, *, defer_boundary=False):
+    if defer_boundary and (expected_hash is not None or expected_layout_hash is not None):
+        raise ValueError("deferred_boundary_arguments")
     start = time.monotonic()
     row = dict(operation_id=case["operation_id"], supported=True, completed=False, started_s=start,
                outcome="unresolved", duration_ms=0.0, first_byte_ms=None, prefix_ms=[], status=None)
@@ -289,6 +291,12 @@ def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None
         row["status"] = response.status
         boundary_ok = expected_hash is None or response.getheader("X-Benchmark-Body-SHA256") == expected_hash
         boundary_ok = boundary_ok and (expected_layout_hash is None or response.getheader("X-Benchmark-Text-Layout-SHA256") == expected_layout_hash)
+        if defer_boundary:
+            digest = response.getheader("X-Benchmark-Body-SHA256")
+            boundary_ok = (isinstance(digest, str) and len(digest) == 64
+                           and all(c in "0123456789abcdef" for c in digest))
+            if boundary_ok:
+                row["boundary_sha256"] = digest
         size = 0
         while True:
             data = response.read1(65536)
@@ -310,6 +318,8 @@ def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None
         row["first_byte_ms"] = (first[0] - start) * 1000 if first else None
         row["prefix_ms"] = observer.prefix_ms
         row.update(relay_timings(start, observer.prefix_ms, observer.send_started_s, observer.send_finished_s))
+    if defer_boundary and row["outcome"] == "supported_success":
+        row["outcome"] = "boundary_pending"
     return row
 
 
@@ -376,6 +386,7 @@ REPORT_KEYS = frozenset("""
  os architecture hardware_model logical_cpus memory_bytes go_version load_average on_ac low_power
  before after runner_sha256 generator_sha256
 """.split()) | OUTCOMES
+REPORT_KEYS = REPORT_KEYS | frozenset(['boundary_sha256', 'churn_index', 'final_vault_population', 'initial_metrics', 'initial_vault_population', 'live_vault_population', 'observed_new_pairs', 'planned_pairs', 'rate', 'unresolved_indices', 'verified_new_pairs', 'warmup_records', 'warmup_resource_samples'])
 
 REPORT_KEYS = set(REPORT_KEYS) | {"template", "repeated", "stage_samples", "relay_samples_valid", "added_relay_ms", "added_relay_flush_ms", "upstream_send_ms", "upstream_flush_ms", "relay_ms", "relay_flush_ms", "warmup_count", "warmup_completed", "fixture_generator_version", "tool_versions", "swift", "tesseract", "pdftotext", "pdftoppm", "extraction_generator_sha256", "extraction_runner_sha256", "renderer_sha256", "request_bytes", "resources", "extraction_run", "extraction_wait", "achieved_concurrency"}
 REPORT_KEYS = set(REPORT_KEYS) | {"workload_kind", "text_records", "image_records", "text_unsent", "aborted", "window_start_s", "stage_poll_errors", "text_outcomes", "image_outcomes", "text_completions_per_second", "correlation_enabled", "scheduled", "sent", "completed", "rejected", "client_unsent", "unsent_records", "scheduled_s", "dispatched_s", "reason"}

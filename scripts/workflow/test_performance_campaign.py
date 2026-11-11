@@ -7,13 +7,22 @@ from pathlib import Path
 
 
 def _cleanup_probe_kind(stderr):
+    if b"probe_caught_runtime" in stderr:
+        return "caught_runtime_error"
+    if b"probe_caught_interrupt" in stderr:
+        return "interrupt_handler_reached"
     # Never echo captured test source or fixture content in assertion output.
     if b"RuntimeError" in stderr and b"_terminate_group" in stderr:
         return "owned_group_cleanup_deadline"
     if b"RuntimeError" in stderr and b"execute_command" in stderr:
         return "owned_descendants_after_exit"
     if b"KeyboardInterrupt" in stderr:
-        return "interrupted_probe"
+        import re
+        import sys
+        frames = re.findall(rb'File "(?:[^"\n]*/)?(performance_campaign.py|subprocess.py|threading.py|<string>)", line (\d+)', stderr)
+        trace = ",".join(name.decode("ascii") + ":" + line.decode("ascii") for name, line in frames[-8:])
+        version = ".".join(str(part) for part in sys.version_info[:3])
+        return "interrupted_probe py=" + version + " frames=" + trace
     return "unclassified_probe_exit"
 
 
@@ -84,13 +93,18 @@ class CampaignTests(unittest.TestCase):
             "Path(sys.argv[1]).write_text(str(os.getpid()))",
             "child = subprocess.Popen([sys.executable, '-c', " + repr(child_code) + ", sys.argv[2]])",
             ("child.wait()" if interrupt else "while not Path(sys.argv[2]).exists(): time.sleep(0.01)")])
-        probe_code = "\n".join([
-            "import performance_campaign as campaign", "import sys",
-            "try:",
-            "    campaign.execute_command([sys.executable, '-c', " + repr(leader_code) +
-            ", sys.argv[1], sys.argv[2]], sys.argv[3])",
-            "except KeyboardInterrupt:", "    raise SystemExit(130)",
-            "except RuntimeError:", "    raise SystemExit(1)"])
+        probe_code = '\n'.join([
+            'import performance_campaign as campaign',
+            'import sys',
+            'try:',
+            "    campaign.execute_command([sys.executable, '-c', " + repr(leader_code) + ', sys.argv[1], sys.argv[2]], sys.argv[3])',
+            'except KeyboardInterrupt:',
+            "    sys.stderr.write('probe_caught_interrupt\\n')",
+            '    raise SystemExit(130)',
+            'except RuntimeError:',
+            "    sys.stderr.write('probe_caught_runtime\\n')",
+            '    raise SystemExit(1)',
+        ])
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             leader, child, log = root / "leader.pid", root / "child.pid", root / "child.log"
