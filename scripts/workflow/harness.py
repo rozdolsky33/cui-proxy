@@ -260,6 +260,10 @@ class Environment:
                     os.killpg(child.pid, 0)
                 except ProcessLookupError:
                     break
+                except PermissionError:
+                    # A denied zero-signal probe is not proof the group is gone.
+                    # Keep polling until the grace deadline, then force cleanup.
+                    pass
                 time.sleep(.05)
             else:
                 try:

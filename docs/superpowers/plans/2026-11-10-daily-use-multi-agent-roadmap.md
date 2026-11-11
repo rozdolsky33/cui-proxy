@@ -1,7 +1,7 @@
 # Daily-use and multi-agent reliability roadmap
 
 **Created:** 2026-11-10
-**Status:** Tasks 01–03 complete; Task 04 ready. Workload performance targets remain unmeasured.
+**Status:** Tasks 01–03 complete; Task 04 in progress. Workload performance targets remain unmeasured.
 **First milestone:** Reliable daily use with four concurrent agents on one trusted workstation.
 **Owner:** Project maintainer; record an implementer and reviewer when starting each task.
 
@@ -107,8 +107,8 @@ permission between already authorized tasks.
 |---|---|---|---|---|
 | 01 | Define workloads and acceptance contract | P0 | — | done |
 | 02 | Build deterministic workflow harness | P0 | 01 | done |
-| 03 | Add stage timings and safe workload correlation | P0 | 01, 02 | ready |
-| 04 | Establish concurrent performance baseline | P0 | 02, 03 | blocked |
+| 03 | Add stage timings and safe workload correlation | P0 | 01, 02 | done |
+| 04 | Establish concurrent performance baseline | P0 | 02, 03 | in progress |
 | 05 | Verify task semantics and long-session compatibility | P0 | 02 | ready |
 | 06 | Improve refusal recovery and dependency preflight | P0 | 03, 05 | blocked |
 | 07 | Fix the largest measured processing cost | P1 | 04, 05 | blocked |
@@ -404,6 +404,7 @@ Next ready task:
 
 - **Implementer / reviewer:** Codex controller and runtime implementer / independent whole-branch reviewer.
 - **Status:** Done; [implementation and measurement record](2026-11-10-request-stage-observability.md).
+- **Commit / PR:** `65815a4`, [PR #20](https://github.com/rozdolsky33/cui-proxy/pull/20), merged as `8fef6e4`.
 - **Behavior changed:** Eight exclusive stage summaries, bounded request-size buckets and active/queued extractor gauges are exposed through `/api/metrics`. Optional process-keyed correlation is disabled by default, capped at 256 records and fifteen minutes, and cleared on disable. Existing forwarding and fail-closed policies remain intact.
 - **Validation:** All 18 Go packages pass race tests; vet and staticcheck pass. Eighteen Python tests, 125 workflow operations and two controlled-delay probes pass; three boundary fault injections are detected. Controlled delay, reload/privacy/retention, panic and cancellation tests cover the runtime boundaries.
 - **Review:** No Critical/Important findings. Added partial timing/gauge assertions for four handler panic/cancellation cases and documented approximately concurrent metrics snapshots.
@@ -414,5 +415,4 @@ Next ready task:
 
 ## Next action
 
-Start **Task 04**. Use the stage API and existing semantic oracles to measure
-matched proxy/bypass workloads before optimizing the dominant measured cost.
+Continue **Task 04** using its [implementation plan](2026-11-10-concurrent-performance-baseline.md). Start with paired first-byte statistics, then representative workloads and the matched-load runner. The full baseline remains unmeasured.

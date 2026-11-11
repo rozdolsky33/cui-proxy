@@ -22,6 +22,7 @@ const (
 // passthrough, replacements, replacements_by_rule, downgraded, requests_per_minute,
 // overhead_ms{p50,p95,samples}, vault_size, uptime_seconds, audit_write_failed.
 type Snapshot struct {
+	Runtime            RuntimeStats            `json:"runtime"`
 	StagesMS           map[string]StageLatency `json:"stages_ms"`
 	ActiveRequests     int64                   `json:"active_requests"`
 	ExtractorQueued    int64                   `json:"extractor_queued"`
@@ -161,6 +162,7 @@ func (r *Registry) Snapshot() Snapshot {
 	now := r.now()
 	sec := now.Unix()
 	s := Snapshot{
+		Runtime:        runtimeSnapshot(),
 		Requests:       r.requests.Load(),
 		ActiveRequests: r.activeRequests.Load(), ExtractorQueued: r.extractorQueued.Load(), ExtractorActive: r.extractorActive.Load(),
 		Blocked:      r.blocked.Load(),
