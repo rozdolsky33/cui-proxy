@@ -36,10 +36,10 @@ Use a dedicated performance runner alongside the correctness harness. Turning th
 **Files:** create `scripts/workflow/performance_stats.py`, `scripts/workflow/test_performance_stats.py`.
 **Interface:** `summarize_pairs(proxy, bypass)` takes lists of records with `operation_id` and numeric `first_byte_ms` fields and returns count, p50/p95/p99 paired differences. `summarize_outcomes(records)` reports attempted/completed/supported-success/failure counts without dropping unsuccessful requests. Report records use fixed metadata fields only.
 
-- [ ] Add failing tests for pairing independent of input order, negative differences, duplicate/missing sample IDs, non-finite samples, and timeout inclusion.
-- [ ] Implement strict sample validation and nearest-rank quantiles; incomplete pair sets fail qualification rather than being silently discarded.
-- [ ] Run captured unittest discovery; expect all oracle/statistics tests to pass.
-- [ ] Record schema and units in `scripts/workflow/README.md`; commit the tested statistics increment.
+- [x] Add failing tests for pairing independent of input order, negative differences, duplicate/missing sample IDs, non-finite samples, and timeout inclusion.
+- [x] Implement strict sample validation and nearest-rank quantiles; incomplete pair sets fail qualification rather than being silently discarded.
+- [x] Run captured unittest discovery; expect all oracle/statistics tests to pass.
+- [x] Record schema and units in `scripts/workflow/README.md`; commit the tested statistics increment.
 
 ## Task 2 — Representative workloads and controlled component benchmarks
 
@@ -80,8 +80,8 @@ Task 03 provides fixed eight-stage timing rings, active/queued/extractor gauges,
 - [x] Inspected existing benchmark inventory and the workload contract.
 - [x] Selected isolated runner plus existing oracles and stage metrics.
 - [x] Implement paired first-byte statistics with eight new unit tests (RED: module absent; GREEN: all 26 Python tests pass). Pairing precedes nearest-rank quantiles; negative differences remain, incomplete/duplicate/invalid samples fail with fixed diagnostics.
-- [ ] Finish outcome/timeout accounting and report schema, then commit the complete Task 1 increment.
-- [ ] The load runner, representative benchmarks and full performance baseline remain unimplemented/unmeasured.
+- [x] Finish outcome/timeout accounting and report schema; committed as `f8208c2`.
+- [ ] Complete the real-extraction, fairness, overload and qualification measurements. The text runner and component benchmarks are implemented; diagnostic measurements are in progress.
 
 ## Security and CI follow-up — 2026-11-10
 
@@ -97,3 +97,19 @@ Artifacts contained only existing seeds; no assertion failure or new
 counterexample was recorded. Failed-job reruns passed with unchanged test
 limits. Track this scheduling/runtime stability issue during baseline work;
 do not hide failures or weaken fuzz/correctness gates.
+
+## Text measurement increment — 2026-11-11
+
+Implemented deterministic normal/stress text generation, isolated seeded file
+vaults, matched proxy/bypass SSE loads, paired logical-prefix timings, fixed
+outcome accounting, resource sampling, and component CPU/heap/lock profiles.
+The existing metrics endpoint now includes fixed Go runtime counters without
+a debug endpoint or forced GC. Short matrix runs are diagnostic only.
+
+Task 04 remains **in progress**. Real OCR/PDF templates and timing, text/image
+fairness, open-loop overload, mapping-churn end-to-end runs, full reference
+environment verification, 10-minute throughput windows, and the full three-
+repetition sample counts still require completion. The text sample-count
+matrix alone takes roughly twelve hours at the specified backend pacing.
+The user has been asked where to execute that sustained run; no qualification
+gate is relaxed while this execution preference is pending.
