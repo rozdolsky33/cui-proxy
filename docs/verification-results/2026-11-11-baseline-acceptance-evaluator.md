@@ -26,7 +26,8 @@ does not mean numerical gates or qualification passed.
 The evaluator recomputes paired first-byte and semantic-prefix relay
 quantiles from operation records, preserving negative differences and sample
 identity. It retains unsuccessful operations in outcome counts. Throughput
-counts successful completions within equal 600-second windows; completions
+uses recorded scheduler origins and counts successful completions within equal
+600-second windows; completions
 after a window do not improve its rate. Four-client normal text receives the
 version-1 thresholds; other text concurrency levels remain capacity evidence.
 
@@ -51,14 +52,14 @@ remains diagnostic rather than being mistaken for clean reference evidence.
 `performance_qualified` remains false. Stress/churn, component profiles,
 cancellation evidence, complete reference coverage and cross-workload review
 remain separate requirements. Extraction and fairness reports do not retain
-an independent elapsed warm-up duration in every phase. Extraction observations
-use the runner's declared warm-up duration; fairness text sampling remains
-incomplete where that duration is absent. Neither substitutes for full
-qualification evidence. Full soak qualification belongs to roadmap Task 11.
+an independent elapsed warm-up duration in every phase. Extraction and fairness sampling remain incomplete where observed duration is
+absent. Throughput remains incomplete where its actual window origin is
+missing. Declared settings and reconstructed origins do not substitute for
+those measurements. Full soak qualification belongs to roadmap Task 11.
 
 ## Verification in progress
 
-The focused evaluator suite passes 54 tests. Tests first failed for missing
+The focused evaluator suite passes 66 tests. Tests first failed for missing
 behaviors, then passed for threshold boundaries, unsuccessful denominators,
 nonfinite samples, request pairing, incomplete windows, tampering, path safety,
 partial campaigns, output privacy and native-evidence schema differences.
@@ -66,6 +67,17 @@ The retained six-job native smoke campaign remains unqualified. The first
 reference report is recognized as a first-byte p95 target failure while its
 stream and RSS observations pass; full campaign coverage remains incomplete.
 
-The full workflow suite and review are pending remote CI so local server/build
-work does not interfere with the running reference campaign. Task 04 remains
+The first revision passed all required remote CI, including 183 discovered
+workflow tests on Linux and macOS (179 passed, four native opt-in skips),
+race/lint/vulnerability/fuzz checks and packaging. Fresh independent review
+then identified six material reporting issues and one malformed-duration
+validation issue. Regression tests reproduced these before the fixes.
+
+The fixes preserve failure precedence independently of evidence completeness,
+bind extraction/overload reports to their job specifications, require observed
+warm-up/window origins, reconcile overload counters, include extraction
+resources and reject nonfinite outcome durations and JSON numeric overflow.
+The retained native smoke and first reference report were exercised again.
+The corrected revision still requires fresh full CI before integration. Local
+server/build work is kept idle during the reference campaign. Task 04 remains
 in progress.

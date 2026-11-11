@@ -86,6 +86,10 @@ def evaluate_text(proxy, bypass):
     if not all(isinstance(r, dict) for arm in records for r in arm):
         result["correctness"]["state"] = "invalid"
         return result
+    if not all(_number(r.get("duration_ms")) and r["duration_ms"] >= 0
+               for arm in records for r in arm):
+        result["correctness"]["state"] = "invalid"
+        return result
     success = [sum(r.get("supported") is True and r.get("completed") is True
                    and r.get("outcome") == "supported_success" for r in arm)
                for arm in records]
@@ -117,7 +121,8 @@ def evaluate_text(proxy, bypass):
         observed = dict(count=paired["count"], p50_ms=paired["p50"],
                         p95_ms=paired["p95"], p99_ms=paired["p99"])
         passed = (observed["p95_ms"] <= 150 and observed["p99_ms"] <= 500) if gate == "first_byte" else observed["p99_ms"] <= 100
-        observed["state"] = ("pass" if passed else "fail") if ready else "incomplete"
+        observed["state"] = "fail" if not passed else "pass" if ready else "incomplete"
+        observed["evidence_complete"] = ready
         result[gate] = observed
     return result
 
@@ -134,9 +139,16 @@ def _unique_object(pairs):
     return result
 
 
+def _finite_float(value):
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise ValueError("nonfinite_json")
+    return parsed
+
+
 def _decode(raw):
     try:
-        return json.loads(raw, object_pairs_hook=_unique_object,
+        return json.loads(raw, object_pairs_hook=_unique_object, parse_float=_finite_float,
                           parse_constant=lambda _: (_ for _ in ()).throw(ValueError("nonfinite_json")))
     except (UnicodeError, json.JSONDecodeError, RecursionError) as error:
         raise ValueError("invalid_json") from error
@@ -253,45 +265,44 @@ def _warm(phase):
 
 
 def evaluate_throughput(proxy, bypass):
-    """Count correct completions inside each matched ten-minute window."""
+    """Use recorded scheduler origins; preserve failures independently of readiness."""
     if not _identity(proxy, bypass):
         return dict(state="invalid")
+    successes, windows = [], []
+    ready, failure = True, False
     for phase in (proxy, bypass):
-        window = phase.get("window_seconds")
-        if window is None:
-            return dict(state="incomplete")
-        if not _number(window):
+        window, origin = phase.get("window_seconds"), phase.get("window_start_s")
+        if window is not None and (not _number(window) or window <= 0):
             return dict(state="invalid")
-        if window != 600 or not _warm(phase) or phase.get("achieved_client_concurrency") != 4:
-            return dict(state="incomplete")
-    successes = []
-    failure = False
-    for phase in (proxy, bypass):
+        if origin is not None and not _number(origin):
+            return dict(state="invalid")
+        ready &= (window == 600 and origin is not None and _warm(phase)
+                  and type(phase.get("achieved_client_concurrency")) is int
+                  and phase["achieved_client_concurrency"] == 4)
         records = phase.get("records")
         if not isinstance(records, list) or not records:
             return dict(state="incomplete")
-        seen = set()
+        try:
+            _record_map(records)
+        except ValueError:
+            return dict(state="invalid")
         for record in records:
-            if not isinstance(record, dict):
-                return dict(state="invalid")
-            identity = record.get("operation_id")
-            if not isinstance(identity, str) or not identity or identity in seen:
-                return dict(state="invalid")
-            seen.add(identity)
             start, finish = record.get("started_s"), record.get("finished_s")
-            if not _number(start) or not _number(finish) or finish < start:
+            if (not _number(start) or not _number(finish) or finish < start
+                    or (origin is not None and start < origin)
+                    or not _number(record.get("duration_ms")) or record["duration_ms"] < 0):
                 return dict(state="invalid")
             failure |= not _successful(record)
-        beginning = min(record["started_s"] for record in records)
-        successes.append(sum(_successful(record) and record["finished_s"] <= beginning + 600
-                             for record in records))
-    result = dict(state="incomplete", proxy_window_success=successes[0],
-                  bypass_window_success=successes[1], window_seconds=600)
-    if successes[1]:
-        result["ratio"] = successes[0] / successes[1]
-        result["state"] = "pass" if not failure and result["ratio"] >= 0.85 else "fail"
-    elif failure:
-        result["state"] = "fail"
+        successes.append(sum(_successful(record) and record["finished_s"] <= origin + window
+                             for record in records) if origin is not None and window is not None else None)
+        windows.append(window)
+    result = dict(state="fail" if failure else "incomplete", evidence_complete=bool(ready),
+                  proxy_window_success=successes[0], bypass_window_success=successes[1])
+    if windows[0] == windows[1] and windows[0] is not None:
+        result["window_seconds"] = windows[0]
+        if successes[1] and successes[0] is not None:
+            result["ratio"] = successes[0] / successes[1]
+            result["state"] = "fail" if failure or result["ratio"] < 0.85 else "pass" if ready else "incomplete"
     return result
 
 
@@ -336,9 +347,9 @@ def _p95(values):
 def _evaluate_extraction(report, exact_count):
     """Separate image/PDF numerical gates, retaining per-repetition evidence.
 
-    Warm-up duration here is declared runner configuration, not an independently
-    recorded elapsed measurement. Thus these observations never establish full
-    reference qualification, even when their numerical states pass.
+    Warm-up readiness requires an observed phase duration. Declared runner
+    settings alone cannot establish it. Observed threshold failures remain
+    failures even when sampling evidence is incomplete.
     """
     settings = report.get("settings", {})
     template = str(settings.get("template"))
@@ -383,17 +394,18 @@ def _evaluate_extraction(report, exact_count):
         result["run"]["p95_ms"] = _p95(run)
         result["queue"]["p95_ms"] = _p95(wait)
         result["budget"]["maximum_ms"] = max(a + b for a, b in zip(run, wait))
-        seconds = settings.get("warmup_seconds")
+        seconds = phase.get("warmup_seconds")
         count = phase.get("warmup_completed")
         enough = ((len(records) == 100 if exact_count else len(records) >= 100)
                   and successful == len(records) and _integer(count) and count >= 100
                   and _number(seconds) and seconds >= 60 and settings.get("clients") == 4
                   and phase.get("achieved_concurrency") == 4)
-        if enough:
-            limit = 10000 if template.startswith("pdf-") else 5000
-            result["run"]["state"] = "pass" if result["run"]["p95_ms"] <= limit else "fail"
-            result["queue"]["state"] = "pass" if result["queue"]["p95_ms"] <= 2000 else "fail"
-            result["budget"]["state"] = "pass" if result["budget"]["maximum_ms"] <= 30000 else "fail"
+        result["sampling"] = dict(state="pass" if enough else "incomplete")
+        limit = 10000 if template.startswith("pdf-") else 5000
+        for gate, key, threshold in (("run", "p95_ms", limit), ("queue", "p95_ms", 2000),
+                                     ("budget", "maximum_ms", 30000)):
+            result[gate]["state"] = "fail" if result[gate][key] > threshold else "pass" if enough else "incomplete"
+            result[gate]["evidence_complete"] = enough
     return results
 
 
@@ -461,7 +473,9 @@ def evaluate_overload(phase):
     if (records.keys() & unsent.keys() or len(records) != phase["sent"]
             or len(unsent) != phase["client_unsent"]
             or phase["scheduled"] != len(records) + len(unsent)
-            or phase["completed"] > phase["sent"] or phase["rejected"] > phase["sent"]):
+            or phase["completed"] != sum(record.get("completed") is True for record in records.values())
+            or phase["rejected"] != sum(isinstance(record.get("status"), int)
+                                        and 400 <= record["status"] < 500 for record in records.values())):
         return dict(state="invalid")
     result = {field: phase[field] for field in fields}
     result["supported_success"] = sum(_successful(record) for record in records.values())
@@ -529,9 +543,38 @@ def _provenance(manifest):
 def _report_observations(spec, report):
     kind = spec["kind"]
     if kind == "extraction":
-        return dict(repetitions=evaluate_extraction(report))
+        settings, phases = report.get("settings"), report.get("measurements")
+        if (not isinstance(settings, dict) or not isinstance(phases, list) or len(phases) != 1
+                or str(settings.get("template")) != str(spec["template"])
+                or type(settings.get("repeated")) is not bool or settings["repeated"] != spec["repeated"]
+                or any(type(settings.get(key)) is not int or settings[key] != spec[key]
+                       for key in ("clients", "count"))
+                or not isinstance(phases[0], dict)
+                or type(phases[0].get("repetition")) is not int
+                or phases[0]["repetition"] != spec["repetition"]):
+            return dict(state="invalid", reason="phase_identity")
+        repetitions = evaluate_extraction(report)
+        for evaluated, phase in zip(repetitions, phases):
+            evaluated["resources"] = evaluate_resources(phase)
+        return dict(repetitions=repetitions)
     if kind == "overload":
-        return dict(phases=[evaluate_overload(phase) for phase in report.get("measurements", [])])
+        phases = report.get("measurements")
+        if not isinstance(phases, list) or len(phases) != len(spec["rates"]) * 2:
+            return dict(state="invalid", reason="phase_identity")
+        expected = {(mode, rate) for mode in ("proxy", "bypass") for rate in spec["rates"]}
+        seen = set()
+        for phase in phases:
+            if not isinstance(phase, dict) or not _number(phase.get("offered_rate")):
+                return dict(state="invalid", reason="phase_identity")
+            pair = (phase.get("mode"), phase["offered_rate"])
+            if (pair not in expected or pair in seen
+                    or any(not _number(phase.get(field)) or phase[field] != spec[key]
+                           for field, key in (("size_bytes", "size"), ("repetition", "repetition"),
+                                              ("requested_duration_s", "duration"), ("window_seconds", "duration"),
+                                              ("max_outstanding", "max_outstanding")))):
+                return dict(state="invalid", reason="phase_identity")
+            seen.add(pair)
+        return dict(phases=[evaluate_overload(phase) for phase in phases])
     measurements = report.get("measurements")
     if not isinstance(measurements, list) or len(measurements) != 2:
         return dict(state="incomplete", reason="matched_arms_missing")

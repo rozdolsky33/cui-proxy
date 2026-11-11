@@ -256,6 +256,7 @@ class ThroughputAcceptanceTests(unittest.TestCase):
         proxy, bypass = TextAcceptanceTests().phases()
         for phase in (proxy, bypass):
             phase["window_seconds"] = 600.0
+            phase["window_start_s"] = 0.0
             for i, record in enumerate(phase["records"]):
                 record.update(started_s=float(i) / 10, finished_s=599.0)
         for record in proxy["records"][850:]:
@@ -366,7 +367,7 @@ class ExtractionAcceptanceTests(unittest.TestCase):
         return dict(settings=dict(template="0", clients=4, count=100,
                                   warmup_seconds=60.0, warmup_count=100,
                                   repetitions=1, repeated=False),
-                    measurements=[dict(records=records, warmup_completed=100,
+                    measurements=[dict(records=records, warmup_completed=100, warmup_seconds=60.0,
                                        repetition=0, stage_poll_errors=0,
                                        achieved_concurrency=4,
                                        stage_samples=dict(extraction_run=[5000.0] * 100,
@@ -423,6 +424,7 @@ class ExtractionAcceptanceTests(unittest.TestCase):
             report = self.report()
             if mode == "smoke":
                 report["settings"]["warmup_seconds"] = 1.0
+                report["measurements"][0]["warmup_seconds"] = 1.0
             else:
                 report["settings"]["clients"] = 1
                 report["measurements"][0]["achieved_concurrency"] = 1
@@ -652,6 +654,116 @@ class OverloadAcceptanceTests(unittest.TestCase):
         phase = self.phase()
         phase["records"][0]["duration_ms"] = math.nan
         self.assertEqual(self.evaluate(phase)["state"], "invalid")
+
+
+class ReviewRegressionTests(unittest.TestCase):
+    def test_text_exceedance_survives_missing_warmup(self):
+        from baseline_acceptance import evaluate_text
+        proxy, bypass = TextAcceptanceTests().phases()
+        proxy.pop("warmup_seconds")
+        for record in proxy["records"]:
+            record["first_byte_ms"] = 1151.0
+        result = evaluate_text(proxy, bypass)
+        self.assertEqual(result["sampling"]["state"], "incomplete")
+        self.assertEqual(result["first_byte"]["state"], "fail")
+
+    def test_extraction_exceedance_survives_missing_observed_warmup(self):
+        from baseline_acceptance import evaluate_extraction
+        report = ExtractionAcceptanceTests().report()
+        report["measurements"][0].pop("warmup_seconds")
+        report["settings"].pop("warmup_seconds")
+        report["measurements"][0]["stage_samples"]["extraction_run"] = [5001.0] * 100
+        result = evaluate_extraction(report)[0]
+        self.assertEqual(result["run"]["state"], "fail")
+        self.assertEqual(result["queue"]["state"], "incomplete")
+
+    def test_configured_extraction_warmup_is_not_observed_evidence(self):
+        from baseline_acceptance import evaluate_extraction
+        report = ExtractionAcceptanceTests().report()
+        report["measurements"][0].pop("warmup_seconds")
+        result = evaluate_extraction(report)[0]
+        for gate in ("run", "queue", "budget"):
+            self.assertEqual(result[gate]["state"], "incomplete")
+
+    def test_extraction_report_is_bound_to_its_job(self):
+        from baseline_acceptance import _report_observations
+        spec = dict(kind="extraction", template=0, clients=4, count=100, repeated=False, repetition=0)
+        for field, value in (("template", "pdf-text"), ("clients", 1), ("repeated", True), ("count", 99), ("repetition", 2)):
+            with self.subTest(field=field):
+                report = ExtractionAcceptanceTests().report()
+                if field == "repetition":
+                    report["measurements"][0][field] = value
+                else:
+                    report["settings"][field] = value
+                self.assertEqual(_report_observations(spec, report).get("state"), "invalid")
+
+    def test_overload_report_is_bound_to_rate_window_and_repetition(self):
+        from baseline_acceptance import _report_observations
+        spec = dict(kind="overload", size=262144, repetition=0, rates=[1], duration=120, max_outstanding=16)
+        for field, value in (("offered_rate", 8), ("requested_duration_s", 1), ("repetition", 2), ("size_bytes", 65536), ("max_outstanding", 2)):
+            with self.subTest(field=field):
+                phases = []
+                for mode in ("proxy", "bypass"):
+                    phase = OverloadAcceptanceTests().phase()
+                    phase.update(mode=mode, offered_rate=1, requested_duration_s=120,
+                                 window_seconds=120, repetition=0, size_bytes=262144,
+                                 max_outstanding=16)
+                    phases.append(phase)
+                phases[0][field] = value
+                self.assertEqual(_report_observations(spec, dict(measurements=phases)).get("state"), "invalid")
+
+    def test_overload_completed_and_rejected_must_match_records(self):
+        from baseline_acceptance import evaluate_overload
+        for field, value in (("completed", 0), ("rejected", 2)):
+            phase = OverloadAcceptanceTests().phase()
+            phase[field] = value
+            self.assertEqual(evaluate_overload(phase)["state"], "invalid")
+
+    def test_overload_rejection_count_uses_http_status(self):
+        from baseline_acceptance import evaluate_overload
+        phase = OverloadAcceptanceTests().phase()
+        phase["records"][0].update(status=429, outcome="proxy_overload", completed=False)
+        phase.update(completed=1, rejected=1)
+        self.assertEqual(evaluate_overload(phase)["state"], "pass")
+
+    def test_extraction_resources_are_reported(self):
+        from baseline_acceptance import _report_observations
+        spec = dict(kind="extraction", template=0, clients=4, count=100, repeated=False, repetition=0)
+        report = ExtractionAcceptanceTests().report()
+        report["measurements"][0]["resources"] = dict(
+            peak_proxy_rss_bytes=600 * 1024**2, peak_child_rss_bytes=2 * 1024**3,
+            proxy_rss_samples=10, child_rss_samples=10)
+        result = _report_observations(spec, report)["repetitions"][0]
+        self.assertEqual(result.get("resources", {}).get("state"), "fail")
+
+    def test_throughput_uses_actual_origin_not_first_operation(self):
+        from baseline_acceptance import evaluate_throughput
+        proxy, bypass = ThroughputAcceptanceTests().phases()
+        for phase in (proxy, bypass):
+            for record in phase["records"]:
+                record["started_s"] += 5.0
+        result = evaluate_throughput(proxy, bypass)
+        self.assertEqual(result["proxy_window_success"], 850)
+        self.assertEqual(result["ratio"], 0.85)
+
+    def test_missing_throughput_origin_is_incomplete(self):
+        from baseline_acceptance import evaluate_throughput
+        proxy, bypass = ThroughputAcceptanceTests().phases()
+        proxy.pop("window_start_s")
+        self.assertEqual(evaluate_throughput(proxy, bypass)["state"], "incomplete")
+
+    def test_nonfinite_outcome_duration_is_invalid(self):
+        from baseline_acceptance import evaluate_text
+        proxy, bypass = TextAcceptanceTests().phases()
+        proxy["records"][0]["duration_ms"] = math.inf
+        result = evaluate_text(proxy, bypass)
+        self.assertEqual(result["correctness"]["state"], "invalid")
+        self.assertNotEqual(result["first_byte"]["state"], "pass")
+
+    def test_json_numeric_overflow_is_rejected(self):
+        from baseline_acceptance import _decode
+        with self.assertRaises(ValueError):
+            _decode(b'{"duration_ms":1e999}')
 
 
 if __name__ == "__main__":
