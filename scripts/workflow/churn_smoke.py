@@ -44,10 +44,14 @@ def _metadata(report):
         counts = {key: phase.get(key) for key in (
             "warmup_completed", "scheduled", "sent", "client_unsent",
             "initial_vault_population", "final_vault_population", "observed_new_pairs",
-            "verified_new_pairs") if type(phase.get(key)) in (int, float)}
+            "verified_new_pairs", "peak_proxy_rss_bytes", "peak_child_rss_bytes",
+            "achieved_client_concurrency") if type(phase.get(key)) in (int, float)}
         outcomes = {name: sum(row.get("outcome") == name for row in phase.get("records", []))
                     for name in sorted(OUTCOMES)}
+        status = phase.get("resources", {}).get("status")
+        status = status if status in ("pass", "fail", "incomplete") else "unavailable"
         print("smoke_phase", index, "counts", counts, "outcomes", outcomes)
+        print("smoke_resource_status", index, status)
 
 
 def main():

@@ -209,7 +209,7 @@ class ObservedVaultTests(unittest.TestCase):
 
 
 class ChurnPhaseTests(unittest.TestCase):
-    def run_phase(self, bypass=False, observation_fails=False, warmup_fails=False, drain_fails=False, stale_observation=False):
+    def run_phase(self, bypass=False, observation_fails=False, warmup_fails=False, drain_fails=False, stale_observation=False, proxy_rss=1048576, missing_resources=False):
         import hashlib
         from contextlib import ExitStack
         from pathlib import Path
@@ -233,7 +233,12 @@ class ChurnPhaseTests(unittest.TestCase):
         environment = MagicMock()
         environment.__enter__.return_value = env
         sampler = MagicMock()
-        sampler.__enter__.return_value = SimpleNamespace(samples=[])
+        samples = [] if missing_resources else [
+            dict(elapsed_s=0, proxy_rss_bytes=proxy_rss, child_rss_bytes=1048576,
+                 metrics=dict(active_requests=4)),
+            dict(elapsed_s=4.5, proxy_rss_bytes=proxy_rss, child_rss_bytes=1048576,
+                 metrics=dict(active_requests=1))]
+        sampler.__enter__.return_value = SimpleNamespace(samples=samples, started=0)
         clock = [0.0]
         calls = []
         def request(url, case, expected, **kwargs):
@@ -244,9 +249,9 @@ class ChurnPhaseTests(unittest.TestCase):
                 body = case["body"]
                 for original in dict.fromkeys(case["occurrences"]):
                     body = body.replace(original.encode(), mappings[original].encode())
-                return dict(operation_id=case["operation_id"], supported=True, completed=True, duration_ms=1,
+                return dict(operation_id=case["operation_id"], supported=True, completed=True, duration_ms=1, started_s=clock[0]-1, finished_s=clock[0],
                             outcome="boundary_pending", boundary_sha256=hashlib.sha256(body).hexdigest())
-            return dict(operation_id=case["operation_id"], supported=True, completed=True, duration_ms=1,
+            return dict(operation_id=case["operation_id"], supported=True, completed=True, duration_ms=1, started_s=clock[0]-1, finished_s=clock[0],
                         outcome="transformation_error" if warmup_fails else "supported_success")
         def load(operation, rate, duration, max_outstanding):
             self.assertEqual(rate, 100 / 60)
@@ -295,6 +300,26 @@ class ChurnPhaseTests(unittest.TestCase):
         self.assertEqual(observed, 0)
         self.assertTrue(all(not deferred for _, deferred, _ in calls))
         self.assertIsNone(report["observed_new_pairs"])
+
+    def test_proxy_peak_budget_is_enforced_without_erasing_successes(self):
+        report, _, _, _, failed = self.run_phase(proxy_rss=600 * 1024 * 1024)
+        self.assertTrue(failed)
+        self.assertEqual(report["resources"]["status"], "fail")
+        self.assertEqual(report["verified_new_pairs"], 2)
+        self.assertTrue(all(r["outcome"] == "supported_success" for r in report["records"]))
+
+    def test_missing_resource_observations_are_incomplete(self):
+        report, _, _, _, failed = self.run_phase(missing_resources=True)
+        self.assertTrue(failed)
+        self.assertEqual(report["resources"]["status"], "incomplete")
+
+    def test_warmup_activity_cannot_supply_measured_concurrency(self):
+        report, _, _, _, failed = self.run_phase()
+        self.assertFalse(failed)
+        self.assertEqual(report["achieved_client_concurrency"], 1)
+        self.assertEqual(report["observed_proxy_active_peak"], 1)
+        self.assertEqual(report["warmup_resource_samples"][0]["metrics"]["active_requests"], 4)
+        self.assertEqual(len(report["resource_samples"]), 1)
 
     def test_failed_drain_prevents_observation_and_keeps_attempts(self):
         report, _, _, observed, failed = self.run_phase(drain_fails=True)
@@ -425,3 +450,20 @@ class ChurnCLITests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertEqual(order, [])
         self.assertEqual(content, "prior-evidence")
+
+
+class ChurnResourceBudgetTests(unittest.TestCase):
+    def test_child_peak_and_known_failure_with_missing_other_sample(self):
+        from performance_churn import resource_budgets
+        for proxy, child, proxy_count, child_count in (
+                (1, 2 * 1024**3, 1, 1), (600 * 1024**2, None, 1, 0)):
+            result = resource_budgets(dict(peak_proxy_rss_bytes=proxy,
+                peak_child_rss_bytes=child, proxy_rss_samples=proxy_count,
+                child_rss_samples=child_count))
+            self.assertEqual(result["status"], "fail")
+
+    def test_measured_observations_are_required_even_with_warmup_peaks(self):
+        from performance_churn import resource_budgets
+        result = resource_budgets(dict(peak_proxy_rss_bytes=1, peak_child_rss_bytes=1,
+                                      proxy_rss_samples=0, child_rss_samples=0))
+        self.assertEqual(result["status"], "incomplete")

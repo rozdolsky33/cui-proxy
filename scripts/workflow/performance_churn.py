@@ -145,6 +145,27 @@ def inspect_vault(directory, seed_binary):
     return data
 
 
+def resource_budgets(summary):
+    """Known peak violations fail even when another observation is absent."""
+    states = []
+    for field, samples, limit in (
+            ("peak_proxy_rss_bytes", "proxy_rss_samples", 512 * 1024 * 1024),
+            ("peak_child_rss_bytes", "child_rss_samples", 1024 * 1024 * 1024)):
+        value = summary.get(field)
+        valid = (type(value) in (int, float) and math.isfinite(value) and value >= 0)
+        if valid and value > limit:
+            states.append("fail")
+        elif not valid or summary.get(samples, 0) < 1:
+            states.append("incomplete")
+        else:
+            states.append("pass")
+    return dict(status="fail" if "fail" in states else "incomplete" if "incomplete" in states else "pass",
+                peak_proxy_rss_bytes=summary.get("peak_proxy_rss_bytes"),
+                peak_child_rss_bytes=summary.get("peak_child_rss_bytes"),
+                proxy_rss_samples=summary.get("proxy_rss_samples", 0),
+                child_rss_samples=summary.get("child_rss_samples", 0))
+
+
 def flush_proxy(process):
     """Finish the owned proxy's normal shutdown/save before reading its vault."""
     import signal
@@ -222,11 +243,29 @@ def run_phase(binary, seed_binary, workload, *, size=1048576, duration=600,
                         retained.update(outcome="client_or_model_failure",
                                         finished_s=clock(), duration_ms=(clock() - started) * 1000)
                     return retained
+                measured_started = clock()
                 report.update(performance_load.open_loop(operation, 100 / 60, duration, 4))
+                measured_finished = clock()
+                report["achieved_client_concurrency"] = performance.peak_concurrency(report["records"])
                 report["live_vault_population"] = env.vault_count()
                 report["final_metrics"] = env.metrics()
-            report["resource_samples"] = list(sampler.samples)
-            report.update(performance.resource_summary(sampler.samples))
+            all_samples = list(sampler.samples)
+            start_offset = measured_started - sampler.started
+            end_offset = measured_finished - sampler.started
+            report["resource_samples"] = [row for row in all_samples
+                if type(row.get("elapsed_s")) in (int, float)
+                and start_offset <= row["elapsed_s"] <= end_offset]
+            report["warmup_resource_samples"] = [row for row in all_samples
+                if type(row.get("elapsed_s")) in (int, float) and row["elapsed_s"] < start_offset]
+            all_resources = performance.resource_summary(all_samples)
+            measured_resources = performance.resource_summary(report["resource_samples"])
+            report.update(all_resources)
+            report["observed_proxy_active_peak"] = measured_resources["observed_proxy_active_peak"]
+            report["activity_samples"] = measured_resources["activity_samples"]
+            budget_observations = dict(all_resources,
+                proxy_rss_samples=measured_resources["proxy_rss_samples"],
+                child_rss_samples=measured_resources["child_rss_samples"])
+            report["resources"] = resource_budgets(budget_observations)
             if not bypass:
                 flush_proxy(env.proxy)
                 observation = inspect_vault(env.directory, seed_binary)
@@ -236,6 +275,8 @@ def run_phase(binary, seed_binary, workload, *, size=1048576, duration=600,
                 report["final_vault_population"] = observation["population"]
             else:
                 report["final_vault_population"] = report["live_vault_population"]
+            if report["resources"]["status"] != "pass":
+                raise ValueError("churn_resource_budget")
             if any(row.get("outcome") != "supported_success" for row in report["records"]):
                 raise ValueError("churn_operation_failure")
         return report
