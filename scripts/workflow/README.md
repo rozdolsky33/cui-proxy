@@ -253,3 +253,7 @@ Phases are capped at 100 measured operations; unusually slow phases may exceed
 the retention window and are invalidated rather than reporting incomplete
 percentiles. CLI provenance preflight checks tool/data versions; full stored
 fixture validation additionally checks the recorded font name.
+
+## Read-only baseline acceptance summary
+
+Use `baseline_acceptance.py CAMPAIGN_DIR --output PRIVATE_SUMMARY_PATH` to evaluate retained evidence without starting load. It verifies report hashes, preserves partial-run status, and writes a new private summary. A successful command means summary generation succeeded; `performance_qualified` remains false. See [the evaluator guide](../../docs/verification-results/2026-11-11-baseline-acceptance-evaluator.md) for numerical gates, integrity checks and remaining evidence.
