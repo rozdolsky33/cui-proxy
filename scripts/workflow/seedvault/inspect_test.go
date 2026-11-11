@@ -12,6 +12,9 @@ import (
 
 func TestInspectExistingVaultDoesNotCreateMappings(t *testing.T) {
 	dir := t.TempDir()
+	if err := os.Chmod(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
 	key := bytes.Repeat([]byte{7}, 32)
 	keyPath := filepath.Join(dir, "vault.key")
 	vaultPath := filepath.Join(dir, "vault.enc")
@@ -69,6 +72,9 @@ func TestInspectExistingVaultDoesNotCreateMappings(t *testing.T) {
 
 func TestInspectMissingVaultCannotInventEvidence(t *testing.T) {
 	dir := t.TempDir()
+	if err := os.Chmod(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := inspect(dir); err == nil {
 		t.Fatal("missing vault accepted")
 	}
@@ -82,6 +88,9 @@ func TestInspectRejectsUnsafeOrCorruptInputs(t *testing.T) {
 	for _, kind := range []string{"public-key", "symlink-key", "corrupt-vault", "missing-key"} {
 		t.Run(kind, func(t *testing.T) {
 			dir := t.TempDir()
+			if err := os.Chmod(dir, 0700); err != nil {
+				t.Fatal(err)
+			}
 			key := bytes.Repeat([]byte{9}, 32)
 			keyPath := filepath.Join(dir, "vault.key")
 			vaultPath := filepath.Join(dir, "vault.enc")
@@ -131,5 +140,15 @@ func TestInspectRejectsUnsafeOrCorruptInputs(t *testing.T) {
 				t.Fatal("failed observation published evidence")
 			}
 		})
+	}
+}
+
+func TestInspectRejectsPublicDirectory(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := inspect(dir); err == nil {
+		t.Fatal("public directory accepted")
 	}
 }

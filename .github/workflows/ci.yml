@@ -63,6 +63,10 @@ jobs:
       - name: go test -race
         run: go test -race -count=1 -run . -bench '^BenchmarkAuditDurability$' -benchtime=4x ./...
 
+      - name: mapping growth correctness smoke
+        if: matrix.os == 'ubuntu-latest'
+        timeout-minutes: 6
+        run: python3 scripts/workflow/churn_smoke.py
       - name: reachable vulnerability scan
         run: make vuln
 
