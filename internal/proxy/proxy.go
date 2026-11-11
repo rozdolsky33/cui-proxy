@@ -38,6 +38,7 @@ import (
 	"cui-proxy/internal/config"
 	"cui-proxy/internal/decisionlog"
 	"cui-proxy/internal/metrics"
+	"cui-proxy/internal/observe"
 	"cui-proxy/internal/sse"
 	"cui-proxy/internal/synth"
 	"cui-proxy/internal/transform"
@@ -244,10 +245,12 @@ type handler struct {
 
 // exchange is the state of one request.
 type exchange struct {
-	w     *countingWriter
-	id    decisionlog.ID
-	cfg   *config.Config // the request's snapshot config; nil until loaded
-	entry audit.Entry
+	trace       *observe.Trace
+	correlation metrics.CorrelationToken
+	w           *countingWriter
+	id          decisionlog.ID
+	cfg         *config.Config // the request's snapshot config; nil until loaded
+	entry       audit.Entry
 	// recorded: the decision record was attempted. There is at most one
 	// attempt per request; later failures (a stream cut, a redirect) do not
 	// rewrite it.
@@ -269,15 +272,26 @@ type exchange struct {
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
+	trace := observe.NewTrace()
+	trace.Gauges = h.d.Metrics
+	r = r.WithContext(observe.WithTrace(r.Context(), trace))
+	done := h.d.Metrics.BeginRequest()
+	defer done()
 	id := decisionlog.NewID()
 	x := &exchange{
-		w:  &countingWriter{rw: w},
-		id: id,
+		trace: trace,
+		w:     &countingWriter{rw: w},
+		id:    id,
 		entry: audit.Entry{Time: start, RequestID: id.String(), Adapter: h.d.Adapter.Name(),
 			Method: auditMethod(r.Method), Path: r.URL.Path},
 	}
 	w.Header().Set(requestIDHeader, id.String())
 	h.d.Metrics.IncRequest()
+	defer func() {
+		stages := trace.Snapshot()
+		h.d.Metrics.ObserveStages(stages, x.entry.BytesIn)
+		h.d.Metrics.ObserveCorrelated(x.correlation, stages)
+	}()
 	abort := h.serveSafe(x, w, r)
 
 	x.entry.Status = x.w.status
@@ -335,6 +349,9 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 	snap := h.d.Snapshot()
 	cfg, san, rest := snap.Cfg, snap.Sanitizer, snap.Restorer
 	x.cfg = cfg
+	if cfg != nil && cfg.Observability.Correlate {
+		x.correlation = h.d.Metrics.Correlate(r.Header)
+	}
 	if cfg == nil || san == nil || rest == nil {
 		return h.block(x, reasonInternal)
 	}
@@ -350,28 +367,48 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 	if encoded(r.Header) {
 		return h.block(x, reasonCompressed)
 	}
-	// Structured metadata is adapter-owned; all remaining headers and the
-	// query retain their fail-closed inspection.
-	var structuredHeaders []string
-	if hs, ok := h.d.Adapter.(adapter.HeaderSanitizer); ok {
-		r = r.Clone(r.Context())
-		c := &collector{}
-		if err := hs.SanitizeHeaders(r.Header, san.WithSink(c)); err != nil {
-			return h.blockDiag(x, reasonHeader, diagnose(err))
+	var metadataReason string
+	var metadataDiag diag
+	func() {
+		defer x.trace.Measure(observe.MetadataInspect)()
+		// Structured metadata is adapter-owned; all remaining headers and the
+		// query retain their fail-closed inspection.
+		var structuredHeaders []string
+		if hs, ok := h.d.Adapter.(adapter.HeaderSanitizer); ok {
+			r = r.Clone(r.Context())
+			c := &collector{}
+			if err := hs.SanitizeHeaders(r.Header, san.WithSink(c)); err != nil {
+				metadataReason, metadataDiag = reasonHeader, diagnose(err)
+				return
+			}
+			x.events = append(x.events, c.evs...)
+			structuredHeaders = hs.StructuredHeaders()
 		}
-		x.events = append(x.events, c.evs...)
-		structuredHeaders = hs.StructuredHeaders()
+		// Before reading the body: other headers and query are never rewritten, so a
+		// detected value blocks outright (on_error: passthrough does not apply).
+		if requestMetaSensitive(r, san, structuredHeaders) {
+			metadataReason = reasonHeader
+			return
+		}
+	}()
+	if metadataReason != "" {
+		if metadataDiag.kind == "" {
+			return h.block(x, metadataReason)
+		}
+		return h.blockDiag(x, metadataReason, metadataDiag)
 	}
-	// Before reading the body: other headers and query are never rewritten, so a
-	// detected value blocks outright (on_error: passthrough does not apply).
-	if requestMetaSensitive(r, san, structuredHeaders) {
-		return h.block(x, reasonHeader)
-	}
+
 	limit := cfg.Policy.MaxBodyBytes
 	if limit <= 0 {
 		limit = defaultMaxBody
 	}
-	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, limit))
+	var body []byte
+	var err error
+	func() {
+		defer x.trace.Measure(observe.IngressRead)()
+		body, err = io.ReadAll(http.MaxBytesReader(w, r.Body, limit))
+	}()
+	x.entry.BytesIn = len(body)
 	if err != nil {
 		var tooLarge *http.MaxBytesError
 		if errors.As(err, &tooLarge) {
@@ -379,8 +416,6 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 		}
 		return h.block(x, reasonBadRequest)
 	}
-	x.entry.BytesIn = len(body)
-
 	x.decision = decisionlog.Forwarded
 	switch route.Kind {
 	case adapter.KindPassthrough:
@@ -449,6 +484,8 @@ func (c *collector) Record(e transform.Event) {
 func (h *handler) sanitize(ctx context.Context, x *exchange, san *transform.Sanitizer, body []byte) ([]byte, string, diag) {
 	c := &collector{}
 	t0 := time.Now()
+	endBody := x.trace.Body()
+	defer endBody()
 	var out []byte
 	var err error
 	if a, ok := h.d.Adapter.(adapter.PolicySanitizer); ok && x.cfg.Policy.Attachments == "extract_text" {
@@ -519,7 +556,8 @@ func (h *handler) forward(x *exchange, r *http.Request, route adapter.Route, bod
 		h.d.Logf("cui-proxy: forwarding an unsanitized request (policy.on_error=passthrough, reason=%s kind=%s rule=%s class=%s)",
 			p.reason, p.d.kind, orDash(p.d.rule), orDash(p.d.class))
 	}
-	res, err := h.d.Transport.RoundTrip(out)
+	var res *http.Response
+	func() { defer x.trace.Measure(observe.UpstreamWait)(); res, err = h.d.Transport.RoundTrip(out) }()
 	if err != nil {
 		if r.Context().Err() != nil {
 			return false // client went away; nobody to answer
@@ -634,7 +672,9 @@ func (h *handler) stream(x *exchange, r *http.Request, body io.Reader, rest *tra
 		ev, err := rd.Next()
 		if errors.Is(err, io.EOF) {
 			t0 := time.Now()
-			evs, err := rw.Flush()
+			var evs []sse.Event
+			var err error
+			func() { defer x.trace.Measure(observe.Restore)(); evs, err = rw.Flush() }()
 			x.overhead += time.Since(t0)
 			if err != nil {
 				return fail("rewrite")
@@ -664,7 +704,8 @@ func (h *handler) stream(x *exchange, r *http.Request, body io.Reader, rest *tra
 			return true
 		}
 		t0 := time.Now()
-		evs, err := rw.Event(ev)
+		var evs []sse.Event
+		func() { defer x.trace.Measure(observe.Restore)(); evs, err = rw.Event(ev) }()
 		x.overhead += time.Since(t0)
 		if err != nil {
 			return fail("rewrite")
@@ -699,7 +740,8 @@ func (h *handler) record(x *exchange, dec decisionlog.Decision, reason string, c
 		e.Passthrough = x.passthrough.reason
 	}
 	x.recordedAs = dec
-	err := h.d.Decisions.Record(e)
+	var err error
+	func() { defer x.trace.Measure(observe.AuditWrite)(); err = h.d.Decisions.Record(e) }()
 	if err == nil {
 		return nil
 	}

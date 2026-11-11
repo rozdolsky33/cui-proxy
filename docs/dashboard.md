@@ -53,6 +53,66 @@ or conversations: one client operation can generate several requests.
 For failure behavior, see [policy](policy.md). For the distinction between the
 live feed and durable evidence, see [decision log](decision-log.md).
 
+## Stage metrics API
+
+`GET /api/metrics` also returns stage timing and workload diagnostics. These
+fields are available to local tools; the dashboard cards still show the existing
+aggregate overhead metric.
+
+`stages_ms` contains a summary for each observed stage, with `p50`, `p95`, `p99`
+in milliseconds and `samples`. Each stage keeps at most 4,096 completed-request
+samples. Multiple spans in one request are added before recording its sample.
+A stage that has never run is omitted; an observed zero duration is a real
+sample. Partial work on blocked, failed and cancelled requests is included.
+
+| Stage | Measured work |
+| --- | --- |
+| `ingress_read` | Reading the request body, including time waiting for the client. |
+| `metadata_inspect` | Structured header inspection and remaining header/query checks. |
+| `body_inspect` | Adapter request parsing and inspection, excluding the entire extraction phase. |
+| `extraction_wait` | Waiting for a shared extraction subprocess slot. |
+| `extraction_run` | Attachment validation, decoding and extraction, excluding slot wait. |
+| `audit_write` | Recording the forwarding/blocking decision, including lock and durability wait. |
+| `upstream_wait` | Transport round trip until upstream response headers. |
+| `restore` | Response rewriter event and flush processing. |
+
+These stages explain processing cost; their sum is not end-to-end latency.
+In particular, streamed upstream reads and downstream writes are outside the
+restoration span. Existing `overhead_ms` semantics remain unchanged.
+
+`active_requests`, `extractor_queued` and `extractor_active` are current gauges.
+The latter two count subprocess work, not whole attachment requests; a PDF can
+run several subprocesses. `request_size_buckets` counts completed requests by
+bytes actually read, including partial reads before a failure. Its five
+non-cumulative buckets have upper bounds of 4 KiB, 64 KiB, 1 MiB and 16 MiB,
+plus an overflow bucket (`le_4096`, `le_65536`, `le_1048576`, `le_16777216`,
+`gt_16777216`). Requests refused before reading the body enter the first bucket.
+Counters and timing history reset on restart.
+
+## Optional workload correlation
+
+Set `observability.correlate: true` in the proxy YAML and reload to enable
+`recent_requests` in the metrics API. It is disabled by default. Each record
+contains completion `time`, an `identity` object, `workspace_attributed`, and
+per-request `stages_ms` durations. Records are limited to the latest 256
+attributed requests and expire from the API after fifteen minutes. This is
+temporary diagnostic history, separate from the persistent decision log.
+
+Correlation reads the explicit `session_id` and optional `X-Cui-Workspace-ID`
+request headers. Each must have exactly one value of 1–128 ASCII letters,
+digits, dots, hyphens or underscores. Invalid or missing fields are unattributed;
+requests with neither identity still work and contribute to aggregate metrics,
+but have no recent record. Workspace identity is never inferred from prompt
+text, a directory path or a session ID. Clients must supply an opaque workspace
+token if they want that attribution.
+
+Only domain-separated HMAC pseudonyms are retained, using a random process-local
+key and 128-bit output. The key is never persisted; pseudonyms change on restart.
+Disabling correlation clears recent history. This feature does not authenticate
+clients or alter routing, sanitization or forwarding. Correlation headers remain
+subject to existing header policy and forwarding rules: do not put secrets or
+filesystem paths in them. It does not make a client-supplied identity trustworthy.
+
 ## Live requests
 
 Rows appear when requests finish, including when a streaming response ends.
@@ -237,3 +297,5 @@ The dashboard is a local operational surface with no login. It rejects
 non-loopback `Host` headers and cross-origin writes. Keep the listener on
 loopback; do not expose it through a remote forwarding service. These guards
 are not remote authentication.
+
+Cross-field metrics are approximate concurrent snapshots, not transactional snapshots.

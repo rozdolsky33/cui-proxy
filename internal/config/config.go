@@ -155,10 +155,16 @@ func DefaultAuditFile() string {
 	return filepath.Join(home, ".local", "state", "cui-proxy", "decisions.jsonl")
 }
 
+// Observability controls optional workload correlation in the metrics API.
+type Observability struct {
+	Correlate bool `yaml:"correlate"`
+}
+
 // Config is the top-level configuration.
 type Config struct {
-	Listen string `yaml:"listen"`
-	UI     struct {
+	Observability Observability `yaml:"observability"`
+	Listen        string        `yaml:"listen"`
+	UI            struct {
 		Listen string `yaml:"listen"`
 	} `yaml:"ui"`
 	AllowNonLoopback bool              `yaml:"allow_non_loopback"`

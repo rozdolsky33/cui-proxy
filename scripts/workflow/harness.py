@@ -130,6 +130,8 @@ def upstream_main(directory):
                 self.end_headers()
                 self.wfile.write(b'{"result":"controlled"}')
                 return
+            if self.headers.get("X-Workflow-Delay-MS") == "80":
+                time.sleep(0.08)
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
             self.end_headers()
@@ -512,7 +514,7 @@ def main():
               "scope": "deterministic-correctness", "performance_qualified": False,
               "stage_timings": None, "results": [],
               "resource_samples": None,
-              "unavailable_reason": "Stage and resource instrumentation belongs to Tasks 03/04; no zero-valued measurements are substituted.",
+              "unavailable_reason": 'CPU, allocation and heap profiling belong to Task 04; stage timing is measured by the controlled probe.',
               "environment": {"os": platform.system(), "release": platform.release(), "architecture": platform.machine(), "python": platform.python_version()},
               "policy": {"revision": "workflow-correctness-v1", "regex_declarations": 2, "vault_mode": "file", "audit_on_error": "block"},
               "unmeasured": ["normal-tier performance", "real OCR quality", "W09 compaction", "W10 restart", "resource budgets"]}
@@ -536,6 +538,8 @@ def main():
             for record in records:
                 record["concurrency"] = clients
             report["results"].extend(records)
+        import observation
+        report["stage_timings"] = observation.run(args.binary)
         report["passed"] = bool(report["results"]) and all(r["passed"] for r in report["results"])
     except CheckFailure as error:
         report.update(passed=False, assertion=str(error))
