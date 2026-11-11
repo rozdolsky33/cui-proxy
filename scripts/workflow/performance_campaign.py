@@ -308,13 +308,21 @@ def reference_environment(binary):
     info["optimized_build"] = "-race=true" not in build and "-gcflags=" not in build
     benchmark_scripts = ("performance.py", "extraction_performance.py", "fairness_performance.py",
                          "overload_performance.py", "performance_campaign.py", "extraction_fixtures.py")
+    # Put variable-width fields last and request unlimited width. macOS truncates
+    # comm in a multi-column layout (for example, Chrome can look like "go").
+    arguments = {}
+    for line in captured(["ps", "-ww", "-axo", "pid=,args="]).splitlines():
+        fields = line.strip().split(None, 1)
+        if len(fields) == 2 and fields[0].isdigit():
+            arguments[int(fields[0])] = fields[1]
     competing = 0
-    for line in captured(["ps", "-axo", "pid=,comm=,args="]).splitlines():
+    for line in captured(["ps", "-ww", "-axo", "pid=,stat=,comm="]).splitlines():
         parts = line.strip().split(None, 2)
-        if len(parts) != 3 or not parts[0].isdigit() or int(parts[0]) == os.getpid():
+        if (len(parts) != 3 or not parts[0].isdigit() or int(parts[0]) == os.getpid() or
+                parts[1].startswith("Z")):
             continue
-        name = Path(parts[1]).name.lower()
-        args = parts[2]
+        name = Path(parts[2]).name.lower()
+        args = arguments.get(int(parts[0]), "")
         if (name in ("go", "tesseract", "pdftoppm", "pdftotext") or name.startswith("swift") or
                 name.endswith(".test") or
                 (name.startswith("python") and (any(script in args for script in benchmark_scripts) or
