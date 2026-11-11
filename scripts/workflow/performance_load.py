@@ -62,9 +62,13 @@ def mixed_closed_loop(operation,*,text_count=None,duration=None,clock=time.monot
                 window_start_s=state["start"],window_seconds=window,aborted=state["aborted"])
 
 
+def _validate_open_settings(rate, duration, max_outstanding):
+    if type(rate) not in (int, float) or not math.isfinite(rate) or rate <= 0 or (type(duration) not in (int, float)) or (not math.isfinite(duration)) or (duration <= 0) or (type(max_outstanding) is not int) or (not 1 <= max_outstanding <= 16):
+        raise ValueError('invalid_open_loop_settings')
+
+
 def open_loop(operation,rate,duration,max_outstanding=16,*,clock=time.monotonic,sleep=time.sleep):
-    if type(rate) not in (int,float) or not math.isfinite(rate) or rate<=0 or type(duration) not in (int,float) or not math.isfinite(duration) or duration<=0 or type(max_outstanding) is not int or not 1<=max_outstanding<=16:
-        raise ValueError("invalid_open_loop_settings")
+    _validate_open_settings(rate, duration, max_outstanding)
     scheduled=math.ceil(rate*duration)
     unsent=[];futures=[];pending=set()
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_outstanding) as pool:
@@ -245,3 +249,60 @@ def run_fairness_phase(binary,seed_binary,workload,directory,manifest,*,bypass=F
         return result
     except perf.PhaseFailure:raise
     except Exception as error:_raise_phase_error(error,records)
+
+
+def run_overload_phase(binary, seed_binary, workload, *, size, rate, duration,
+                       max_outstanding=16, bypass=False, warmup_seconds=60, warmup_count=100):
+    """Run diagnostic text load, retaining every offered slot on collection failure."""
+    import performance as perf
+    from performance_stats import summarize_outcomes
+    _validate_open_settings(rate, duration, max_outstanding)
+    if (type(size) is not int or size <= 0 or
+            type(warmup_seconds) not in (int, float) or not math.isfinite(warmup_seconds) or
+            warmup_seconds < 0 or type(warmup_count) is not int or warmup_count < 1):
+        raise ValueError("invalid overload phase settings")
+    if size not in workload.sizes:
+        raise ValueError("unsupported workload size")
+    before = perf.environment_info(binary)
+    measured = None
+    records = []
+    warm = []
+    try:
+        with perf.Environment(binary, seed_binary, workload, size) as env:
+            target = env.upstream_url if bypass else env.url
+            case, transformed_hash, _ = _text_case(workload, 9000000, size, env.mappings, "preflight")
+            preflight = perf.request(env.url, case, expected_hash=transformed_hash)
+            if preflight.get("outcome") != "supported_success":
+                raise perf.PhaseFailure("preflight", [preflight])
+            def operation(serial, session="measurement"):
+                case, transformed_hash, raw_hash = _text_case(
+                    workload, serial, size, env.mappings, session)
+                row = perf.request(target, case, expected_hash=raw_hash if bypass else transformed_hash)
+                row["request_bytes"] = len(case["body"])
+                return row
+            warm_start = time.monotonic()
+            while len(warm) < warmup_count or time.monotonic() - warm_start < warmup_seconds:
+                warm.append(operation(10000000 + len(warm), "warmup"))
+                if warm[-1].get("outcome") != "supported_success":
+                    raise perf.PhaseFailure("warmup", warm)
+            _drained_metrics(env)
+            with perf.ResourceSampler(env) as resources:
+                measured = open_loop(operation, rate, duration, max_outstanding)
+                records.extend(measured["records"])
+                measured.update(mode="bypass" if bypass else "proxy", size_bytes=size,
+                                population=env.population, warmup_completed=len(warm),
+                                outcomes=summarize_outcomes(records),
+                                achieved_client_concurrency=perf.peak_concurrency(records),
+                                performance_qualified=False, collection_failed=False)
+            measured["resources"] = perf.resource_summary(resources.samples)
+            _drained_metrics(env)
+            measured["final_metrics"] = env.metrics()
+            measured["environment"] = dict(before=before, after=perf.environment_info(binary))
+        return measured
+    except Exception as error:
+        if measured is not None:
+            # Preserve the complete scheduler denominator even if sampling or cleanup fails.
+            measured.update(performance_qualified=False, collection_failed=True,
+                            collection_error_kind=type(error).__name__)
+            return measured
+        _raise_phase_error(error, records)
