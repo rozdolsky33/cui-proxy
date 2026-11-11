@@ -2,6 +2,8 @@ import importlib
 import json
 import tempfile
 import unittest
+from unittest import mock
+import os
 from pathlib import Path
 
 
@@ -136,7 +138,16 @@ class PerformanceTests(unittest.TestCase):
     def test_setup_failure_cleans_spawned_backend_and_private_files(self):
         p = self.module()
         env = p.Environment(Path("/nonexistent/cui-proxy"), Path("/nonexistent/cui-seedvault"), p.Workload(), 262144)
-        with self.assertRaises(OSError): env.__enter__()
+        real_killpg = os.killpg
+        denied = False
+        def transient_probe(pid, signum):
+            nonlocal denied
+            if signum == 0 and not denied:
+                denied = True
+                raise PermissionError("transient process group probe")
+            return real_killpg(pid, signum)
+        with mock.patch("harness.os.killpg", side_effect=transient_probe):
+            with self.assertRaises(FileNotFoundError): env.__enter__()
         self.assertTrue(env.children)
         self.assertTrue(all(child.poll() is not None for child in env.children))
         self.assertFalse(env.directory.exists())
