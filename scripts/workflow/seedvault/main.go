@@ -63,6 +63,16 @@ func seed(dir string) (int, error) {
 }
 
 func main() {
+	if len(os.Args) == 3 && os.Args[1] == "inspect" {
+		count, err := inspect(os.Args[2])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "vault observation failed")
+			os.Exit(1)
+		}
+		fmt.Printf("observed mappings: %d\n", count)
+		return
+	}
+
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: seedvault PRIVATE_DIRECTORY")
 		os.Exit(2)
