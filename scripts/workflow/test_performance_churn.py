@@ -223,13 +223,14 @@ class ChurnPhaseTests(unittest.TestCase):
         population_calls = [0]
         def population():
             population_calls[0] += 1
-            return 10000 if population_calls[0] == 1 or bypass else 10002
+            return 0 if bypass else 10000 if population_calls[0] == 1 else 10002
         proxy = MagicMock()
         proxy.poll.return_value = None
         proxy.wait.return_value = 1 if drain_fails else 0
-        env = SimpleNamespace(directory=Path("/unused/private"), mappings=dict(mappings),
+        initial_mappings = {p[1]: mappings[p[1]] for p in workload.initial.pairs}
+        env = SimpleNamespace(directory=Path("/unused/private"), mappings=initial_mappings,
                               url="http://127.0.0.1:1", upstream_url="http://127.0.0.1:2",
-                              metrics=lambda: {}, population={}, vault_count=population, proxy=proxy)
+                              metrics=lambda: {}, population=dict(vault_entries=10000), vault_count=population, proxy=proxy)
         environment = MagicMock()
         environment.__enter__.return_value = env
         sampler = MagicMock()
@@ -269,7 +270,8 @@ class ChurnPhaseTests(unittest.TestCase):
                 proxy.wait.assert_called_once_with(timeout=15)
                 if observation_fails:
                     raise ValueError("unavailable")
-                return dict(population=10001 if stale_observation else 10002, mappings=mappings)
+                return dict(population=10000 if bypass else 10001 if stale_observation else 10002,
+                            mappings=initial_mappings if bypass else mappings)
             observation = stack.enter_context(patch.object(churn, "inspect_vault", side_effect=observe))
             try:
                 result = churn.run_phase("/unused/proxy", "/unused/seed", workload,
@@ -294,10 +296,13 @@ class ChurnPhaseTests(unittest.TestCase):
         self.assertEqual(sum(deferred for _, deferred, _ in calls), 2)
         self.assertFalse(report["performance_qualified"])
 
-    def test_bypass_keeps_original_boundary_and_does_not_inspect_growth(self):
+    def test_bypass_keeps_original_boundary_and_verifies_unchanged_seeded_file(self):
         report, calls, _, observed, failed = self.run_phase(bypass=True)
         self.assertFalse(failed)
-        self.assertEqual(observed, 0)
+        self.assertEqual(observed, 1)
+        self.assertEqual(report["initial_vault_population"], 0)
+        self.assertEqual(report["live_vault_population"], 0)
+        self.assertEqual(report["final_vault_population"], 10000)
         self.assertTrue(all(not deferred for _, deferred, _ in calls))
         self.assertIsNone(report["observed_new_pairs"])
 

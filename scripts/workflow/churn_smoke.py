@@ -19,21 +19,24 @@ def validate_report(report):
     for phase in phases:
         if any(phase.get(key) != expected for key, expected in (
                 ("scheduled", 1), ("sent", 1), ("completed", 1),
-                ("client_unsent", 0), ("supported_success", 1),
-                ("initial_vault_population", 10000))):
+                ("client_unsent", 0), ("supported_success", 1))):
             raise ValueError("smoke_operation_accounting")
-        if phase.get("live_vault_population") != phase.get("final_vault_population"):
-            raise ValueError("smoke_persisted_population")
+        if phase.get("population", {}).get("vault_entries") != 10000:
+            raise ValueError("smoke_seeded_population")
         rows = phase.get("records", [])
         if (len(rows) != 1 or rows[0].get("outcome") != "supported_success"
                 or len(rows[0].get("prefix_ms", [])) != 32):
             raise ValueError("smoke_stream_or_boundary")
         if phase["mode"] == "proxy":
+            if (phase.get("initial_vault_population") != 10000
+                    or phase.get("live_vault_population") != phase.get("final_vault_population")):
+                raise ValueError("smoke_persisted_population")
             if any(phase.get(key) != expected for key, expected in (
                     ("final_vault_population", 10001), ("observed_new_pairs", 1),
                     ("verified_new_pairs", 1))):
                 raise ValueError("smoke_growth_evidence")
-        elif phase.get("final_vault_population") != 10000:
+        elif (phase.get("final_vault_population") != 10000
+              or phase.get("live_vault_population") != phase.get("initial_vault_population")):
             raise ValueError("smoke_bypass_population")
 
 

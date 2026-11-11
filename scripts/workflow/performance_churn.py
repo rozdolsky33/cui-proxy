@@ -206,6 +206,9 @@ def run_phase(binary, seed_binary, workload, *, size=1048576, duration=600,
     measured = []
     try:
         with performance.Environment(binary, seed_binary, workload.initial, size) as env:
+            report["population"] = dict(env.population)
+            if report["population"].get("vault_entries") != len(workload.initial.pairs):
+                raise ValueError("churn_seed_population")
             with performance.ResourceSampler(env) as sampler:
                 warm_started = clock()
                 warm = []
@@ -266,15 +269,19 @@ def run_phase(binary, seed_binary, workload, *, size=1048576, duration=600,
                 proxy_rss_samples=measured_resources["proxy_rss_samples"],
                 child_rss_samples=measured_resources["child_rss_samples"])
             report["resources"] = resource_budgets(budget_observations)
+            flush_proxy(env.proxy)
+            observation = inspect_vault(env.directory, seed_binary)
+            report["final_vault_population"] = observation["population"]
             if not bypass:
-                flush_proxy(env.proxy)
-                observation = inspect_vault(env.directory, seed_binary)
                 if observation["population"] != report["live_vault_population"]:
                     raise ValueError("churn_persisted_population_mismatch")
+                if report["initial_vault_population"] != report["population"]["vault_entries"]:
+                    raise ValueError("churn_initial_live_population")
                 report.update(resolve_records(report["records"], workload, size, observation["mappings"]))
-                report["final_vault_population"] = observation["population"]
-            else:
-                report["final_vault_population"] = report["live_vault_population"]
+            elif (report["live_vault_population"] != report["initial_vault_population"]
+                  or observation["population"] != report["population"]["vault_entries"]
+                  or observation["mappings"] != env.mappings):
+                raise ValueError("churn_bypass_vault_changed")
             if report["resources"]["status"] != "pass":
                 raise ValueError("churn_resource_budget")
             if any(row.get("outcome") != "supported_success" for row in report["records"]):
