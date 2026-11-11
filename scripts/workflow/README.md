@@ -45,6 +45,10 @@ three. Unit regressions also check escaped originals, error/cancellation paths,
 JSON value types, and cleanup of descendants whose direct parent has exited.
 These checks validate the harness; they do not mutate the production source.
 
+Capture IDs are bounded ASCII tokens (1–128 characters, beginning with a
+letter/digit and containing only letters, digits or hyphens). The fake upstream
+rejects other IDs before writing captures or cancellation markers.
+
 Temporary raw fixtures/captures are removed at exit. Child process groups are
 terminated even when their leader has already exited, with a twelve-second
 grace period before forced cleanup. HTTP reads have a fifteen-second inactivity

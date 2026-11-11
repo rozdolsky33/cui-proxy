@@ -118,7 +118,8 @@ def upstream_main(directory):
             body = json.loads(raw)
             meta = body["metadata"]
             ident = meta["harness_id"]
-            if not ident.replace("-", "").isalnum():
+            # Capture names are bounded ASCII tokens, never client-chosen paths.
+            if not isinstance(ident, str) or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{0,127}", ident) is None:
                 self.send_error(400)
                 return
             capture = {"body": body, "headers": dict(self.headers)}

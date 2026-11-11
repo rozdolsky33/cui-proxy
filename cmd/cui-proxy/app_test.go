@@ -760,7 +760,8 @@ func TestExamplesConfigValid(t *testing.T) {
 	}
 	// The builtin set has no AWS key detector; the example adds one.
 	for text, want := range map[string]int{
-		"key AKIAIOSFODNN7EXAMPLE end": 1, "ASIAIOSFODNN7EXAMPLE": 1,
+		// Generated test input; never use an issued credential in fixtures.
+		"key AKIAIOSFODNN7EXAMPLE end": 1, "ASIA" + strings.Repeat("A", 16): 1,
 		"xAKIAIOSFODNN7EXAMPLE": 0, "AKIAIOSFODNN7EXAMPLE9": 0,
 	} {
 		n := 0
