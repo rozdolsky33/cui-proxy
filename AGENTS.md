@@ -39,3 +39,25 @@ Follow the history’s Conventional Commit style: `feat(proxy): ...`, `fix(audit
 ## Security & Configuration
 
 Use fabricated sensitive values in fixtures and reports. Never commit credentials, vault keys, or real sensitive data. Preserve fail-closed checks and keep logs value-free. Report bypasses privately through GitHub vulnerability reporting as described in `SECURITY.md`.
+
+## Standing Authorization for Autonomous Work
+
+The repository owner has explicitly authorized autonomous execution of the
+agreed development roadmap. Continue implementation, investigation, testing,
+fixes, commits, pushes, pull-request creation, merging after required checks
+pass, and synchronization of `main` without repeated conversational approval.
+Choose routine implementation and test-execution details independently. A
+request to continue is authorization to carry the agreed work through its
+review, verification and integration steps, including fixing CI failures.
+
+Keep the primary checkout clean on current `main`; use isolated branches or
+worktrees for changes. Preserve fail-closed behavior and the existing quality
+and security gates. Do not waive failed checks or expand the task into
+unrelated destructive actions, spending, or external messaging.
+
+Ask only for genuinely missing information that cannot be inferred and blocks
+progress. Report completed results and material blockers; do not require the
+owner to supervise routine steps. This standing authorization does not bypass
+platform-enforced permissions: if an execution-policy prompt is unavoidable,
+identify it as a platform restriction rather than requesting authorization
+for the same repository task again.

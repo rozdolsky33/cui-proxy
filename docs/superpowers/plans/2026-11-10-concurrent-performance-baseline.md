@@ -111,5 +111,25 @@ fairness, open-loop overload, mapping-churn end-to-end runs, full reference
 environment verification, 10-minute throughput windows, and the full three-
 repetition sample counts still require completion. The text sample-count
 matrix alone takes roughly twelve hours at the specified backend pacing.
-The user has been asked where to execute that sustained run; no qualification
-gate is relaxed while this execution preference is pending.
+The owner has authorized autonomous execution without repeated confirmation.
+Continue the remaining implementation and use the reference machine for
+sustained runs when ready; preserve every qualification gate.
+
+## Integration and CI follow-up
+
+- The text increment passes 61 Python regressions, 20 Go package race tests,
+  vet/staticcheck and the 125-operation deterministic workflow suite.
+- The 12-cell development matrix completed 1,044 measured operations with no
+  failures. A separate clean-revision four-client sample completed 120
+  operations; its added first-byte tails exceeded the numerical targets in
+  all three short repetitions. This is diagnostic evidence, not qualification.
+- [Aggregate measurement record](../../verification-results/2026-11-11-text-performance-increment.md).
+- Review fixes preserve measured operations if post-load collection fails and
+  report missing resource observations as unavailable rather than zero.
+- A macOS CI readiness failure was isolated to HTTP server binding, which
+  invoked reverse DNS. The loopback backend now binds without hostname
+  resolution; a regression verifies it works when reverse DNS is unavailable.
+- CI runs Python regressions first, cancels sibling matrix jobs on failure,
+  gates packaging on successful tests, cancels superseded runs, and avoids
+  duplicate feature-push/PR test runs. Live failure evidence confirmed sibling
+  cancellation and packaging skip. Docs and default CodeQL are separate.
