@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "seed": 1102026,
+  "scope": "correctness-only; compact fixtures, two regex rules, no prepopulation",
+  "deferred": ["W09", "W10", "normal-tier benchmarks", "real OCR qualification", "soak"],
+  "cases": {
+    "W01": {"status": 200, "effect": "restored identifiers and embedded JSON meaning"},
+    "W02": {"status": 200, "effect": "restored arguments write exact temporary file contents"},
+    "W03": {"status": 200, "effect": "function output and follow-up message preserve call association and values"},
+    "W04": {"status": 200, "effect": "restored infrastructure command argument tokens, no external execution"},
+    "W05": {"status": 200, "effect": "custom tool text/images become ordered sanitized text"},
+    "W06": {"status": 200, "effect": "mixed user and function tool images share extraction path"},
+    "W06-limit": {"status": 422, "diagnostic": "attachment_image_limit", "effect": "one user image plus eight tool images exceeds the shared request budget"},
+    "W07": {"status": 200, "effect": "parent context flows to three children and back to parent"},
+    "W08": {"status": 200, "effect": "independent conversations and workspace metadata retain meaning"},
+    "W11-policy": {"status": 422, "diagnostic": "policy", "effect": "explicit blocking rule refuses before upstream"},
+    "W11-shape": {"status": 422, "diagnostic": "attachment_image_shape", "effect": "unsupported image placement refuses before upstream"},
+    "W11-json": {"status": 422, "diagnostic": "bad_body", "effect": "malformed JSON refuses before upstream"},
+    "W11-strict": {"status": 422, "diagnostic": "policy", "environment": "strict", "effect": "strict profile refuses detected values"},
+    "W11-disabled": {"status": 422, "diagnostic": "attachment_image_disabled", "environment": "attachments-block", "effect": "disabled extraction refuses images"},
+    "W12-upstream": {"status": 503, "effect": "upstream error status and body preserved"},
+    "W12-non-sse": {"status": 502, "effect": "successful unsupported response refused"},
+    "W12-cancel": {"status": 200, "effect": "client cancellation reaches upstream within five seconds"}
+  }
+}
