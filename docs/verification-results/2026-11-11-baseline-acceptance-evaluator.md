@@ -78,6 +78,8 @@ bind extraction/overload reports to their job specifications, require observed
 warm-up/window origins, reconcile overload counters, include extraction
 resources and reject nonfinite outcome durations and JSON numeric overflow.
 The retained native smoke and first reference report were exercised again.
-The corrected revision still requires fresh full CI before integration. Local
-server/build work is kept idle during the reference campaign. Task 04 remains
+The corrected revision passed all required remote CI before PR #34 merged:
+195 discovered workflow tests on each OS (191 passed, four native opt-in
+skips), plus race/lint/vulnerability/fuzz and packaging checks. Local
+server/build work remains idle during the reference campaign. Task 04 remains
 in progress.

@@ -197,3 +197,7 @@ Extraction phases now use the shared continuous stage collector, retaining early
 Add a fairness CLI and a sequential, resumable campaign around the existing isolated runners. Each repetition receives an independent job identity; repetition offsets preserve alternating arms. Use aggregate minimum text counts, preserve failed attempts, verify source/binary/fixture/report hashes on resume, retain private logs and atomic checkpoints, and stop on failure. Reference conditions are checked before/after jobs; completion never implies qualification.
 
 Implementation verification covers locks, interruption cleanup, identity/tamper rejection, retained failure evidence, no repeated completed work, native workload partitioning, real text comparisons and a complete six-job native smoke campaign. Stress/churn, profiles and the final reference acceptance report remain outstanding.
+
+## Measurement boundary evidence
+
+The acceptance evaluator now checks retained reports without qualifying a partial campaign. Review exposed missing scheduler-origin and observed warm-up fields. The follow-up records those existing boundaries, tested with controlled clocks. Historical reports remain unchanged and incomplete for absent observations; new measurements require their own recorded runner identity. Full Task 04 collection, profiling, stress/churn and consolidated evidence remain in progress.

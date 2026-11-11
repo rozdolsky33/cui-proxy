@@ -227,6 +227,7 @@ def run_fairness_phase(binary,seed_binary,workload,directory,manifest,*,bypass=F
                 warm.extend(batch["records"])
                 for client in range(4):offsets[client]+=sum(row["client"]==client for row in batch["records"])
                 if batch["aborted"]:raise perf.PhaseFailure("warmup",warm)
+            warmup_elapsed = time.monotonic() - start
             metrics=_drained_metrics(env)
             warm_sessions={row.get("identity",{}).get("session") for row in metrics["recent_requests"]}
             if not bypass and (not warm_sessions or None in warm_sessions):raise ValueError("warmup_correlation_missing")
@@ -241,7 +242,7 @@ def run_fairness_phase(binary,seed_binary,workload,directory,manifest,*,bypass=F
             result=dict(measured,mode="bypass" if bypass else "proxy",population=env.population,
                         text_outcomes=summarize_outcomes(measured["text_records"]),image_outcomes=summarize_outcomes(measured["image_records"]),
                         outcomes=summarize_outcomes(records),stage_samples=samples,stage_poll_errors=stages.errors,
-                        resources=perf.resource_summary(resources.samples),warmup_completed=len(warm),
+                        resources=perf.resource_summary(resources.samples),warmup_completed=len(warm), warmup_seconds=warmup_elapsed,
                         achieved_client_concurrency=perf.peak_concurrency(records),correlation_enabled=True,
                         text_completions_per_second=perf.window_successes(measured["text_records"],measured["window_start_s"],measured["window_seconds"])/measured["window_seconds"],
                         final_metrics=env.metrics(),performance_qualified=False)
