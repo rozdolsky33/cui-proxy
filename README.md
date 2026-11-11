@@ -282,3 +282,5 @@ The workflow benchmark records upstream write/flush timing and paired relay dela
 Use `scripts/workflow/overload_performance.py` with `--binary`, `--seed-binary`, and a new `--output` path to run the declared text sizes at 1, 2, 4 and 8 requests/second, 120 seconds per rate, against an isolated fake upstream and proxy. It caps outstanding client requests at 16 and records unsent slots separately. `--sizes`, `--rates`, `--duration`, `--max-outstanding`, `--warmup-seconds`, and `--warmup-count` support short diagnostics. Reduced runs do not qualify performance.
 
 The runner refuses to overwrite an existing report, saves progress atomically after each phase, and exits unsuccessfully on unexpected outcomes or collection failures. See [the overload increment record](docs/verification-results/2026-11-11-overload-diagnostic-increment.md).
+
+Extraction phases now retain stage timings continuously across recent-history expiration and validate fixture font metadata before running. See [the long-run retention record](docs/verification-results/2026-11-11-extraction-stage-retention.md).

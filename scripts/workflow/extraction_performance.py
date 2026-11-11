@@ -59,6 +59,7 @@ def attachment_case(workload, serial, size, fixture, directory, mappings, sessio
 
 
 def run_phase(binary,seed_binary,workload,directory,manifest,template,clients=1,count=100,warmup_seconds=60,warmup_count=100,repeated=False):
+    from performance_load import StageCollector
     import time
     import performance as perf
     import extraction_fixtures as fixtures
@@ -105,19 +106,14 @@ def run_phase(binary,seed_binary,workload,directory,manifest,template,clients=1,
                 index=client*per_client+serial
                 fixture=measured_fixtures[0] if repeated or not isinstance(template,int) else measured_fixtures[index]
                 return send(fixture,index,"measurement")
-            with perf.ResourceSampler(env) as sampler:
+            with perf.ResourceSampler(env) as sampler, StageCollector(env, warm_sessions) as collector:
                 measured,_=perf.closed_loop(measured_operation,clients,per_client=per_client)
                 records.extend(measured)
             # Request accounting is finalized just after the terminal response.
-            deadline=time.monotonic()+2
-            while True:
-                recent=env.metrics(include_recent=True)["recent_requests"]
-                selected=[r for r in recent if r.get("identity",{}).get("session") not in warm_sessions]
-                if len(selected)>=count or time.monotonic()>=deadline:
-                    break
-                time.sleep(0.02)
+            collector.wait_for(count)
+            recent = collector.records
             stages=measured_stages(recent,warm_sessions,count)
-            result=dict(records=records,outcomes=summarize_outcomes(records),stage_samples=stages,
+            result=dict(stage_poll_errors=collector.errors, records=records,outcomes=summarize_outcomes(records),stage_samples=stages,
                         resources=perf.resource_summary(sampler.samples),warmup_completed=len(warm),
                         achieved_concurrency=perf.peak_concurrency(records),performance_qualified=False)
         return result
@@ -212,6 +208,8 @@ def main():
         report["environment"]=perf.environment_info(args.binary)
         manifest=json.loads((args.fixtures / "manifest.json").read_text())
         fixtures.validate_coverage(manifest)
+        if manifest.get("font_name") != "Menlo-Regular":
+            raise ValueError("fixture font mismatch")
         current=fixtures.provenance()
         if any(manifest.get(k)!=v for k,v in current.items()):
             raise ValueError("fixture_provenance_changed")

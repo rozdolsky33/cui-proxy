@@ -7,6 +7,58 @@ import performance as perf
 from performance_workload import encode
 
 class ExtractionPerformanceTests(unittest.TestCase):
+    def test_cli_rejects_changed_fixture_font_before_measurement(self):
+        import json
+        import sys
+        from unittest.mock import patch
+        import extraction_performance as extraction
+        import extraction_fixtures as fixtures
+        from performance_stats import summarize_outcomes
+        tools = dict(tool_versions=dict(swift='6.4', tesseract='5.5.4', pdftotext='26.09.0', pdftoppm='26.09.0'), traineddata_sha256='0' * 64)
+        manifest = dict(version=fixtures.VERSION, seed=1102026, count=1, images=fixtures.recipes('warmup', 1) + fixtures.recipes('measurement', 1), pdfs=fixtures.pdf_recipes(), **tools, font_name='Unexpected-Font')
+        row = dict(operation_id='one', supported=True, completed=True, outcome='supported_success', duration_ms=1)
+        result = dict(records=[row], outcomes=summarize_outcomes([row]), stage_samples=dict(extraction_run=[1], extraction_wait=[0]), performance_qualified=False)
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            (root / 'manifest.json').write_text(json.dumps(manifest))
+            report = root / 'report.json'
+            argv = ['extraction_performance', '--binary', 'unused', '--seed-binary', 'unused', '--fixtures', str(root), '--report', str(report), '--template', '0', '--count', '1', '--warmup-count', '1', '--warmup-seconds', '0', '--repetitions', '1']
+            with patch.object(sys, 'argv', argv), patch.object(perf, 'environment_info', return_value={}), patch.object(fixtures, 'provenance', return_value=tools), patch.object(extraction, 'run_phase', return_value=result):
+                self.assertEqual(extraction.main(), 1)
+            written = json.loads(report.read_text())
+
+    def test_long_phase_uses_collected_stages_after_recent_history_expires(self):
+        from contextlib import nullcontext
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock, patch
+        import extraction_performance as extraction
+        import extraction_fixtures as fixtures
+        import performance_load as load
+        from performance_workload import Workload
+        manifest=dict(version=fixtures.VERSION,seed=1102026,count=1,images=fixtures.recipes("warmup",1)+fixtures.recipes("measurement",1),pdfs=fixtures.pdf_recipes())
+        env = MagicMock()
+        env.__enter__.return_value = env
+        env.metrics.return_value = dict(recent_requests=[dict(identity=dict(session="warm"))])
+        row = dict(operation_id="measured", supported=True, completed=True,
+                   outcome="supported_success", duration_ms=1, started_s=1, finished_s=2)
+        retained = [dict(identity=dict(session="measured"))]
+        collector = MagicMock()
+        collector.__enter__.return_value = collector
+        collector.records = retained
+        collector.errors = 0
+        with (patch.object(perf, "Environment", return_value=env),
+              patch.object(perf, "ResourceSampler", return_value=nullcontext(SimpleNamespace(samples=[]))),
+              patch.object(perf, "closed_loop", return_value=([row], None)),
+              patch.object(load, "StageCollector", return_value=collector),
+              patch.object(extraction, "measured_stages", return_value={}) as stages):
+            result = extraction.run_phase(None, None, Workload(), Path("unused"), manifest,
+                                          manifest["images"][0]["template"], count=1,
+                                          warmup_seconds=0, warmup_count=1)
+        collector.wait_for.assert_called_once_with(1)
+        self.assertEqual(stages.call_args.args[0], retained)
+        self.assertEqual(result["records"], [row])
+
+
     def test_layout_hash_normalizes_only_declared_text(self):
         body={"input":[{"role":"user","content":[{"type":"input_text","text":"Alpha\nBeta"}]}],"metadata":{"label":"keep  spaces"}}
         layout=copy.deepcopy(body);layout["input"][0]["content"][0]["text"]="Alpha  Beta\n"
@@ -65,21 +117,24 @@ class ExtractionPerformanceTests(unittest.TestCase):
     def test_collection_failure_retains_completed_measurement(self):
         from types import SimpleNamespace
         from contextlib import nullcontext
-        from unittest.mock import MagicMock,patch
+        from unittest.mock import MagicMock, patch
         import extraction_performance as extraction
         import extraction_fixtures as fixtures
         from performance_workload import Workload
-        manifest=dict(version=fixtures.VERSION,seed=1102026,count=1,images=fixtures.recipes("warmup",1)+fixtures.recipes("measurement",1),pdfs=fixtures.pdf_recipes())
-        env=MagicMock()
-        env.__enter__.return_value=env
-        env.metrics.side_effect=[dict(recent_requests=[dict(identity=dict(session="warm"))]),RuntimeError("collection_failure")]
-        def completed(*args,**kwargs):
-            return dict(operation_id="sample",supported=True,completed=True,outcome="supported_success",duration_ms=1,started_s=1,finished_s=2)
-        with patch.object(perf,"Environment",return_value=env),patch.object(perf,"ResourceSampler",return_value=nullcontext(SimpleNamespace(samples=[]))),patch.object(extraction,"attachment_case",return_value=({"body":b"{}"},"digest")),patch.object(perf,"request",side_effect=completed):
+        manifest = dict(version=fixtures.VERSION, seed=1102026, count=1, images=fixtures.recipes('warmup', 1) + fixtures.recipes('measurement', 1), pdfs=fixtures.pdf_recipes())
+        env = MagicMock()
+        env.__enter__.return_value = env
+        env.metrics.side_effect = [dict(recent_requests=[dict(identity=dict(session='warm'))]), RuntimeError('collection_failure')]
+
+        def completed(*args, **kwargs):
+            return dict(operation_id='sample', supported=True, completed=True, outcome='supported_success', duration_ms=1, started_s=1, finished_s=2)
+        collector = MagicMock()
+        collector.__exit__.side_effect = RuntimeError('stage collection failed')
+        with patch.object(perf, 'Environment', return_value=env), patch.object(perf, 'ResourceSampler', return_value=nullcontext(SimpleNamespace(samples=[]))), patch.object(extraction, 'attachment_case', return_value=({'body': b'{}'}, 'digest')), patch.object(perf, 'request', side_effect=completed), patch('performance_load.StageCollector', return_value=collector):
             with self.assertRaises(perf.PhaseFailure) as caught:
-                extraction.run_phase("unused","unused",Workload(),Path("unused"),manifest,0,count=1,warmup_seconds=0,warmup_count=1)
-        self.assertEqual(len(caught.exception.records),1)
-        self.assertEqual(caught.exception.records[0]["outcome"],"supported_success")
+                extraction.run_phase('unused', 'unused', Workload(), Path('unused'), manifest, 0, count=1, warmup_seconds=0, warmup_count=1)
+        self.assertEqual(len(caught.exception.records), 1)
+        self.assertEqual(caught.exception.records[0]['outcome'], 'supported_success')
 
     def test_failed_phase_keeps_success_and_timeout_in_report_denominator(self):
         import extraction_performance as extraction
@@ -100,7 +155,7 @@ class ExtractionPerformanceTests(unittest.TestCase):
         import extraction_fixtures as fixtures
         from performance_stats import summarize_outcomes
         tools=dict(tool_versions=dict(swift="6.4",tesseract="5.5.4",pdftotext="26.09.0",pdftoppm="26.09.0"),traineddata_sha256="0"*64)
-        manifest=dict(version=fixtures.VERSION,seed=1102026,count=1,images=fixtures.recipes("warmup",1)+fixtures.recipes("measurement",1),pdfs=fixtures.pdf_recipes(),**tools)
+        manifest=dict(version=fixtures.VERSION, seed=1102026, count=1, images=fixtures.recipes('warmup', 1) + fixtures.recipes('measurement', 1), pdfs=fixtures.pdf_recipes(), **tools, font_name='Menlo-Regular')
         row=dict(operation_id="one",supported=True,completed=True,outcome="supported_success",duration_ms=1)
         result=dict(records=[row],outcomes=summarize_outcomes([row]),stage_samples=dict(extraction_run=[1],extraction_wait=[0]),performance_qualified=False)
         with tempfile.TemporaryDirectory() as root:
