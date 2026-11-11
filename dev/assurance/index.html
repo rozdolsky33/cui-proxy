@@ -1736,10 +1736,11 @@ controls; <code>allow_non_loopback</code> does not provide those controls.</p>
 </tr>
 </tbody>
 </table>
-<p>The minimum toolchain is Go 1.26.10. An initial <code>govulncheck</code> scan of Go 1.26.0
+<p>The minimum toolchain is Go 1.26.11. An initial <code>govulncheck</code> scan of Go 1.26.0
 reported standard-library vulnerabilities; a scan using the patched toolchain
 reported none. For example, the Go advisory for
 <a href="https://pkg.go.dev/vuln/GO-2026-6809">GO-2026-6809</a> identifies 1.26.10 as fixed.
+Go 1.26.11 additionally fixes <a href="https://pkg.go.dev/vuln/GO-2026-6859">GO-2026-6859</a>.
 CI and release jobs run <code>make vuln</code> against the current advisory database;
 a clean scan is time-specific evidence, not a guarantee of absence of bugs.</p>
 <h2 id="workspace-metadata">Workspace metadata<a class="headerlink" href="#workspace-metadata" title="Permanent link">&para;</a></h2>
