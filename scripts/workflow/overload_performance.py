@@ -27,6 +27,7 @@ def main(argv=None):
     workload = Workload()
     report = dict(schema_version=1, measurements=[], completed=False, performance_qualified=False)
     reserved = False
+    active = {}
     try:
         if (any(size not in workload.sizes for size in args.sizes) or
                 any(not math.isfinite(rate) or rate <= 0 for rate in args.rates) or
@@ -41,14 +42,16 @@ def main(argv=None):
         for size in args.sizes:
             for rate in args.rates:
                 for bypass in (True, False):
+                    active = dict(size_bytes=size, offered_rate=rate,
+                                  requested_duration_s=args.duration,
+                                  max_outstanding=args.max_outstanding,
+                                  mode="bypass" if bypass else "proxy")
                     result = run_overload_phase(
                         args.binary, args.seed_binary, workload, size=size, rate=rate,
                         duration=args.duration, max_outstanding=args.max_outstanding,
                         bypass=bypass, warmup_seconds=args.warmup_seconds,
                         warmup_count=args.warmup_count)
-                    result.update(size_bytes=size, offered_rate=rate,
-                                  requested_duration_s=args.duration,
-                                  max_outstanding=args.max_outstanding)
+                    result.update(active)
                     report["measurements"].append(result)
                     write_report(args.output, report)
                     if result.get("collection_failed") or any(
@@ -63,7 +66,7 @@ def main(argv=None):
             if isinstance(error, perf.PhaseFailure):
                 report["measurements"].append(dict(
                     phase=error.phase, records=error.records,
-                    outcomes=summarize_outcomes(error.records), performance_qualified=False))
+                    outcomes=summarize_outcomes(error.records), performance_qualified=False, **active))
             report["error_kind"] = type(error).__name__
             try:
                 write_report(args.output, report)
