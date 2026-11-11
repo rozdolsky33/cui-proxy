@@ -259,7 +259,7 @@ REPORT_KEYS = frozenset("""
  available heap_objects_bytes live_heap_bytes goroutines gc_cycles ingress_read metadata_inspect
  body_inspect extraction_wait extraction_run audit_write upstream_wait restore p50 p95 p99 samples
  paired_samples_valid added_first_byte_ms added_prefix_ms added_completion_ms throughput_ratio
- setup_failure phase population vault_entries compiled_detectors runtime_environment
+ setup_failure phase collection_failed proxy_rss_samples child_rss_samples activity_samples population vault_entries compiled_detectors runtime_environment
  os architecture hardware_model logical_cpus memory_bytes go_version load_average on_ac low_power
  before after runner_sha256 generator_sha256
 """.split()) | OUTCOMES
@@ -361,9 +361,20 @@ class Environment(harness.Environment):
         try:
             backend_dir = self.directory / "backend"
             backend_dir.mkdir(mode=0o700)
-            self.spawn([sys.executable, str(Path(__file__).resolve()), "--upstream", str(backend_dir)], "backend.log")
+            backend = self.spawn([sys.executable, str(Path(__file__).resolve()), "--upstream", str(backend_dir)], "backend.log")
             ready = backend_dir / "ready.json"
-            harness.wait_until(ready.exists, 10, "backend_start")
+            def backend_ready():
+                return ready.exists() or backend.poll() is not None
+            try:
+                harness.wait_until(backend_ready, 10, "backend_start")
+                if not ready.exists(): raise RuntimeError("backend exited")
+            except Exception as error:
+                log = (self.directory / "backend.log").read_text(errors="replace")
+                kinds = re.findall(r"(?m)^([A-Za-z_]+(?:Error|Exception)):", log)
+                kind = kinds[-1] if kinds else "unknown"
+                status = backend.poll()
+                state = "running" if status is None else f"exit-{status}"
+                raise RuntimeError(f"backend_start: {state}; error-kind={kind}") from error
             self.upstream_url = json.loads(ready.read_text())["url"]
             proxy_port, ui_port = harness.port(), harness.port()
             self.mappings = prepare(self.directory, self.workload, self.seed_binary, proxy_port, ui_port,
@@ -453,8 +464,40 @@ def environment_info(binary):
                 on_ac=ac, low_power=low_power)
 
 
+def resource_summary(samples):
+    def observed(values):
+        return [v for v in values if type(v) in (int, float) and math.isfinite(v) and v >= 0]
+    proxy = observed(s.get("proxy_rss_bytes") for s in samples)
+    children = observed(s.get("child_rss_bytes") for s in samples)
+    activity = observed((s.get("metrics") or {}).get("active_requests") for s in samples)
+    return dict(peak_proxy_rss_bytes=max(proxy) if proxy else None,
+                peak_child_rss_bytes=max(children) if children else None,
+                observed_proxy_active_peak=max(activity) if activity else None,
+                proxy_rss_samples=len(proxy), child_rss_samples=len(children), activity_samples=len(activity))
+
+
 def run_phase(binary, seed_binary, workload, size, clients, bypass, count, duration=None,
               warmup_seconds=0, warmup_count=1):
+    measured = []
+    try:
+        return _run_phase(measured, binary, seed_binary, workload, size, clients, bypass,
+                          count, duration, warmup_seconds, warmup_count)
+    except PhaseFailure:
+        raise
+    except Exception as error:
+        if measured:
+            raise PhaseFailure("measurement_collection", measured) from error
+        # Context-manager cleanup must not hide preflight/warm-up evidence either.
+        previous = error.__context__
+        for _ in range(8):
+            if isinstance(previous, PhaseFailure): raise previous from error
+            if previous is None: break
+            previous = previous.__context__
+        raise
+
+
+def _run_phase(measured, binary, seed_binary, workload, size, clients, bypass, count, duration=None,
+               warmup_seconds=0, warmup_count=1):
     before = environment_info(binary)
     with Environment(binary, seed_binary, workload, size) as env:
         def operation(client, serial):
@@ -487,25 +530,25 @@ def run_phase(binary, seed_binary, workload, size, clients, bypass, count, durat
         with ResourceSampler(env) as resources:
             started = time.monotonic()
             rows, outcomes = closed_loop(operation, clients, per_client=count if duration is None else None, duration=duration)
+            # Preserve the measured denominator before sampler/context cleanup
+            # or final metrics/vault collection can fail.
+            measured.extend(rows)
             elapsed = time.monotonic() - started
         metrics = env.metrics()
         if env.vault_count() != len(workload.pairs): raise ValueError("steady state mapping churn")
         metric_samples = [r.get("metrics") for r in resources.samples if r.get("metrics")]
-        peak_proxy = max((r.get("proxy_rss_bytes") or 0 for r in resources.samples), default=0)
-        peak_children = max((r.get("child_rss_bytes") or 0 for r in resources.samples), default=0)
+        aggregates = resource_summary(resources.samples)
         successes = window_successes(rows, started, duration) if duration is not None else outcomes["supported_success"]
         return dict(mode="bypass" if bypass else "proxy", size_bytes=size, clients=clients,
                     environment=dict(before=before, after=environment_info(binary)), population=env.population,
                     window_seconds=duration, elapsed_s=elapsed, warmup_seconds=warmup_elapsed,
                     warmup_completed=sum(r["outcome"] == "supported_success" for r in warm),
                     achieved_client_concurrency=peak_concurrency(rows),
-                    observed_proxy_active_peak=max((m.get("active_requests", 0) for m in metric_samples), default=0),
                     successful_completions_per_second=successes / (duration or elapsed),
-                    peak_proxy_rss_bytes=peak_proxy or None, peak_child_rss_bytes=peak_children,
                     live_heap_available=all(m.get("runtime", {}).get("available", False) for m in metric_samples) and bool(metric_samples),
                     goroutines_available=all(m.get("runtime", {}).get("available", False) for m in metric_samples) and bool(metric_samples),
                     resource_samples=resources.samples, final_metrics=metrics,
-                    records=rows, **outcomes)
+                    records=rows, **outcomes, **aggregates)
 
 
 def main():
@@ -570,7 +613,13 @@ def main():
         report.update(qualification(settings, measurements))
         write_report(args.report, report)
     except Exception as error:
-        if isinstance(error, PhaseFailure): report["setup_failure"] = error.evidence()
+        if isinstance(error, PhaseFailure):
+            if error.phase == "measurement_collection":
+                report["measurements"].append(dict(mode="bypass" if bypass else "proxy",
+                    size_bytes=size, clients=args.clients, repetition=repetition,
+                    collection_failed=True, **error.evidence()))
+            else:
+                report["setup_failure"] = error.evidence()
         report.update(performance_qualified=False, unmet_requirements=["run_failed"])
         write_report(args.report, report)
         print("performance run failed; evidence retained", file=sys.stderr)

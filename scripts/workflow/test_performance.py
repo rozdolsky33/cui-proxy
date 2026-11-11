@@ -151,3 +151,68 @@ class PerformanceTests(unittest.TestCase):
         self.assertTrue(env.children)
         self.assertTrue(all(child.poll() is not None for child in env.children))
         self.assertFalse(env.directory.exists())
+
+    def test_post_load_collection_errors_retain_measured_attempts(self):
+        import contextlib
+        p = self.module()
+        for failure in ("metrics", "vault", "sampler", "environment"):
+            with self.subTest(failure=failure):
+                workload = p.Workload()
+                env = mock.Mock()
+                env.url = env.upstream_url = "http://127.0.0.1:1"
+                env.mappings = {value: value for _, value in workload.pairs}
+                env.population = {"vault_entries":10000, "compiled_detectors":64}
+                env.vault_count.side_effect = [10000, 9999 if failure == "vault" else 10000]
+                env.metrics.side_effect = OSError() if failure == "metrics" else None
+                env.metrics.return_value = {}
+                calls = 0
+                def operation(url, case, *_):
+                    nonlocal calls
+                    calls += 1
+                    failed = calls >= 3
+                    return dict(operation_id=case["operation_id"], supported=True,
+                        completed=not failed, outcome="unresolved" if failed else "supported_success",
+                        duration_ms=1.0, first_byte_ms=1.0, prefix_ms=[1.0]*32)
+                class Context:
+                    def __init__(self, value, fail): self.value, self.fail = value, fail
+                    def __enter__(self): return self.value
+                    def __exit__(self, *_):
+                        if self.fail: raise OSError()
+                sampler = mock.Mock(samples=[])
+                with mock.patch.object(p, "Environment", return_value=Context(env, failure=="environment")), \
+                     mock.patch.object(p, "ResourceSampler", return_value=Context(sampler, failure=="sampler")), \
+                     mock.patch.object(p, "environment_info", return_value={}), \
+                     mock.patch.object(p, "request", side_effect=operation):
+                    with self.assertRaises(p.PhaseFailure) as caught:
+                        p.run_phase(Path("unused"), Path("unused"), workload, 262144, 1, False, 1)
+                evidence = caught.exception.evidence()
+                self.assertEqual(evidence["attempted"], 1)
+                self.assertEqual(evidence["failures"], 1)
+                self.assertEqual(evidence["outcomes"]["unresolved"], 1)
+
+    def test_missing_resources_are_not_measured_zeroes(self):
+        p = self.module()
+        missing = p.resource_summary([])
+        for key in ("peak_proxy_rss_bytes", "peak_child_rss_bytes", "observed_proxy_active_peak"):
+            self.assertIsNone(missing[key])
+        self.assertEqual(missing["child_rss_samples"], 0)
+        zero = p.resource_summary([dict(proxy_rss_bytes=10, child_rss_bytes=0, metrics={"active_requests":0})])
+        self.assertEqual(zero["peak_child_rss_bytes"], 0)
+        self.assertEqual(zero["observed_proxy_active_peak"], 0)
+        self.assertEqual(zero["child_rss_samples"], 1)
+
+    def test_cli_keeps_failed_measured_phase_in_denominators(self):
+        import sys
+        p = self.module()
+        row = dict(operation_id="one", supported=True, completed=False, outcome="unresolved", duration_ms=45.0)
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);binary=root/"binary";binary.write_bytes(b"test")
+            report=root/"report.json"
+            args=["performance.py","--binary",str(binary),"--seed-binary",str(binary),"--report",str(report)]
+            with mock.patch.object(sys,"argv",args), mock.patch.object(p,"run_phase",side_effect=p.PhaseFailure("measurement_collection",[row])):
+                with self.assertRaises(SystemExit) as caught: p.main()
+            self.assertEqual(caught.exception.code,1)
+            result=json.loads(report.read_text())
+            self.assertEqual(sum(m["attempted"] for m in result["measurements"]),1)
+            self.assertEqual(sum(m["failures"] for m in result["measurements"]),1)
+            self.assertFalse(result["performance_qualified"])
