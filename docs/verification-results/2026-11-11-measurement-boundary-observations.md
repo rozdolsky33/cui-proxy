@@ -22,5 +22,8 @@ new campaign identity. Preserve completed text results and retain separate
 source/build/script provenance when collecting the affected remaining
 workloads. Do not modify an active campaign's source or checkpoint hashes.
 
-This increment closes report-field gaps, not Task 04. Full CI, independent
-review and actual corrected-source reference measurements remain required.
+PR #35 merged after a clean independent review and all required remote CI.
+Both OS jobs completed 199 discovered workflow tests (195 passed, four native
+opt-in skips), plus race/lint/vulnerability/fuzz and packaging checks.
+This closes report-field gaps, not Task 04. Actual corrected-source reference
+measurements remain required.

@@ -201,3 +201,7 @@ Implementation verification covers locks, interruption cleanup, identity/tamper 
 ## Measurement boundary evidence
 
 The acceptance evaluator now checks retained reports without qualifying a partial campaign. Review exposed missing scheduler-origin and observed warm-up fields. The follow-up records those existing boundaries, tested with controlled clocks. Historical reports remain unchanged and incomplete for absent observations; new measurements require their own recorded runner identity. Full Task 04 collection, profiling, stress/churn and consolidated evidence remain in progress.
+
+## Durable audit attribution
+
+Add a production-path durable audit microbenchmark with serial/parallel cases, verified persisted record counts and explicit workers. A fixed four-operation smoke runs inside the existing race step without adding CI jobs or relaxing checks. Optimized CPU/allocation/heap/lock profiling remains separate from race validation and will run only when the reference host is idle. See the audit durability profiling guide under verification-results.
