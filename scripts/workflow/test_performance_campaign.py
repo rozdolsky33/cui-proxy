@@ -6,6 +6,17 @@ import unittest
 from pathlib import Path
 
 
+def _cleanup_probe_kind(stderr):
+    # Never echo captured test source or fixture content in assertion output.
+    if b"RuntimeError" in stderr and b"_terminate_group" in stderr:
+        return "owned_group_cleanup_deadline"
+    if b"RuntimeError" in stderr and b"execute_command" in stderr:
+        return "owned_descendants_after_exit"
+    if b"KeyboardInterrupt" in stderr:
+        return "interrupted_probe"
+    return "unclassified_probe_exit"
+
+
 class CampaignTests(unittest.TestCase):
     def _scan_processes(self, combined, commands, arguments):
         from unittest import mock
@@ -57,6 +68,7 @@ class CampaignTests(unittest.TestCase):
 
 
     def _assert_owned_descendant_cleanup(self, interrupt):
+        # Use production grace; allow four bounded waits plus launch overhead.
         import os
         import signal
         import subprocess
@@ -74,7 +86,7 @@ class CampaignTests(unittest.TestCase):
             ("child.wait()" if interrupt else "while not Path(sys.argv[2]).exists(): time.sleep(0.01)")])
         probe_code = "\n".join([
             "import performance_campaign as campaign", "import sys",
-            "campaign.CLEANUP_GRACE = 0.2", "try:",
+            "try:",
             "    campaign.execute_command([sys.executable, '-c', " + repr(leader_code) +
             ", sys.argv[1], sys.argv[2]], sys.argv[3])",
             "except KeyboardInterrupt:", "    raise SystemExit(130)",
@@ -93,8 +105,8 @@ class CampaignTests(unittest.TestCase):
                 self.assertTrue(child.exists(), "owned descendant did not start")
                 if interrupt:
                     os.kill(probe.pid, signal.SIGINT)
-                probe.communicate(timeout=20)
-                self.assertEqual(probe.returncode, 130 if interrupt else 1)
+                _, probe_stderr = probe.communicate(timeout=25)
+                self.assertEqual(probe.returncode, 130 if interrupt else 1, msg=_cleanup_probe_kind(probe_stderr))
                 status = subprocess.run(["ps", "-o", "stat=", "-p", child.read_text()],
                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True).stdout.strip()
                 self.assertTrue(not status or status.startswith("Z"), "owned descendant survived cleanup")
