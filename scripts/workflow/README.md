@@ -76,3 +76,18 @@ The probe requests are reported separately from the main workflow counts.
 Do not use the mixed-scenario duration quantiles as a release performance claim.
 Changes to protocol support or the workload contract must update the manifest
 and corresponding semantic assertions together.
+
+## Performance report primitives (Task 04 in progress)
+
+`performance_stats.summarize_pairs` matches unique seeded `operation_id` values
+before subtracting proxy/bypass `first_byte_ms`. Quantiles use nearest rank;
+negative added delays remain as scheduling jitter. Missing, duplicate, empty
+or non-finite pairs invalidate the comparison instead of dropping observations.
+
+Outcome records contain `operation_id`, `outcome` (contract section 8),
+`supported` (fixed by the manifest), `completed` (full HTTP response received),
+and finite nonnegative `duration_ms`. A timeout still contributes one attempted
+supported operation with its observed duration and an attributed terminal outcome.
+Only `supported_success` enters the success numerator. Expected negative cases
+are separate; unsupported failures are still failures. Empty denominators yield
+no rate. These primitives alone do not constitute a performance baseline.
