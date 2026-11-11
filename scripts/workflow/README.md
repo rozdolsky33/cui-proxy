@@ -47,7 +47,10 @@ These checks validate the harness; they do not mutate the production source.
 
 Capture IDs are bounded ASCII tokens (1–128 characters, beginning with a
 letter/digit and containing only letters, digits or hyphens). The fake upstream
-rejects other IDs before writing captures or cancellation markers.
+rejects other IDs before writing captures or cancellation markers. Both output
+paths are resolved and checked against the capture directory with a trailing
+separator before either write, including rejection of existing symlinks to a
+location outside that directory.
 
 Temporary raw fixtures/captures are removed at exit. Child process groups are
 terminated even when their leader has already exited, with a twelve-second

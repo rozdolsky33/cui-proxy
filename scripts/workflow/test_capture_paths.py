@@ -73,3 +73,18 @@ class CapturePathTests(unittest.TestCase):
         self.assertEqual(self.request("unicode-é", "cancel"), 400)
         time.sleep(0.05)
         self.assertEqual(set(self.directory.iterdir()), before)
+
+    def test_symlinks_cannot_escape_capture_directory(self):
+        # A sibling with the same textual prefix must not pass a root check.
+        with tempfile.TemporaryDirectory(prefix=self.directory.name + "-outside-",
+                                         dir=self.directory.parent) as outside:
+            target = Path(outside) / "untouched"
+            for extension in (".json", ".cancelled"):
+                with self.subTest(extension=extension):
+                    target.write_text("unchanged")
+                    ident = "symlink-" + extension[1:]
+                    link = self.directory / (ident + extension)
+                    link.symlink_to(target)
+                    self.addCleanup(link.unlink, missing_ok=True)
+                    self.assertEqual(self.request(ident), 400)
+                    self.assertEqual(target.read_text(), "unchanged")
