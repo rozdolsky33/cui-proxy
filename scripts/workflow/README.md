@@ -176,3 +176,32 @@ Task 04 still requires real OCR/PDF and fairness fixtures, open-loop overload,
 end-to-end churn, qualified resource/environment checks and sustained sample
 windows. A successful diagnostic run verifies its supported text operations;
 it does not establish the four-agent release milestone.
+
+### Real extraction fixtures (reference macOS)
+
+`python3 scripts/workflow/extraction_fixtures.py /private/tmp/cui-extraction-fixtures`
+creates a new private directory and validates its contents using installed
+Tesseract English data and Poppler. Existing directories are refused. Use
+`--count 2` for a short fixture smoke test. Missing tools or a text mismatch
+exit unsuccessfully; this command never qualifies proxy performance.
+
+The versioned CoreText recipe renders Menlo Regular at 28 points, white
+background, fixed margins/line spacing, and JPEG quality 0.9. Four templates
+cover PNG/JPEG at 1024x768 and 1920x1080. Each template has 100 warm-up
+indices and 100 disjoint measurement indices, printed as six digits in the
+raster. Two PDFs contain the same known English reference sentences on two
+pages: one has a text layer and the other has only rendered page images.
+The strict word oracle ignores whitespace only.
+
+The private manifest records expected text, indices, dimensions, byte counts,
+image/document hashes, font hash, rendering recipe and OS version. Do not
+commit or print it. Validation verifies file containment and byte integrity
+before invoking extraction tools. Every attachment is limited to 2 MiB.
+Fixture verification is separate from end-to-end proxy timing, sanitization,
+queue measurements and fairness; those Task 04 gates remain outstanding.
+
+Portable unit tests run in ordinary discovery. On the reference Mac, run
+`CUI_REAL_EXTRACTION_TEST=1 python3 -m unittest discover -s scripts/workflow -p test_extraction_fixtures.py`
+with stdout/stderr captured locally as required by AGENTS.md. This explicitly
+runs actual rendering, OCR and both PDF paths; the opt-in test is skipped on
+ordinary CI and must not be described as real-tool coverage there.

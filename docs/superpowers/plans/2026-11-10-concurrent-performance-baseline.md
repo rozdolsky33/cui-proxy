@@ -133,3 +133,27 @@ sustained runs when ready; preserve every qualification gate.
   gates packaging on successful tests, cancels superseded runs, and avoids
   duplicate feature-push/PR test runs. Live failure evidence confirmed sibling
   cancellation and packaging skip. Docs and default CodeQL are separate.
+
+## Real extraction fixture increment
+
+Added a native reference-Mac CoreText generator for four PNG/JPEG templates
+and two two-page PDFs (text layer and scanned). Warm-up and measurement
+indices are disjoint and printed in the raster. Private manifests record
+expected text, font/image hashes, OS, dimensions and byte counts; validation
+checks byte integrity and containment before captured Tesseract/Poppler calls.
+The word oracle accepts whitespace differences only. This increment does not
+measure the proxy, sanitization, extraction queues or fairness. Task 04 remains
+in progress; integrate these fixtures into the isolated runner next.
+
+Portable regression discovery passes 68 tests (one opt-in test skipped); the
+explicit real-tool regression passes seven tests, including 16 images and
+both PDFs. The Go race suite also passes. Full-corpus validation is recorded
+separately after completion.
+
+Review found no critical or important issue in this fixture-only scope. Before
+qualification, enforce stored-manifest schema/coverage, record extractor and
+Swift versions plus English traineddata identity, and reject font substitution
+by checking the resolved PostScript name. These are deferred minor findings
+for this generation-and-validation CLI; existing byte hashes do not establish
+tool provenance or complete corpus coverage. Production OCR uses different
+page-segmentation defaults and still needs its own end-to-end verification.
