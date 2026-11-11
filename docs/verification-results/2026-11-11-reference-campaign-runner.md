@@ -29,3 +29,9 @@ Child output is captured into private logs. Interruptions request cleanup of onl
 Portable tests exercise aggregate sample counts, native client partitioning, repetition ordering with the real text comparator, private child logs, owned-process cleanup, exclusive locking, input/report tampering, preserved failed attempts, and resume without repeating completed work. The final workflow discovery run completed 127 tests successfully (123 passed, four native opt-in skips). The complete six-job native smoke campaign passed, followed by a successful resume with one attempt per job and no repeated work. Fresh review identified one process-group cleanup defect; real subprocess regressions reproduced both interrupted and successful leaders leaving descendants, then passed after the fix. The final suite and native smoke passed after that correction.
 
 All outputs remain explicitly unqualified. Stress/churn, component profiling, complete acceptance evaluation and consolidated bottleneck evidence remain required for Task 04. Full soak qualification belongs to its separate roadmap task. Campaign completion means the selected measurements were collected, not that their numerical gates passed.
+
+## Native process-probe correction
+
+On macOS, `ps` truncated the executable column when it preceded arguments, making Chrome paths appear to end in `Go`. Reference preflight consequently reported unrelated browser processes as competing Go work. The probe now reads full-width command and argument snapshots separately, preserves paths containing spaces, and ignores zombie states. Regression tests retain positive detection of live Go, OCR and benchmark processes. The corrected native host preflight passed with zero competing jobs; unrelated applications were left running.
+
+The process-probe correction completed 129 workflow tests successfully (125 passed, four native opt-in skips), passed native host preflight, and received a clean fresh review.

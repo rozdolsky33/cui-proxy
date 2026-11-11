@@ -7,6 +7,48 @@ from pathlib import Path
 
 
 class CampaignTests(unittest.TestCase):
+    def _scan_processes(self, combined, commands, arguments):
+        from unittest import mock
+        import performance as perf
+        campaign = importlib.import_module("performance_campaign")
+        def run(command, **kwargs):
+            if command[0] == "sw_vers":
+                output = "26.7.2\n"
+            elif command[0] == "go":
+                output = "proxy: go1.26.11\n"
+            elif command[0] == "ps":
+                columns = next(arg for arg in command if arg.startswith("pid="))
+                output = {"pid=,comm=,args=": combined,
+                          "pid=,stat=,comm=": commands, "pid=,args=": arguments}[columns]
+            else:
+                raise AssertionError("unexpected probe")
+            return campaign.subprocess.CompletedProcess(command, 0, stdout=output, stderr="")
+        with (mock.patch.object(perf, "environment_info", return_value={}),
+              mock.patch.object(campaign.subprocess, "run", side_effect=run)):
+            return campaign.reference_environment("unused")["competing_work"]
+
+    def test_process_scan_preserves_complete_executable_paths_with_spaces(self):
+        import os
+        pid = os.getpid() + 1000000
+        self.assertEqual(self._scan_processes(
+            f"{pid} /Applications/Go /Applications/Google Chrome.app/Contents/MacOS/Google Chrome\n",
+            f"{pid} S /Applications/Google Chrome.app/Contents/MacOS/Google Chrome\n",
+            f"{pid} /Applications/Google Chrome.app/Contents/MacOS/Google Chrome\n"), 0)
+
+    def test_process_scan_counts_live_build_ocr_and_benchmark_but_not_zombies(self):
+        import os
+        first = os.getpid() + 1000000
+        rows = [("S", "/opt/go/bin/go", "go build ./cmd"),
+                ("S", "/opt/bin/tesseract", "tesseract input output"),
+                ("S", "/usr/bin/python3", "python3 scripts/workflow/performance.py"),
+                ("S", "/usr/bin/python3", "python3 idle_service.py"),
+                ("Z", "/opt/go/bin/go", "go test ./...")]
+        combined = "".join(f"{first+i} {name} {args}\n" for i, (_, name, args) in enumerate(rows))
+        commands = "".join(f"{first+i} {state} {name}\n" for i, (state, name, _) in enumerate(rows))
+        arguments = "".join(f"{first+i} {args}\n" for i, (_, _, args) in enumerate(rows))
+        self.assertEqual(self._scan_processes(combined, commands, arguments), 3)
+
+
     def test_real_interrupt_removes_descendant_that_ignores_soft_signals(self):
         self._assert_owned_descendant_cleanup(True)
 
