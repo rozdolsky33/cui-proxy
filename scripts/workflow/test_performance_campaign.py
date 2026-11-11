@@ -17,7 +17,12 @@ def _cleanup_probe_kind(stderr):
     if b"RuntimeError" in stderr and b"execute_command" in stderr:
         return "owned_descendants_after_exit"
     if b"KeyboardInterrupt" in stderr:
-        return "interrupted_probe"
+        import re
+        import sys
+        frames = re.findall(rb'File "(?:[^"\n]*/)?(performance_campaign.py|subprocess.py|threading.py|<string>)", line (\d+)', stderr)
+        trace = ",".join(name.decode("ascii") + ":" + line.decode("ascii") for name, line in frames[-8:])
+        version = ".".join(str(part) for part in sys.version_info[:3])
+        return "interrupted_probe py=" + version + " frames=" + trace
     return "unclassified_probe_exit"
 
 
