@@ -22,6 +22,8 @@ def validate_report(report):
                 ("client_unsent", 0), ("supported_success", 1),
                 ("initial_vault_population", 10000))):
             raise ValueError("smoke_operation_accounting")
+        if phase.get("live_vault_population") != phase.get("final_vault_population"):
+            raise ValueError("smoke_persisted_population")
         rows = phase.get("records", [])
         if (len(rows) != 1 or rows[0].get("outcome") != "supported_success"
                 or len(rows[0].get("prefix_ms", [])) != 32):

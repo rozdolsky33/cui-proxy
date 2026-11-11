@@ -145,6 +145,16 @@ def inspect_vault(directory, seed_binary):
     return data
 
 
+def flush_proxy(process):
+    """Finish the owned proxy's normal shutdown/save before reading its vault."""
+    import signal
+    if process.poll() is not None:
+        raise ValueError("churn_proxy_exited_before_drain")
+    process.send_signal(signal.SIGTERM)
+    if process.wait(timeout=15) != 0:
+        raise ValueError("churn_proxy_drain_failed")
+
+
 class ChurnPhaseFailure(RuntimeError):
     def __init__(self, report):
         super().__init__("churn_phase_failed")
@@ -213,17 +223,21 @@ def run_phase(binary, seed_binary, workload, *, size=1048576, duration=600,
                                         finished_s=clock(), duration_ms=(clock() - started) * 1000)
                     return retained
                 report.update(performance_load.open_loop(operation, 100 / 60, duration, 4))
-                if not bypass:
-                    observation = inspect_vault(env.directory, seed_binary)
-                    report.update(resolve_records(report["records"], workload, size, observation["mappings"]))
-                    report["final_vault_population"] = observation["population"]
-                else:
-                    report["final_vault_population"] = env.vault_count()
+                report["live_vault_population"] = env.vault_count()
                 report["final_metrics"] = env.metrics()
-                report["resource_samples"] = list(sampler.samples)
-                report.update(performance.resource_summary(sampler.samples))
-                if any(row.get("outcome") != "supported_success" for row in report["records"]):
-                    raise ValueError("churn_operation_failure")
+            report["resource_samples"] = list(sampler.samples)
+            report.update(performance.resource_summary(sampler.samples))
+            if not bypass:
+                flush_proxy(env.proxy)
+                observation = inspect_vault(env.directory, seed_binary)
+                if observation["population"] != report["live_vault_population"]:
+                    raise ValueError("churn_persisted_population_mismatch")
+                report.update(resolve_records(report["records"], workload, size, observation["mappings"]))
+                report["final_vault_population"] = observation["population"]
+            else:
+                report["final_vault_population"] = report["live_vault_population"]
+            if any(row.get("outcome") != "supported_success" for row in report["records"]):
+                raise ValueError("churn_operation_failure")
         return report
     except BaseException as error:
         if not report["records"]:

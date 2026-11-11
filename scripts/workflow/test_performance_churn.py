@@ -209,7 +209,7 @@ class ObservedVaultTests(unittest.TestCase):
 
 
 class ChurnPhaseTests(unittest.TestCase):
-    def run_phase(self, bypass=False, observation_fails=False, warmup_fails=False):
+    def run_phase(self, bypass=False, observation_fails=False, warmup_fails=False, drain_fails=False, stale_observation=False):
         import hashlib
         from contextlib import ExitStack
         from pathlib import Path
@@ -220,9 +220,16 @@ class ChurnPhaseTests(unittest.TestCase):
         mappings = {p[1]: "mapped-" + str(i) for i, p in enumerate(workload.initial.pairs)}
         for index in range(2):
             mappings[workload.new_pair(index)[1]] = "fresh-mapped-" + str(index)
+        population_calls = [0]
+        def population():
+            population_calls[0] += 1
+            return 10000 if population_calls[0] == 1 or bypass else 10002
+        proxy = MagicMock()
+        proxy.poll.return_value = None
+        proxy.wait.return_value = 1 if drain_fails else 0
         env = SimpleNamespace(directory=Path("/unused/private"), mappings=dict(mappings),
                               url="http://127.0.0.1:1", upstream_url="http://127.0.0.1:2",
-                              metrics=lambda: {}, population={}, vault_count=lambda: 10000)
+                              metrics=lambda: {}, population={}, vault_count=population, proxy=proxy)
         environment = MagicMock()
         environment.__enter__.return_value = env
         sampler = MagicMock()
@@ -252,8 +259,13 @@ class ChurnPhaseTests(unittest.TestCase):
             stack.enter_context(patch("performance.ResourceSampler", return_value=sampler))
             stack.enter_context(patch("performance.request", side_effect=request))
             scheduler = stack.enter_context(patch("performance_load.open_loop", side_effect=load))
-            observation = stack.enter_context(patch.object(churn, "inspect_vault", side_effect=ValueError("unavailable") if observation_fails else None,
-                                            return_value=dict(population=10002, mappings=mappings)))
+            def observe(*args):
+                proxy.send_signal.assert_called_once()
+                proxy.wait.assert_called_once_with(timeout=15)
+                if observation_fails:
+                    raise ValueError("unavailable")
+                return dict(population=10001 if stale_observation else 10002, mappings=mappings)
+            observation = stack.enter_context(patch.object(churn, "inspect_vault", side_effect=observe))
             try:
                 result = churn.run_phase("/unused/proxy", "/unused/seed", workload,
                                          size=262144, duration=1.8, bypass=bypass,
@@ -283,6 +295,20 @@ class ChurnPhaseTests(unittest.TestCase):
         self.assertEqual(observed, 0)
         self.assertTrue(all(not deferred for _, deferred, _ in calls))
         self.assertIsNone(report["observed_new_pairs"])
+
+    def test_failed_drain_prevents_observation_and_keeps_attempts(self):
+        report, _, _, observed, failed = self.run_phase(drain_fails=True)
+        self.assertTrue(failed)
+        self.assertEqual(observed, 0)
+        self.assertEqual(len(report["records"]), 2)
+        self.assertTrue(all(r["outcome"] == "boundary_pending" for r in report["records"]))
+
+    def test_stale_persisted_population_cannot_resolve_success(self):
+        report, _, _, observed, failed = self.run_phase(stale_observation=True)
+        self.assertTrue(failed)
+        self.assertEqual(observed, 1)
+        self.assertEqual(report["live_vault_population"], 10002)
+        self.assertTrue(all(r["outcome"] == "boundary_pending" for r in report["records"]))
 
     def test_failed_observation_retains_all_measured_attempts(self):
         report, _, _, _, failed = self.run_phase(observation_fails=True)

@@ -12,6 +12,7 @@ class ChurnSmokeTests(unittest.TestCase):
                                client_unsent=0, supported_success=1,
                                initial_vault_population=10000,
                                final_vault_population=10001 if mode == "proxy" else 10000,
+                               live_vault_population=10001 if mode == "proxy" else 10000,
                                observed_new_pairs=1 if mode == "proxy" else None,
                                verified_new_pairs=1 if mode == "proxy" else None,
                                records=[dict(outcome="supported_success", prefix_ms=[1] * 32)]))
