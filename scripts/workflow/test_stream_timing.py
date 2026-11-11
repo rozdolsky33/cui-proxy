@@ -2,6 +2,19 @@ import unittest
 import performance as perf
 
 class StreamTimingTests(unittest.TestCase):
+    def test_observer_pairs_each_prefix_with_its_actual_semantic_chunk(self):
+        import itertools
+        import json
+        values = ["alpha", "longer_beta"] * 20
+        chunks = perf.stream_chunks(values)
+        observer = perf.StreamObserver(perf.response_text(values),
+                                       prefix_lengths=list(itertools.accumulate(map(len, chunks))))
+        for tick, chunk in enumerate(chunks, 1):
+            event = {"type": "response.output_text.delta", "delta": chunk}
+            observer.feed(("data: " + json.dumps(event) + "\n\n").encode(), tick)
+        self.assertEqual(observer.prefix_ms, list(range(1, 33)))
+
+
     def test_text_only_backend_skips_raw_image_parts(self):
         body = {"input": [
             {"type": "message", "content": [{"type": "input_text", "text": "shared prose"}]},

@@ -12,7 +12,7 @@ For mixed image traffic, the fake upstream returns only the shared text workload
 
 ## Verification
 
-On 2026-11-11, workflow discovery completed 101 tests successfully (native tests remain opt-in), and the explicitly enabled native mixed-load suite completed 12 tests successfully. `git diff --check` passed.
+On 2026-11-11, workflow discovery completed 102 tests successfully (native tests remain opt-in), and the explicitly enabled native mixed-load suite completed 12 tests successfully. `git diff --check` passed.
 
 Portable regression tests cover semantic prefix alignment, timestamp validity, signed pairing, shared-text attachment replies, mixed-client lifetime, failure retention, open-loop capacity and late slots, invalid-setting preflight, stage-history rotation and attachment-oracle field boundaries. Opt-in native tests run both proxy and bypass with two measured text requests while three image clients remain active. These short runs are smoke tests; their source state and duration do not meet reference qualification requirements.
 

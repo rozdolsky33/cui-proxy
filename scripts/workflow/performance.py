@@ -194,7 +194,7 @@ class FakeBackend:
 
 
 class StreamObserver:
-    def __init__(self, expected):
+    def __init__(self, expected, *, prefix_lengths=None):
         self.expected = expected
         self.pending = b""
         self.text = ""
@@ -202,6 +202,13 @@ class StreamObserver:
         self.prefix_ms = [None] * 32
         self.send_started_s = None
         self.send_finished_s = None
+        self.prefix_lengths = prefix_lengths if prefix_lengths is not None else [
+            math.ceil(len(expected) * (i + 1) / 32) for i in range(32)]
+        if (len(self.prefix_lengths) != 32 or
+                any(type(n) is not int or n < 0 or n > len(expected) for n in self.prefix_lengths) or
+                self.prefix_lengths != sorted(self.prefix_lengths) or
+                self.prefix_lengths[-1] != len(expected)):
+            raise ValueError("invalid logical prefix lengths")
 
     def observe_terminal(self, event):
         self.terminal = True
@@ -225,7 +232,7 @@ class StreamObserver:
                     self.text += event["delta"]
                     if not self.expected.startswith(self.text): raise ValueError("wrong restoration")
                     for i in range(32):
-                        length = math.ceil(len(self.expected) * (i + 1) / 32)
+                        length = self.prefix_lengths[i]
                         if self.prefix_ms[i] is None and len(self.text) >= length:
                             self.prefix_ms[i] = elapsed_ms
                 elif kind == "response.completed": self.observe_terminal(event)
@@ -269,7 +276,9 @@ def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None
             super().__init__(Wrapper(), *args, **kwargs)
     conn.response_class = Response
     expected = response_text(case.get("occurrences", ["page", "page"]))
-    observer = StreamObserver(expected)
+    chunks = stream_chunks(case.get('occurrences', ['page', 'page']))
+    observer = StreamObserver(expected, prefix_lengths=[
+        sum(map(len, chunks[:i + 1])) for i in range(len(chunks))])
     try:
         conn.connect()
         remaining = deadline - time.monotonic()
