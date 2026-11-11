@@ -216,3 +216,12 @@ class PerformanceTests(unittest.TestCase):
             self.assertEqual(sum(m["attempted"] for m in result["measurements"]),1)
             self.assertEqual(sum(m["failures"] for m in result["measurements"]),1)
             self.assertFalse(result["performance_qualified"])
+
+    def test_loopback_backend_does_not_depend_on_reverse_dns(self):
+        p = self.module()
+        body = {"input": [{"role":"user", "content":[{"type":"input_text", "text":v}]} for v in ["first", "second"]]}
+        case = dict(body=json.dumps(body).encode(), operation_id="no-dns", occurrences=["first", "second"])
+        with mock.patch("socket.getfqdn", side_effect=OSError("reverse DNS unavailable")):
+            with p.FakeBackend(delay=0.0, interval=0.0) as backend:
+                result = p.request(backend.url, case)
+        self.assertEqual(result["outcome"], "supported_success")

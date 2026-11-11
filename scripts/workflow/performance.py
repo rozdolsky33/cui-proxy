@@ -27,6 +27,7 @@ import platform
 import re
 from pathlib import Path
 import socket
+import socketserver
 import subprocess
 import tempfile
 import threading
@@ -65,6 +66,14 @@ def values_from_body(body):
     return values
 
 
+class _LoopbackHTTPServer(http.server.ThreadingHTTPServer):
+    def server_bind(self):
+        # HTTPServer.server_bind does a reverse-DNS lookup for server_name.
+        # This backend is deliberately local and must work with DNS unavailable.
+        socketserver.TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
+
+
 class FakeBackend:
     """The real runner runs this in a separate process without the oracle."""
     def __init__(self, delay=1.0, interval=0.02):
@@ -99,7 +108,7 @@ class FakeBackend:
                 except (KeyError, ValueError, TypeError):
                     self.close_connection = True
         backend_stage("binding")
-        self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.server = _LoopbackHTTPServer(("127.0.0.1", 0), Handler)
         backend_stage("bound")
         self.server.daemon_threads = True
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
