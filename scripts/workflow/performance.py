@@ -4,6 +4,15 @@
 All HTTP payloads and fixture subprocess output stay in private local files.
 This tool never points at the user's running proxy.
 """
+import sys
+
+_BACKEND_CHILD = "--upstream" in sys.argv
+
+def backend_stage(stage):
+    if _BACKEND_CHILD: print("backend_stage=" + stage, flush=True)
+
+backend_stage("entry")
+
 import argparse
 import concurrent.futures
 import contextlib
@@ -19,7 +28,6 @@ import re
 from pathlib import Path
 import socket
 import subprocess
-import sys
 import tempfile
 import threading
 import time
@@ -28,6 +36,8 @@ from urllib.parse import urlsplit
 import harness
 from performance_stats import OUTCOMES, summarize_outcomes, summarize_pairs
 from performance_workload import Workload, PROSE, encode
+
+backend_stage("imports")
 
 
 def response_text(values):
@@ -88,10 +98,13 @@ class FakeBackend:
                 except (BrokenPipeError, ConnectionResetError, OSError): pass
                 except (KeyError, ValueError, TypeError):
                     self.close_connection = True
+        backend_stage("binding")
         self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        backend_stage("bound")
         self.server.daemon_threads = True
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
+        backend_stage("serving")
         self.url = f"http://127.0.0.1:{self.server.server_port}"
         return self
 
@@ -372,9 +385,11 @@ class Environment(harness.Environment):
                 log = (self.directory / "backend.log").read_text(errors="replace")
                 kinds = re.findall(r"(?m)^([A-Za-z_]+(?:Error|Exception)):", log)
                 kind = kinds[-1] if kinds else "unknown"
+                stages = re.findall(r"(?m)^backend_stage=([a-z]+)$", log)
+                stage = stages[-1] if stages else "not-entered"
                 status = backend.poll()
                 state = "running" if status is None else f"exit-{status}"
-                raise RuntimeError(f"backend_start: {state}; error-kind={kind}") from error
+                raise RuntimeError(f"backend_start: {state}; error-kind={kind}; stage={stage}") from error
             self.upstream_url = json.loads(ready.read_text())["url"]
             proxy_port, ui_port = harness.port(), harness.port()
             self.mappings = prepare(self.directory, self.workload, self.seed_binary, proxy_port, ui_port,
@@ -570,6 +585,7 @@ def main():
     if args.upstream:
         with FakeBackend() as backend:
             (args.upstream / "ready.json").write_text(json.dumps(dict(url=backend.url)))
+            backend_stage("ready")
             threading.Event().wait()
         return
     if not args.seed_binary or not args.binary: parser.error("binary and seed-binary are required")
