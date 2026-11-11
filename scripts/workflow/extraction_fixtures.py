@@ -1,5 +1,5 @@
 """Versioned real-extraction recipes. Executed manifests are private artifacts."""
-VERSION = 1
+VERSION = 2
 SEED = 1102026
 REFERENCE = "The river flows past the garden.\nClear morning light fills the room."
 TEMPLATES = (("png",1024,768),("jpeg",1024,768),("png",1920,1080),("jpeg",1920,1080))
@@ -25,13 +25,35 @@ def pdf_recipes():
             for kind in ("text", "scan")]
 
 
+
+def validate_coverage(manifest):
+    try:
+        if type(manifest["version"]) is not int or manifest["version"] != VERSION or manifest["seed"] != SEED:
+            raise ValueError
+        count = manifest["count"]
+        expected_images = recipes("warmup",count)+recipes("measurement",count)
+        for key,expected in (("images",expected_images),("pdfs",pdf_recipes())):
+            actual = manifest[key]
+            if len(actual) != len(expected):
+                raise ValueError
+            lookup = {row["id"]:row for row in actual}
+            if len(lookup) != len(expected):
+                raise ValueError
+            for recipe in expected:
+                row=lookup[recipe["id"]]
+                if any(type(row[k]) is not type(v) or row[k] != v for k,v in recipe.items()):
+                    raise ValueError
+    except (KeyError,TypeError,ValueError):
+        raise ValueError("fixture_coverage_invalid") from None
+
+
 def matches(expected, extracted):
     return expected.split() == extracted.split()
 
 
 # Tools are invoked with captured output; neither tool errors nor extracted text
 # are printed. The caller receives fixed diagnostic codes only.
-def _tool(args, timeout=120):
+def _tool(args, timeout=120, combined=False):
     import subprocess
     try:
         run = subprocess.run(args, capture_output=True, timeout=timeout, check=False)
@@ -39,7 +61,28 @@ def _tool(args, timeout=120):
         raise RuntimeError("extraction_dependency_failure") from error
     if run.returncode:
         raise RuntimeError("extraction_dependency_failure")
-    return run.stdout
+    return run.stdout + run.stderr if combined else run.stdout
+
+
+def provenance():
+    import re
+    import hashlib
+    from pathlib import Path
+    versions = {}
+    for tool,args,pattern in (
+        ("swift",["swift","--version"],r"Swift version ([0-9]+\.[0-9]+(?:\.[0-9]+)?)"),
+        ("tesseract",["tesseract","--version"],r"tesseract ([0-9]+\.[0-9]+\.[0-9]+)"),
+        ("pdftotext",["pdftotext","-v"],r"version ([0-9]+\.[0-9]+\.[0-9]+)"),
+        ("pdftoppm",["pdftoppm","-v"],r"version ([0-9]+\.[0-9]+\.[0-9]+)")):
+        match = re.search(pattern,_tool(args,combined=True).decode())
+        if not match:
+            raise RuntimeError("tool_provenance_unavailable")
+        versions[tool] = match.group(1)
+    match = re.search(r'"([^"\n]+)"',_tool(["tesseract","--list-langs"],combined=True).decode())
+    if not match:
+        raise RuntimeError("traineddata_provenance_unavailable")
+    traineddata = Path(match.group(1)) / "eng.traineddata"
+    return dict(tool_versions=versions,traineddata_sha256=hashlib.sha256(traineddata.read_bytes()).hexdigest())
 
 
 def generate(directory, count=100):
@@ -50,6 +93,7 @@ def generate(directory, count=100):
     from pathlib import Path
     if platform.system() != "Darwin":
         raise RuntimeError("reference_renderer_requires_macos")
+    tools = provenance()
     images = recipes("warmup", count) + recipes("measurement", count)
     pdfs = pdf_recipes()
     directory = Path(directory)
@@ -68,10 +112,12 @@ def generate(directory, count=100):
             raise RuntimeError("fixture_size_invalid")
         row.update(file=path.name, bytes=len(data), sha256=hashlib.sha256(data).hexdigest())
     font = directory / "font.bin"
-    manifest = dict(version=VERSION, seed=SEED, renderer="CoreText/Menlo-Regular/28",
-                    os=platform.mac_ver(),font_sha256=hashlib.sha256(font.read_bytes()).hexdigest(),
+    manifest = dict(version=VERSION, seed=SEED, count=count, renderer="CoreText/Menlo-Regular/28",
+                    os=platform.mac_ver(),font_name=json.loads((directory / "font.json").read_text())["postscript_name"],font_sha256=hashlib.sha256(font.read_bytes()).hexdigest(),
                     images=images,pdfs=pdfs)
+    manifest.update(tools)
     font.unlink()
+    (directory / "font.json").unlink()
     private("manifest.json",manifest)
     return manifest
 
@@ -82,6 +128,7 @@ def validate(directory):
     from pathlib import Path
     directory = Path(directory)
     manifest = json.loads((directory / "manifest.json").read_text())
+    validate_coverage(manifest)
     import hashlib
     root = directory.resolve()
     for row in manifest["images"] + manifest["pdfs"]:
@@ -92,6 +139,9 @@ def validate(directory):
         data = path.read_bytes()
         if len(data) != row["bytes"] or hashlib.sha256(data).hexdigest() != row["sha256"]:
             raise RuntimeError("fixture_integrity_invalid")
+    observed = provenance()
+    if manifest.get("font_name") != "Menlo-Regular" or any(manifest.get(k) != v for k,v in observed.items()):
+        raise RuntimeError("fixture_provenance_changed")
     checked = 0
     for row in manifest["images"]:
         actual = _tool(["tesseract",str(directory / row["file"]),"stdout","-l","eng","--psm","6"]).decode()

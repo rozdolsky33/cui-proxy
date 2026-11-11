@@ -157,3 +157,21 @@ by checking the resolved PostScript name. These are deferred minor findings
 for this generation-and-validation CLI; existing byte hashes do not establish
 tool provenance or complete corpus coverage. Production OCR uses different
 page-segmentation defaults and still needs its own end-to-end verification.
+
+## Real proxy extraction diagnostic increment
+
+Fixture version 2 now records tool/traineddata provenance, enforces the resolved
+font at generation and validates complete recipe coverage. The isolated proxy
+runner supports cold-unique and repeated images, separate PDFs, one/four
+clients, normal seeded policy/vault and measured per-request extraction stages.
+Warm-up records are excluded, metadata-only reports retain failed-operation
+denominators, and qualification remains false. The 13-phase development smoke
+completed all 52 measured operations with complete stage coverage.
+
+Review fixes reject nonfinite warm-up durations, preserve warm-up evidence when
+cleanup also fails, preflight report destinations and atomically persist reports.
+The recent-stage TTL and separate CLI font metadata check remain documented
+limitations before qualification. Full fairness, overload, stream send timing
+and sustained reference repetitions still remain.
+
+[Diagnostic verification record](../../verification-results/2026-11-11-real-extraction-increment.md).

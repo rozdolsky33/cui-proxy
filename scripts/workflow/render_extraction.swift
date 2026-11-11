@@ -21,6 +21,11 @@ struct Recipes: Decodable {
 let root = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
 let recipes = try JSONDecoder().decode(Recipes.self, from: Data(contentsOf: root.appendingPathComponent("recipes.json")))
 let font = CTFontCreateWithName("Menlo-Regular" as CFString, 28, nil)
+guard CTFontCopyPostScriptName(font) as String == "Menlo-Regular" else {
+    fatalError("reference_font_unavailable")
+}
+try JSONSerialization.data(withJSONObject: ["postscript_name": CTFontCopyPostScriptName(font) as String])
+    .write(to: root.appendingPathComponent("font.json"))
 func draw(_ text: String, _ context: CGContext, _ height: Int) {
     context.setFillColor(CGColor(gray: 1, alpha: 1))
     context.fill(CGRect(x: 0, y: 0, width: context.boundingBoxOfClipPath.width, height: CGFloat(height)))

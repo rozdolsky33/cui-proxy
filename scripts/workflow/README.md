@@ -205,3 +205,51 @@ Portable unit tests run in ordinary discovery. On the reference Mac, run
 with stdout/stderr captured locally as required by AGENTS.md. This explicitly
 runs actual rendering, OCR and both PDF paths; the opt-in test is skipped on
 ordinary CI and must not be described as real-tool coverage there.
+
+### Real proxy extraction measurements
+
+The version-2 fixture manifest adds complete recipe coverage validation, resolved
+font identity, Swift/Tesseract/Poppler versions and the English traineddata hash.
+Regenerate version-1 fixtures before using this runner; old artifacts remain
+valid historical evidence but are not silently upgraded.
+
+Run `scripts/workflow/extraction_performance.py` with `--binary`, `--seed-binary`,
+`--fixtures`, `--report`, and `--template` (0–3, `pdf-text`, or `pdf-scan`). It uses
+the normal seeded policy and an isolated file vault/proxy/fake upstream, with
+`--clients 1` or `--clients 4`. Defaults are 100 measured requests, 60 seconds
+and at least 100 warm-up completions, and three independent repetitions.
+`--repeated` warms and reuses one image; otherwise measured image indices are
+disjoint from warm-up and used once per phase. PDF timing is a separate workload.
+For a diagnostic smoke, use `--count 4 --warmup-count 4 --warmup-seconds 0
+--repetitions 1`. Capture command output locally as required by AGENTS.md.
+
+The client checks an independent expected transformed request against a digest
+from the actual upstream body. Only whitespace in declared text fields is
+normalized; image bytes, metadata, structure and changed words cannot disappear
+from this check. The extra digest is opt-in and is not computed in normal text
+benchmark runs. Existing response/restoration checks still apply.
+
+The runner enables existing process-local session correlation to separate warm-up
+from measured extraction stage records. Raw correlation identities are excluded
+from reports. Each measured operation must have extraction-run and queue-wait
+measurements; missing coverage invalidates the phase and retains its operation
+counts. Per-request bytes, terminal outcomes, resource summaries and stage samples
+are private report metadata. Collection failures retain completed and failed
+operations in the measured denominator.
+
+This runner always reports `performance_qualified: false`. These are real
+extraction diagnostics, not the complete fairness, overload, stream or repeated
+reference qualification gate. Short runs do not establish tail-latency guarantees.
+
+Report destinations must be new files in an existing writable directory. The
+CLI reserves the destination before starting work and atomically replaces it
+with each completed report; a failed write preserves prior completed evidence.
+Warm-up duration must be finite and nonnegative. If cleanup fails while a
+warm-up failure is active, the original phase and its operation evidence remain
+available.
+
+The diagnostic stage collector uses the existing 256-entry, 15-minute history.
+Phases are capped at 100 measured operations; unusually slow phases may exceed
+the retention window and are invalidated rather than reporting incomplete
+percentiles. CLI provenance preflight checks tool/data versions; full stored
+fixture validation additionally checks the recorded font name.
