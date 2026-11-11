@@ -2,7 +2,7 @@
 
 ## Build
 
-Requires Go 1.26.10 or newer and a staticcheck build compatible with that
+Requires Go 1.26.11 or newer and a staticcheck build compatible with that
 toolchain (validated with staticcheck 2026.2.2).
 
 ```sh
