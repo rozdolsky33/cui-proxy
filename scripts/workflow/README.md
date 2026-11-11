@@ -60,8 +60,12 @@ in-progress read may extend the overall deadline by up to the inactivity timeout
 - W09 compaction/reconnect and W10 restart qualification, which belong to later tasks.
 - Arbitrary clients, tools or future protocol representations.
 
-Durations are diagnostic only. Stage/resource measurements are explicitly
-unavailable, not recorded as zero. Task 03/04 add instrumentation and benchmarks.
+Durations are diagnostic only. A separate two-request probe inserts fixed 80 ms
+fake-upstream and OCR delays, verifies stage attribution, extraction exclusion,
+request-size counts and gauge cleanup, and records bounded stage summaries in
+`stage_timings`. It also checks correlation is disabled by default. CPU,
+allocation and heap samples remain explicitly unavailable until Task 04.
+The probe requests are reported separately from the main workflow counts.
 Do not use the mixed-scenario duration quantiles as a release performance claim.
 Changes to protocol support or the workload contract must update the manifest
 and corresponding semantic assertions together.

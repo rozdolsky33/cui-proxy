@@ -4,6 +4,7 @@ package metrics
 
 import (
 	"sort"
+
 	"sync"
 	"sync/atomic"
 	"time"
@@ -21,14 +22,20 @@ const (
 // passthrough, replacements, replacements_by_rule, downgraded, requests_per_minute,
 // overhead_ms{p50,p95,samples}, vault_size, uptime_seconds, audit_write_failed.
 type Snapshot struct {
-	Requests           int64            `json:"requests"`
-	Blocked            int64            `json:"blocked"`
-	Passthrough        int64            `json:"passthrough"`
-	BlockedByReason    map[string]int64 `json:"blocked_by_reason"`
-	Errors             int64            `json:"errors"`
-	Restores           int64            `json:"restores"`
-	Replacements       int64            `json:"replacements"`
-	ReplacementsByRule map[string]int64 `json:"replacements_by_rule"`
+	StagesMS           map[string]StageLatency `json:"stages_ms"`
+	ActiveRequests     int64                   `json:"active_requests"`
+	ExtractorQueued    int64                   `json:"extractor_queued"`
+	ExtractorActive    int64                   `json:"extractor_active"`
+	RequestSizeBuckets map[string]int64        `json:"request_size_buckets"`
+	RecentRequests     []RecentRequest         `json:"recent_requests,omitempty"`
+	Requests           int64                   `json:"requests"`
+	Blocked            int64                   `json:"blocked"`
+	Passthrough        int64                   `json:"passthrough"`
+	BlockedByReason    map[string]int64        `json:"blocked_by_reason"`
+	Errors             int64                   `json:"errors"`
+	Restores           int64                   `json:"restores"`
+	Replacements       int64                   `json:"replacements"`
+	ReplacementsByRule map[string]int64        `json:"replacements_by_rule"`
 	// Downgraded counts replacements whose span was masked as class secret
 	// because its own class's synthetic would not have restored in place
 	// (also counted in Replacements).
@@ -56,8 +63,12 @@ type rpmSlot struct {
 
 // Registry is safe for concurrent use. It implements transform.Sink.
 type Registry struct {
-	now   func() time.Time // injectable clock; see newWithClock
-	start time.Time
+	stageRings                                       [8]stageRing
+	sizeBuckets                                      [5]int64
+	activeRequests, extractorQueued, extractorActive atomic.Int64
+	correlation                                      correlation
+	now                                              func() time.Time // injectable clock; see newWithClock
+	start                                            time.Time
 
 	requests, blocked, passthrough, errs, restores, replacements, downgraded, vaultSize, auditFailed atomic.Int64
 
@@ -74,7 +85,9 @@ func New() *Registry { return newWithClock(time.Now) }
 
 // newWithClock is the unexported test constructor that injects the clock.
 func newWithClock(now func() time.Time) *Registry {
-	return &Registry{now: now, start: now(), byRule: map[string]int64{}, byReason: map[string]int64{}}
+	r := &Registry{now: now, start: now(), byRule: map[string]int64{}, byReason: map[string]int64{}}
+	r.initCorrelation()
+	return r
 }
 
 // Record implements transform.Sink: counts replacements by rule, and
@@ -148,7 +161,8 @@ func (r *Registry) Snapshot() Snapshot {
 	now := r.now()
 	sec := now.Unix()
 	s := Snapshot{
-		Requests:     r.requests.Load(),
+		Requests:       r.requests.Load(),
+		ActiveRequests: r.activeRequests.Load(), ExtractorQueued: r.extractorQueued.Load(), ExtractorActive: r.extractorActive.Load(),
 		Blocked:      r.blocked.Load(),
 		Passthrough:  r.passthrough.Load(),
 		Errors:       r.errs.Load(),
@@ -163,6 +177,8 @@ func (r *Registry) Snapshot() Snapshot {
 		s.UptimeSeconds = int64(up / time.Second)
 	}
 	r.mu.Lock()
+	stageRings := r.stageRings
+	r.snapshotSizesAndRecent(&s)
 	s.ReplacementsByRule = make(map[string]int64, len(r.byRule))
 	for k, v := range r.byRule {
 		s.ReplacementsByRule[k] = v
@@ -184,6 +200,7 @@ func (r *Registry) Snapshot() Snapshot {
 	copy(samples, r.lat[:n])
 	r.mu.Unlock()
 
+	snapshotStages(stageRings, &s)
 	sort.Slice(samples, func(i, j int) bool { return samples[i] < samples[j] })
 	s.OverheadMS = Overhead{P50: pct(samples, 50), P95: pct(samples, 95), Samples: n}
 	return s

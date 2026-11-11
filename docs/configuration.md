@@ -265,6 +265,7 @@ there is no default upstream in the loader.
 | `audit.on_error` | `warn` under sanitize; `block` under strict | Write-failure handling; strict requires block | Restart for explicit setting changes |
 | `audit.max_size_mb` | `50` | Rotation size, 1–1048576; binary MiB | Restart |
 | `audit.retention_days` | `90` | 0–106751; 0 retains indefinitely; newest rotated file kept | Restart |
+| `observability.correlate` | `false` | Optional process-local session/workspace pseudonyms in the [metrics API](dashboard.md#optional-workload-correlation); no payload retention | Reload |
 | `rules` | Empty list | Rules below; not merged with starter rules | Reload |
 
 The 64 KiB turn-metadata limit and JSON depth limit are not YAML options.
@@ -375,7 +376,7 @@ already in flight finish with the rules they started with. The vault (and so
 every existing mapping) is kept.
 
 Applied on reload: `rules` (and dictionary contents), `policy.profile`, `policy.on_error`,
-`policy.max_body_bytes`.
+`policy.max_body_bytes`, `observability.correlate`.
 Need a restart (a reload logs `WARN restart required for: ...` and keeps the
 running values): `listen`, `ui.listen`, `upstreams`, `vault.*`,
 `allow_non_loopback`, all `audit.*` settings.

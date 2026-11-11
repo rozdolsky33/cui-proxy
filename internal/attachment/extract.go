@@ -3,6 +3,7 @@ package attachment
 import (
 	"bytes"
 	"context"
+	"cui-proxy/internal/observe"
 	"encoding/base64"
 	"image"
 	_ "image/jpeg" // decode dimensions before OCR
@@ -41,6 +42,7 @@ func (e *Extractor) Close() { e.cancel() }
 
 // Extract accepts only exact, inline base64 MIME forms. No URLs are fetched.
 func (e *Extractor) Extract(c Category, data string) (string, error) {
+	defer observe.FromContext(e.ctx).Extraction()()
 	fail := func(why Cause) (string, error) { return "", &Error{c, why} }
 	if e.ctx.Err() != nil {
 		return fail(Timeout)
@@ -200,12 +202,40 @@ func (e *Extractor) run(name string, input []byte, limit int, args ...string) ([
 	if limit <= 0 {
 		return nil, Limit
 	}
-	select {
-	case slots <- struct{}{}:
-	case <-e.ctx.Done():
+	trace := observe.FromContext(e.ctx)
+	endWait := trace.Measure(observe.ExtractionWait)
+	var gauges observe.ExtractorGauges
+	if trace != nil {
+		gauges = trace.Gauges
+	}
+	if gauges != nil {
+		gauges.ExtractorQueued(1)
+	}
+	acquired := false
+	func() {
+		defer endWait()
+		if gauges != nil {
+			defer gauges.ExtractorQueued(-1)
+		}
+		select {
+		case slots <- struct{}{}:
+			acquired = true
+		case <-e.ctx.Done():
+		}
+	}()
+	if !acquired {
 		return nil, Timeout
 	}
-	defer func() { <-slots }()
+	if gauges != nil {
+		gauges.ExtractorActive(1)
+	}
+
+	defer func() {
+		if gauges != nil {
+			gauges.ExtractorActive(-1)
+		}
+		<-slots
+	}()
 	path, err := exec.LookPath(name)
 	if err != nil {
 		return nil, MissingTool

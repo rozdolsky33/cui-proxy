@@ -148,6 +148,7 @@ func NewApp(opts AppOptions) (*App, error) {
 	if err := a.openDecisions(cfg); err != nil {
 		return nil, err
 	}
+	a.metrics.SetCorrelationEnabled(cfg.Observability.Correlate)
 	a.cur.Store(a.newRuleset(cfg, ds))
 	ready = true
 	return a, nil
@@ -538,6 +539,7 @@ func (a *App) Reload() error {
 	if changed := pinRestartOnly(cfg, old.cfg); len(changed) > 0 {
 		a.logf("WARN restart required for: %s", strings.Join(changed, ", "))
 	}
+	a.metrics.SetCorrelationEnabled(cfg.Observability.Correlate)
 	a.cur.Store(a.newRuleset(cfg, ds))
 	a.logf("reload ok: %d rules (%d detectors)", len(cfg.Rules), len(ds))
 	a.logPolicy(cfg)

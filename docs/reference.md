@@ -229,3 +229,11 @@ Increasing the body limit does not increase the other limits. Invalid or
 unfinished function-call argument documents terminate the response stream.
 See [architecture](architecture.md), [limitations](limitations.md) and
 [glossary](glossary.md) for context.
+
+## Workload observability
+
+`observability.correlate` defaults to `false` and can be changed by config reload.
+Enable it for temporary pseudonymous session/workspace records in `/api/metrics`.
+Stage timings and bounded gauges are always available. See the [metrics API and
+correlation contract](dashboard.md#stage-metrics-api) for fields, attribution
+limits and retention.

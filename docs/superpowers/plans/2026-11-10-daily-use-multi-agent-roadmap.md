@@ -1,7 +1,7 @@
 # Daily-use and multi-agent reliability roadmap
 
 **Created:** 2026-11-10
-**Status:** Tasks 01–02 complete; Task 03 ready. Performance targets remain unmeasured.
+**Status:** Tasks 01–03 complete; Task 04 ready. Workload performance targets remain unmeasured.
 **First milestone:** Reliable daily use with four concurrent agents on one trusted workstation.
 **Owner:** Project maintainer; record an implementer and reviewer when starting each task.
 
@@ -166,14 +166,14 @@ verify tool effects, not merely HTTP 200. No external service is required.
 
 **Likely areas:** `internal/proxy/`, `internal/metrics/`, `internal/audit/`, dashboard.
 
-- [ ] Measure request parsing, metadata/body inspection, extraction wait/run,
+- [x] Measure request parsing, metadata/body inspection, extraction wait/run,
       audit persistence, upstream wait and response restoration separately.
-- [ ] Add bounded queue/in-flight counts, request-size buckets and relevant
+- [x] Add bounded queue/in-flight counts, request-size buckets and relevant
       resource counters. Avoid retaining one metric label per request.
-- [ ] Design privacy-preserving correlation for sessions/workspaces where
+- [x] Design privacy-preserving correlation for sessions/workspaces where
       reliable identifiers are available; use bounded retention and keyed
       identifiers. Never expose raw identifiers or infer authorization from them.
-- [ ] Keep unknown/missing identity usable and clearly unattributed.
+- [x] Keep unknown/missing identity usable and clearly unattributed.
 
 **Acceptance:** A controlled delay in each stage appears in the correct
 measurement. Correlation is bounded, leak-free and optional. Instrumentation
@@ -389,7 +389,7 @@ Next ready task:
 
 - **Implementer / reviewer:** Codex primary agent / independent harness reviewer.
 - **Status:** Done for the deterministic correctness scope in contract section 10.
-- **Commit / PR:** Pending on `test/deterministic-workflow-harness`, isolated worktree; base `373264c`.
+- **Commit / PR:** `1ccd539`, [PR #19](https://github.com/rozdolsky33/cui-proxy/pull/19), merged as `78a1dcb`.
 - **Deliverable:** [Harness guide](../../../scripts/workflow/README.md), versioned scenario manifest, runner and oracle/lifecycle unit tests.
 - **Behavior changed:** Developer verification only. Real built proxy and separate fake upstream exercise W01–W08/W11/W12 at one/four clients, including parent/child context flow, semantic file effects, strict/disabled modes, mixed-image budget refusal, error and cancellation paths.
 - **Validation:** 125 local operations passed; three actual-boundary injected faults rejected; 13 oracle/lifecycle unit tests and all 17 Go race-test packages passed.
@@ -400,7 +400,19 @@ Next ready task:
 - **Rollback:** Remove developer harness changes; production proxy behavior is unchanged.
 - **Next ready task:** 03, stage timings and safe workload correlation. Task 05's dependencies are also satisfied; recommended sequence remains Task 03 first.
 
+## Task 03 completion record — 2026-11-10
+
+- **Implementer / reviewer:** Codex controller and runtime implementer / independent whole-branch reviewer.
+- **Status:** Done; [implementation and measurement record](2026-11-10-request-stage-observability.md).
+- **Behavior changed:** Eight exclusive stage summaries, bounded request-size buckets and active/queued extractor gauges are exposed through `/api/metrics`. Optional process-keyed correlation is disabled by default, capped at 256 records and fifteen minutes, and cleared on disable. Existing forwarding and fail-closed policies remain intact.
+- **Validation:** All 18 Go packages pass race tests; vet and staticcheck pass. Eighteen Python tests, 125 workflow operations and two controlled-delay probes pass; three boundary fault injections are detected. Controlled delay, reload/privacy/retention, panic and cancellation tests cover the runtime boundaries.
+- **Review:** No Critical/Important findings. Added partial timing/gauge assertions for four handler panic/cancellation cases and documented approximately concurrent metrics snapshots.
+- **Instrumentation cost:** Local eight-stage aggregate bookkeeping measured 1.136–1.154 µs/op; with correlation 3.910–3.915 µs/op. Full stage snapshots measured 155.7–160.5 µs/op. Three runs; allocation counts and limitations are in the implementation record.
+- **Limitations:** These are instrumentation microbenchmarks, not normal-tier qualification. Explicit header identities are client claims and grant no authority. Unknown identity remains unattributed. Stage data is in the API; no dashboard card changes.
+- **Rollback:** Revert the change and remove the optional `observability` YAML block before starting an older binary.
+- **Next ready task:** 04, concurrent performance baseline.
+
 ## Next action
 
-Start **Task 03**. Use the deterministic harness to verify stage timing and
-bounded workload attribution before collecting the Task 04 performance baseline.
+Start **Task 04**. Use the stage API and existing semantic oracles to measure
+matched proxy/bypass workloads before optimizing the dominant measured cost.

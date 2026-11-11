@@ -240,10 +240,15 @@ func (s *server) config(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) metrics(w http.ResponseWriter, r *http.Request) {
+	cfg := s.d.Cfg()
+	snapshot := s.d.Metrics.Snapshot()
+	if cfg == nil || !cfg.Observability.Correlate {
+		snapshot.RecentRequests = nil
+	}
 	writeJSON(w, 200, struct {
 		metrics.Snapshot
 		FeedDropped uint64 `json:"feed_dropped"`
-	}{s.d.Metrics.Snapshot(), s.d.Audit.Dropped()})
+	}{snapshot, s.d.Audit.Dropped()})
 }
 
 type eventView struct {
