@@ -47,12 +47,12 @@
 
 **Interfaces:** Add keyword `clients=4` to `mixed_closed_loop` and `run_fairness_phase`; add CLI `--clients {1,4,8,16}` and mutually exclusive `--duration` / explicit `--count`, resolving omitted count to existing1000 when duration is absent.
 
-- [ ] Add failing tests `test_mixed_single_client_cycles_classes`, `test_mixed_capacity_worker_counts`, `test_mixed_default_four_clients_unchanged`, and `test_mixed_capacity_retains_failed_attempts`. For one client assert repeating text/image/image/image and maximum active1; for eight/sixteen assert one text worker and remaining image workers, unique operation identities and measured peak concurrency.
-- [ ] Add `test_duration_comparison_retains_unequal_arm_counts`: preserve every arm record and unmatched identities; strict paired comparison stays incomplete instead of truncating samples or dropping failures. Report per-arm timing quantiles separately where a complete paired comparison is unavailable.
-- [ ] Add CLI tests rejecting count+duration and nonfinite/nonpositive durations, forwarding clients/duration, preserving default count1000/clients4, and always retaining `performance_qualified: false`.
-- [ ] Run captured focused tests and observe RED, then implement the minimal scheduler/phase/CLI extension.
-- [ ] Preserve configured concurrency in warm-up as well as measurement; retain both warm-up minima and per-class counts, drain outcomes, achieved concurrency and environment snapshots in reports.
-- [ ] Run captured focused tests; expect PASS. Commit as `feat(workflow): extend mixed workload capacity measurements`.
+- [x] Add failing tests `test_mixed_single_client_cycles_classes`, `test_mixed_capacity_worker_counts_and_default`, and `test_mixed_single_client_retains_failed_image`. For one client assert repeating text/image/image/image and maximum active1; for eight/sixteen assert one text worker and remaining image workers, unique operation identities and measured peak concurrency.
+- [x] Add `test_duration_comparison_retains_unequal_arm_counts`: preserve every arm record and unmatched identities; strict paired comparison stays incomplete instead of truncating samples or dropping failures. Report per-arm timing quantiles separately where a complete paired comparison is unavailable.
+- [x] Add CLI tests rejecting count+duration and nonfinite/nonpositive durations, forwarding clients/duration, preserving default count1000/clients4, and always retaining `performance_qualified: false`.
+- [x] Run captured focused tests and observe RED, then implement the minimal scheduler/phase/CLI extension.
+- [x] Preserve configured concurrency in warm-up as well as measurement; retain both warm-up minima and per-class counts, drain outcomes, achieved concurrency and environment snapshots in reports.
+- [x] Run captured focused tests; expect PASS. Commit as `feat(workflow): extend mixed workload capacity measurements`.
 
 ## Task 3 — Verify, collect and integrate
 
