@@ -34,8 +34,9 @@ type ExtractorGauges interface {
 
 // Snapshot distinguishes an unobserved stage from an observed zero duration.
 type Snapshot struct {
-	Duration [stageCount]time.Duration
-	Observed [stageCount]bool
+	ExtractionCacheHits int64
+	Duration            [stageCount]time.Duration
+	Observed            [stageCount]bool
 }
 
 // Trace accumulates timings for one request without retaining request data.
@@ -143,4 +144,16 @@ func WithTrace(ctx context.Context, trace *Trace) context.Context {
 func FromContext(ctx context.Context) *Trace {
 	trace, _ := ctx.Value(traceKey{}).(*Trace)
 	return trace
+}
+
+// ImageCacheHit records a known zero helper wait, not an unobserved stage.
+// Extraction still measures validation, lookup and output handling normally.
+func (t *Trace) ImageCacheHit() {
+	if t == nil {
+		return
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.stages.ExtractionCacheHits++
+	t.add(ExtractionWait, 0)
 }

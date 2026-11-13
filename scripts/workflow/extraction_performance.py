@@ -15,6 +15,16 @@ def measured_stages(recent, warm_sessions, count):
     return result
 
 
+def measured_cache_hits(recent, warm_sessions, count):
+    measured = [row for row in recent if row.get('identity', {}).get('session') and row['identity']['session'] not in warm_sessions]
+    if len(measured) != count:
+        raise ValueError('stage_coverage_invalid')
+    values = [row.get("extraction_cache_hits", 0) for row in measured]
+    if any(type(value) is not int or not 0 <= value <= 8 for value in values):
+        raise ValueError("invalid cache hit accounting")
+    return sum(values)
+
+
 def attachment_case(workload, serial, size, fixture, directory, mappings, session, text_only_reply=False):
     import base64
     import copy
@@ -113,7 +123,7 @@ def run_phase(binary,seed_binary,workload,directory,manifest,template,clients=1,
             collector.wait_for(count)
             recent = collector.records
             stages=measured_stages(recent,warm_sessions,count)
-            result=dict(stage_poll_errors=collector.errors, records=records,outcomes=summarize_outcomes(records),stage_samples=stages,
+            result=dict(stage_poll_errors=collector.errors, records=records,outcomes=summarize_outcomes(records),stage_samples=stages, extraction_cache_hits=measured_cache_hits(recent, warm_sessions, count),
                         resources=perf.resource_summary(sampler.samples),warmup_completed=len(warm), warmup_seconds=warmup_elapsed,
                         achieved_concurrency=perf.peak_concurrency(records),performance_qualified=False)
         return result

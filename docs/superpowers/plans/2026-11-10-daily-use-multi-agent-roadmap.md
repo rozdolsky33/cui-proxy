@@ -113,7 +113,7 @@ permission between already authorized tasks.
 | 06 | Improve refusal recovery and dependency preflight | P0 | 03, 05 | done |
 | 07 | Fix the largest measured processing cost | P1 | 04, 05 | done |
 | 08 | Bound contention and protect text-workload fairness | P1 | 04, 07 | in progress |
-| 09 | Make repeated attachment processing efficient | P1 | 04, 05, 08 bounds | ready after Task 08 bounds merge |
+| 09 | Make repeated attachment processing efficient | P1 | 04, 05, 08 bounds | in progress |
 | 10 | Verify mapping lifetime and recovery | P1 | 02, 04, 05 | ready |
 | 11 | Run sustained four-agent acceptance and tune | P0 release gate | 06–10 | blocked |
 | 12 | Establish release and regression gates | P0 release gate | 11 | blocked |

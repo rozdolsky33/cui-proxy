@@ -137,7 +137,7 @@ class StageCollector:
                 if not isinstance(session,str) or not session or not isinstance(stamp,str) or not isinstance(row.get("stages_ms"),dict):
                     self.errors+=1
                     continue
-                self._records[(stamp,session)]=dict(time=stamp,identity=dict(session=session),stages_ms=dict(row["stages_ms"]))
+                self._records[(stamp,session)]=dict(time=stamp,identity=dict(session=session),stages_ms=dict(row["stages_ms"]), **({"extraction_cache_hits": row["extraction_cache_hits"]} if "extraction_cache_hits" in row else {}))
         except (OSError,ValueError,KeyError,TypeError):
             self.errors+=1
 

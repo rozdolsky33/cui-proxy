@@ -125,6 +125,7 @@ func (e *Extractor) Extract(c Category, data string) (string, error) {
 			rawImage, hit = e.cache.get(imageKey)
 		}
 		if hit {
+			observe.FromContext(e.ctx).ImageCacheHit()
 			if len(rawImage) > remaining {
 				return fail(Limit)
 			}

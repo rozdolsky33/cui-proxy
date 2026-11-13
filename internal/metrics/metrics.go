@@ -24,22 +24,23 @@ const (
 // passthrough, replacements, replacements_by_rule, downgraded, requests_per_minute,
 // overhead_ms{p50,p95,samples}, vault_size, uptime_seconds, audit_write_failed.
 type Snapshot struct {
-	Admission          admission.State         `json:"admission"`
-	Runtime            RuntimeStats            `json:"runtime"`
-	StagesMS           map[string]StageLatency `json:"stages_ms"`
-	ActiveRequests     int64                   `json:"active_requests"`
-	ExtractorQueued    int64                   `json:"extractor_queued"`
-	ExtractorActive    int64                   `json:"extractor_active"`
-	RequestSizeBuckets map[string]int64        `json:"request_size_buckets"`
-	RecentRequests     []RecentRequest         `json:"recent_requests,omitempty"`
-	Requests           int64                   `json:"requests"`
-	Blocked            int64                   `json:"blocked"`
-	Passthrough        int64                   `json:"passthrough"`
-	BlockedByReason    map[string]int64        `json:"blocked_by_reason"`
-	Errors             int64                   `json:"errors"`
-	Restores           int64                   `json:"restores"`
-	Replacements       int64                   `json:"replacements"`
-	ReplacementsByRule map[string]int64        `json:"replacements_by_rule"`
+	ExtractionCacheHits int64                   `json:"extraction_cache_hits"`
+	Admission           admission.State         `json:"admission"`
+	Runtime             RuntimeStats            `json:"runtime"`
+	StagesMS            map[string]StageLatency `json:"stages_ms"`
+	ActiveRequests      int64                   `json:"active_requests"`
+	ExtractorQueued     int64                   `json:"extractor_queued"`
+	ExtractorActive     int64                   `json:"extractor_active"`
+	RequestSizeBuckets  map[string]int64        `json:"request_size_buckets"`
+	RecentRequests      []RecentRequest         `json:"recent_requests,omitempty"`
+	Requests            int64                   `json:"requests"`
+	Blocked             int64                   `json:"blocked"`
+	Passthrough         int64                   `json:"passthrough"`
+	BlockedByReason     map[string]int64        `json:"blocked_by_reason"`
+	Errors              int64                   `json:"errors"`
+	Restores            int64                   `json:"restores"`
+	Replacements        int64                   `json:"replacements"`
+	ReplacementsByRule  map[string]int64        `json:"replacements_by_rule"`
 	// Downgraded counts replacements whose span was masked as class secret
 	// because its own class's synthetic would not have restored in place
 	// (also counted in Replacements).
@@ -67,6 +68,7 @@ type rpmSlot struct {
 
 // Registry is safe for concurrent use. It implements transform.Sink.
 type Registry struct {
+	extractionCacheHits                              int64 // guarded by mu
 	stageRings                                       [len(observe.Names)]stageRing
 	sizeBuckets                                      [5]int64
 	activeRequests, extractorQueued, extractorActive atomic.Int64

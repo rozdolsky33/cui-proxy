@@ -34,9 +34,9 @@ Interfaces: Extractor holds a cache pointer; New(ctx) uses the shared default, t
 - [x] Run affected attachment/adapter/proxy race suites, then commit.
 
 ### Task 3: Measurement, docs and integration
-Files: docs/extraction-reuse.md, manual/navigation, verification results and roadmap; focused workflow measurement/test support if existing runner cannot express reuse.
+Files: docs/extraction-reuse.md, manual/navigation, verification results and roadmap; internal/observe and internal/metrics cache-hit metadata; extraction_performance.py/performance_load.py/performance.py collectors and tests.
 - [ ] Measure exact image reuse patterns and compare repeated and unique image runs against unchanged main; capture private evidence and report aggregate latency/helper work/RSS.
 - [ ] Retest mixed text fairness with the original target; document retained plaintext lifetime, helper-upgrade invalidation limits and evidence limitations.
-- [ ] Run full Go race, Python workflow, vet/staticcheck, HTTP corpus and manual verification; all must exit zero.
+- [x] Run full Go race, Python workflow, vet/staticcheck, HTTP corpus and manual verification; all exited zero before the frozen campaign. Re-run affected gates if further code changes occur.
 - [ ] Fresh whole-branch review, one RED/GREEN fix pass for material findings; archive all rulings and defer minors.
 - [ ] Push/PR, require all CI/security gates on exact head, merge and synchronize clean main.

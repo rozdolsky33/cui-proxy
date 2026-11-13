@@ -2,6 +2,8 @@ package attachment
 
 import (
 	"context"
+	"cui-proxy/internal/observe"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -97,7 +99,12 @@ func TestImageReuseChargesBudgets(t *testing.T) {
 	if _, err := e.Extract(Image, data); err != nil {
 		t.Fatal(err)
 	}
-	if e.count != 1 || e.bytes == 0 || e.text != 5 {
+	_, encoded, _ := strings.Cut(data, ",")
+	decoded, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e.count != 1 || e.bytes != len(decoded) || e.text != 5 {
 		t.Fatal("cache hit did not charge logical budgets")
 	}
 	if reuseCalls(t, counter) != 1 {
@@ -224,5 +231,22 @@ func TestImageReuseDoesNotCacheInvalidOrLimitedOutput(t *testing.T) {
 	}
 	if reuseCalls(t, counter) != 4 {
 		t.Fatal("invalid output cached")
+	}
+}
+
+func TestImageReuseEmitsCacheHitAccounting(t *testing.T) {
+	_, c := reuseTool(t, "alpha\n")
+	data := pngData(t, 2, 2)
+	if _, err := reuseExtract(context.Background(), c, data); err != nil {
+		t.Fatal(err)
+	}
+	trace := observe.NewTrace()
+	ctx := observe.WithTrace(context.Background(), trace)
+	if _, err := reuseExtract(ctx, c, data); err != nil {
+		t.Fatal(err)
+	}
+	s := trace.Snapshot()
+	if s.ExtractionCacheHits != 1 || !s.Observed[observe.ExtractionWait] || s.Duration[observe.ExtractionWait] != 0 || !s.Observed[observe.ExtractionRun] {
+		t.Fatal("cached extraction accounting incomplete")
 	}
 }

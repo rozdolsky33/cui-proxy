@@ -38,11 +38,22 @@ func TestCachedImageReappliesReloadedPolicy(t *testing.T) {
 	h := newHarness(t, func(w http.ResponseWriter, r *http.Request) { defaultStream(w) })
 	defer h.close()
 	h.cfg.Policy.Attachments = "extract_text"
+	initialRules, err := detect.Build([]config.Rule{{Name: "cache-mask", Type: "regex", Pattern: "reuse_marker", Synth: "secret"}}, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	initial := newSet(t)
+	initial.s = transform.NewSanitizer(initialRules, initial.v, nil)
+	h.cur.Store(initial)
+
 	first, _ := h.post(string(request))
 	if first.StatusCode != http.StatusOK {
 		t.Fatal("initial extraction refused")
 	}
-	h.upstreamGot()
+	forwarded := h.upstreamGot()
+	if bytes.Contains(forwarded.Body, []byte("reuse_marker")) || bytes.Contains(forwarded.Body, []byte("data:image")) {
+		t.Fatal("initial policy did not sanitize converted image text")
+	}
 	ds, err := detect.Build([]config.Rule{{Name: "cache-block", Type: "regex", Pattern: "reuse_marker", Action: "block"}}, dir)
 	if err != nil {
 		t.Fatal(err)
