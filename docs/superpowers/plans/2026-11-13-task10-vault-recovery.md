@@ -27,12 +27,12 @@ Interfaces: proxy.Deps.PersistMappings func(context.Context) error; App.persistM
 - [x] Run captured go test -race ./internal/vault ./internal/proxy ./cmd/cui-proxy; expected exit zero. Record ADR alternatives and observed regression, then commit.
 
 ### Task 2: Recovery, collision safety and growth evidence
-Files: cmd/cui-proxy/vault_recovery_test.go; internal/vault/recovery_test.go; scripts/workflow recovery diagnostic only if a separate driver is necessary.
+Files: cmd/cui-proxy/vault_recovery_test.go and vault_crash_test.go; internal/vault/recovery_test.go; scripts/workflow recovery diagnostic only if a separate driver is necessary.
 Interfaces: consumes Task 1 pre-forward persistence contract and existing Vault Open/Save/Pseudonym/Real plus App lifecycle APIs.
-- [ ] Add subprocess abrupt-exit/restart proof with parent-held expected mappings; verify restored tool arguments exactly and release of the lifetime lock after process exit.
-- [ ] Add concurrent reload/growth and graceful restart coverage. Force a deterministic candidate collision to verify persisted assignments cannot be reused for a different original after reopening.
-- [ ] Run four-caller growth to 10,000 mappings, compare every reopened mapping, and capture time/file-size/resource aggregates at 1,000 and 10,000. Avoid timing assertions in CI; retain reproducible parameters.
-- [ ] Run captured affected race tests; expected exit zero and exact mapping counts. Commit tests/evidence helpers.
+- [x] Add subprocess abrupt-exit/restart proof with parent-held expected mappings; verify restored tool arguments exactly and release of the lifetime lock after process exit.
+- [x] Add concurrent reload/growth and graceful restart coverage. Force a deterministic candidate collision to verify persisted assignments cannot be reused for a different original after reopening.
+- [x] Run four-caller growth to 10,000 mappings, compare every reopened mapping, and capture time/file-size/resource aggregates at 1,000 and 10,000. Avoid timing assertions in CI; retain reproducible parameters.
+- [x] Run captured affected race tests; expected exit zero and exact mapping counts. Commit tests/evidence helpers.
 
 ### Task 3: Operations contract and integration
 Files: docs/vault-recovery.md, navigation/manual, verification results and roadmap; update Task 09 integrated status after its merge.

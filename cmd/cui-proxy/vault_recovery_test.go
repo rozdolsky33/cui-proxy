@@ -123,3 +123,63 @@ func TestConcurrentMappingCheckpointsRemainRecoverable(t *testing.T) {
 		t.Fatal("final checkpoint incomplete")
 	}
 }
+
+func TestMappingCheckpointsSurviveConcurrentReloadAndGracefulRestart(t *testing.T) {
+	up := newUpstream(t, nil)
+	_, cfg := testDir(t, cfgSpec{Upstream: up.url(), Vault: fileVault})
+	a := startApp(t, cfg, &logBuf{}, func(o *AppOptions) { o.saveInterval = time.Hour })
+	originalVault := a.vault
+	expected := sync.Map{}
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 20; i++ {
+			if err := a.Reload(); err != nil {
+				t.Error("concurrent reload failed")
+				return
+			}
+		}
+	}()
+	for worker := 0; worker < 4; worker++ {
+		wg.Add(1)
+		go func(worker int) {
+			defer wg.Done()
+			for i := 1; i <= 16; i++ {
+				real := netip.AddrFrom4([4]byte{10, 81, byte(worker), byte(i)}).String()
+				synthetic, err := a.vault.Pseudonym("ipv4", real)
+				if err != nil {
+					t.Error("reload growth allocation failed")
+					return
+				}
+				expected.Store(synthetic, real)
+				if err := a.persistMappings(context.Background()); err != nil {
+					t.Error("reload checkpoint failed")
+					return
+				}
+			}
+		}(worker)
+	}
+	wg.Wait()
+	if a.vault != originalVault || a.vault.Len() != 64 {
+		t.Fatal("reload replaced or lost shared mappings")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := a.Shutdown(ctx); err != nil {
+		t.Fatal("graceful checkpoint shutdown failed")
+	}
+	reopened := startApp(t, cfg, &logBuf{}, nil)
+	verified := 0
+	expected.Range(func(synthetic, real any) bool {
+		got, ok := reopened.vault.Real(synthetic.(string))
+		if !ok || got != real.(string) {
+			t.Error("graceful reopen changed mapping")
+		}
+		verified++
+		return true
+	})
+	if verified != 64 || reopened.vault.Len() != 64 {
+		t.Fatal("graceful reopen count mismatch")
+	}
+}
