@@ -323,35 +323,44 @@ def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None
     return row
 
 
-def closed_loop(operation, clients, per_client=None, duration=None):
+def closed_loop(operation, clients, per_client=None, duration=None, *, total_count=None):
+    if total_count is not None:
+        if per_client is not None or duration is not None:
+            raise ValueError('total_count_conflicting_mode')
+        if type(total_count) is not int or total_count <= 0:
+            raise ValueError('invalid_total_count')
+        if type(clients) is not int or clients <= 0:
+            raise ValueError('invalid_clients')
+        per_client = (total_count + clients - 1) // clients
     if clients not in (1, 4, 8, 16) or (per_client is None) == (duration is None):
-        raise ValueError("invalid load parameters")
+        raise ValueError('invalid load parameters')
     if per_client is not None and (type(per_client) is not int or per_client < 1):
-        raise ValueError("invalid operation count")
+        raise ValueError('invalid operation count')
     if duration is not None and (not math.isfinite(duration) or duration <= 0):
-        raise ValueError("invalid duration")
+        raise ValueError('invalid duration')
     barrier = threading.Barrier(clients)
+
     def client(index):
+        client_count = per_client if total_count is None else total_count // clients + (index < total_count % clients)
         rows = []
         barrier.wait()
         start = time.monotonic()
         serial = 0
-        while serial < per_client if per_client is not None else time.monotonic() - start < duration:
+        while serial < client_count if client_count is not None else time.monotonic() - start < duration:
             began = time.monotonic()
-            try: row = operation(index, serial)
+            try:
+                row = operation(index, serial)
             except Exception:
-                row = dict(operation_id=f"client-{index}-op-{serial}", supported=True,
-                           completed=False, outcome="harness_invalid",
-                           duration_ms=(time.monotonic() - began) * 1000)
-            row.setdefault("started_s", began)
-            row.setdefault("finished_s", time.monotonic())
-            row["client"] = index
+                row = dict(operation_id=f'client-{index}-op-{serial}', supported=True, completed=False, outcome='harness_invalid', duration_ms=(time.monotonic() - began) * 1000)
+            row.setdefault('started_s', began)
+            row.setdefault('finished_s', time.monotonic())
+            row['client'] = index
             rows.append(row)
             serial += 1
         return rows
     with concurrent.futures.ThreadPoolExecutor(max_workers=clients) as pool:
         rows = [row for group in pool.map(client, range(clients)) for row in group]
-    return rows, summarize_outcomes(rows)
+    return (rows, summarize_outcomes(rows))
 
 
 def qualification(settings, measurements):

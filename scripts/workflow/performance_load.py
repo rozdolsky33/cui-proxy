@@ -28,38 +28,54 @@ def _validate_mixed_settings(text_count, duration):
         raise ValueError('invalid_duration')
 
 
-def mixed_closed_loop(operation,*,text_count=None,duration=None,clock=time.monotonic):
+def mixed_closed_loop(operation, *, text_count=None, duration=None, clock=time.monotonic, clients=4):
+    if type(clients) is not int or clients not in (1, 4, 8, 16):
+        raise ValueError('invalid_clients')
     _validate_mixed_settings(text_count, duration)
-    stop=threading.Event();lock=threading.Lock();state=dict(start=None,end=None,aborted=False)
-    barrier=threading.Barrier(4,action=lambda:state.update(start=clock()))
-    arms=[[] for _ in range(4)]
+    stop = threading.Event()
+    lock = threading.Lock()
+    state = dict(start=None, end=None, aborted=False)
+    barrier = threading.Barrier(clients, action=lambda: state.update(start=clock()))
+    arms = [[] for _ in range(clients)]
+
     def finish(aborted=False):
         with lock:
-            if state["end"] is None:state["end"]=clock()
-            state["aborted"] = state["aborted"] or aborted
+            if state['end'] is None:
+                state['end'] = clock()
+            state['aborted'] = state['aborted'] or aborted
             stop.set()
+
     def client(index):
+        text_completed = 0
         barrier.wait(timeout=5)
-        serial=0
+        serial = 0
         while not stop.is_set():
-            if duration is not None and clock()>=state["start"]+duration:
-                finish();break
-            row=_attempt(operation,(index,serial),clock)
-            row.update(client=index,workload_kind="text" if index==0 else "image")
+            if duration is not None and clock() >= state['start'] + duration:
+                finish()
+                break
+            operation_index = index if clients != 1 else 0 if serial % 4 == 0 else 1
+            operation_serial = serial if clients != 1 else serial // 4 if operation_index == 0 else serial - serial // 4 - 1
+            row = _attempt(operation, (operation_index, operation_serial), clock)
+            row.update(client=index, workload_kind='text' if operation_index == 0 else 'image')
             arms[index].append(row)
-            serial+=1
-            if row["outcome"]!="supported_success":
-                finish(aborted=True);break
-            if index==0 and text_count is not None and serial>=text_count:
-                finish();break
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-        futures=[pool.submit(client,index) for index in range(4)]
-        for future in futures:future.result()
-    rows=[row for arm in arms for row in arm]
-    window=duration if duration is not None and not state["aborted"] else state["end"]-state["start"]
-    return dict(records=rows,text_records=arms[0],image_records=[r for arm in arms[1:] for r in arm],
-                text_unsent=max(0,text_count-len(arms[0])) if text_count is not None else None,
-                window_start_s=state["start"],window_seconds=window,aborted=state["aborted"])
+            serial += 1
+            if operation_index == 0:
+                text_completed += 1
+            if row['outcome'] != 'supported_success':
+                finish(aborted=True)
+                break
+            if (index == 0 and text_count is not None and (text_completed >= text_count)) and (clients != 1 or serial % 4 == 0):
+                finish()
+                break
+    with concurrent.futures.ThreadPoolExecutor(max_workers=clients) as pool:
+        futures = [pool.submit(client, index) for index in range(clients)]
+        for future in futures:
+            future.result()
+    rows = [row for arm in arms for row in arm]
+    window = duration if duration is not None and (not state['aborted']) else state['end'] - state['start']
+    text_rows = [row for row in rows if row['workload_kind'] == 'text']
+    image_rows = [row for row in rows if row['workload_kind'] == 'image']
+    return dict(records=rows, text_records=text_rows, image_records=image_rows, text_unsent=max(0, text_count - len(text_rows)) if text_count is not None else None, window_start_s=state['start'], window_seconds=window, aborted=state['aborted'])
 
 
 def _validate_open_settings(rate, duration, max_outstanding):
@@ -184,72 +200,98 @@ def _drained_metrics(env):
         time.sleep(0.02)
 
 
-def run_fairness_phase(binary,seed_binary,workload,directory,manifest,*,bypass=False,text_count=None,duration=None,text_size=None,warmup_seconds=60,warmup_count=100):
+def _mixed_warmup_batch(operation, *, clients, text_count, offsets=None):
+    """Advance operation-role offsets without reusing warm-up identities."""
+    offsets = [0] * max(2, clients) if offsets is None else list(offsets)
+    batch = mixed_closed_loop(
+        lambda client, serial: operation(client, offsets[client] + serial),
+        text_count=text_count, clients=clients)
+    if clients == 1:
+        counts = [len(batch["text_records"]), len(batch["image_records"])]
+    else:
+        counts = [sum(row["client"] == client for row in batch["records"])
+                  for client in range(clients)]
+    return batch, [offset + count for offset, count in zip(offsets, counts)]
+
+
+def _mixed_operation_identity(client, serial, *, clients, warmup):
+    """Keep warm-up separate while preserving reference four-client IDs."""
+    base = max(10, clients) * 1000000 if warmup else 0
+    return base + client * 1000000 + serial
+
+
+def run_fairness_phase(binary, seed_binary, workload, directory, manifest, *, bypass=False, text_count=None, duration=None, text_size=None, warmup_seconds=60, warmup_count=100, clients=4):
+    if type(clients) is not int or clients not in (1, 4, 8, 16):
+        raise ValueError('invalid_clients')
     import hashlib
     import performance as perf
     import extraction_fixtures as fixtures
-    from extraction_performance import attachment_case,measured_stages
+    from extraction_performance import attachment_case, measured_stages
     from performance_stats import summarize_outcomes
     _validate_mixed_settings(text_count, duration)
     fixtures.validate_coverage(manifest)
-    if type(warmup_seconds) not in (int,float) or not math.isfinite(warmup_seconds) or warmup_seconds<0 or type(warmup_count) is not int or warmup_count<1:
-        raise ValueError("invalid_warmup_settings")
-    if text_size is not None and text_size not in workload.sizes:raise ValueError("invalid_text_size")
-    if (text_count is None)==(duration is None):raise ValueError("choose_count_or_duration")
-    warm_fixtures=[row for row in manifest["images"] if row["index"]<100000]
-    measured_fixtures=[row for row in manifest["images"] if row["index"]>=100000]
-    records=[]
+    if type(warmup_seconds) not in (int, float) or not math.isfinite(warmup_seconds) or warmup_seconds < 0 or (type(warmup_count) is not int) or (warmup_count < 1):
+        raise ValueError('invalid_warmup_settings')
+    if text_size is not None and text_size not in workload.sizes:
+        raise ValueError('invalid_text_size')
+    if (text_count is None) == (duration is None):
+        raise ValueError('choose_count_or_duration')
+    warm_fixtures = [row for row in manifest['images'] if row['index'] < 100000]
+    measured_fixtures = [row for row in manifest['images'] if row['index'] >= 100000]
+    records = []
     try:
-        before=perf.environment_info(binary)
-        with perf.Environment(binary,seed_binary,workload,262144,correlate=True) as env:
-            case,digest,_=_text_case(workload,9000000,workload.sizes[0],env.mappings,"")
-            preflight=perf.request(env.url,case,expected_hash=digest)
-            if preflight["outcome"]!="supported_success":raise perf.PhaseFailure("preflight",[preflight])
-            target=env.upstream_url if bypass else env.url
-            def operation(client,serial,phase):
-                size=text_size if client==0 and text_size is not None else workload.sizes[serial%len(workload.sizes)]
-                identity=(10000000 if phase=="warmup" else 0)+client*1000000+serial
-                session="warmup" if phase=="warmup" else "text-measurement" if client==0 else "image-measurement"
-                if client==0:
-                    case,digest,raw_digest=_text_case(workload,identity,size,env.mappings,session)
-                    row=perf.request(target,case,expected_hash=raw_digest if bypass else digest)
+        before = perf.environment_info(binary)
+        with perf.Environment(binary, seed_binary, workload, 262144, correlate=True) as env:
+            case, digest, _ = _text_case(workload, 9000000, workload.sizes[0], env.mappings, '')
+            preflight = perf.request(env.url, case, expected_hash=digest)
+            if preflight['outcome'] != 'supported_success':
+                raise perf.PhaseFailure('preflight', [preflight])
+            target = env.upstream_url if bypass else env.url
+
+            def operation(client, serial, phase):
+                size = text_size if client == 0 and text_size is not None else workload.sizes[serial % len(workload.sizes)]
+                identity = _mixed_operation_identity(client, serial, clients=clients, warmup=phase == 'warmup')
+                session = 'warmup' if phase == 'warmup' else 'text-measurement' if client == 0 else 'image-measurement'
+                if client == 0:
+                    case, digest, raw_digest = _text_case(workload, identity, size, env.mappings, session)
+                    row = perf.request(target, case, expected_hash=raw_digest if bypass else digest)
                 else:
-                    pool=warm_fixtures if phase=="warmup" else measured_fixtures
-                    fixture=pool[(serial*3+client-1)%len(pool)]
-                    case,digest=attachment_case(workload,identity,size,fixture,directory,env.mappings,session,text_only_reply=True)
-                    raw_digest=hashlib.sha256(case["body"]).hexdigest()
-                    row=perf.request(target,case,expected_hash=raw_digest if bypass else None,expected_layout_hash=None if bypass else digest)
-                row["request_bytes"]=len(case["body"])
+                    pool = warm_fixtures if phase == 'warmup' else measured_fixtures
+                    fixture = pool[(serial * 3 + client - 1) % len(pool)]
+                    case, digest = attachment_case(workload, identity, size, fixture, directory, env.mappings, session, text_only_reply=True)
+                    raw_digest = hashlib.sha256(case['body']).hexdigest()
+                    row = perf.request(target, case, expected_hash=raw_digest if bypass else None, expected_layout_hash=None if bypass else digest)
+                row['request_bytes'] = len(case['body'])
                 return row
-            start=time.monotonic();warm=[];offsets=[0]*4
-            while len(warm)<warmup_count or time.monotonic()-start<warmup_seconds:
-                batch=mixed_closed_loop(lambda client,serial:operation(client,offsets[client]+serial,"warmup"),text_count=max(1,math.ceil((warmup_count-len(warm))/4)))
-                warm.extend(batch["records"])
-                for client in range(4):offsets[client]+=sum(row["client"]==client for row in batch["records"])
-                if batch["aborted"]:raise perf.PhaseFailure("warmup",warm)
+            start = time.monotonic()
+            warm = []
+            offsets = None
+            while len(warm) < warmup_count or time.monotonic() - start < warmup_seconds:
+                batch, offsets = _mixed_warmup_batch(lambda client, serial: operation(client, serial, 'warmup'), clients=clients, text_count=max(1, math.ceil((warmup_count - len(warm)) / 4)), offsets=offsets)
+                warm.extend(batch['records'])
+                if batch['aborted']:
+                    raise perf.PhaseFailure('warmup', warm)
             warmup_elapsed = time.monotonic() - start
-            metrics=_drained_metrics(env)
-            warm_sessions={row.get("identity",{}).get("session") for row in metrics["recent_requests"]}
-            if not bypass and (not warm_sessions or None in warm_sessions):raise ValueError("warmup_correlation_missing")
-            with perf.ResourceSampler(env) as resources,StageCollector(env,warm_sessions) as stages:
-                measured=mixed_closed_loop(lambda client,serial:operation(client,serial,"measurement"),text_count=text_count,duration=duration)
-                records.extend(measured["records"])
+            metrics = _drained_metrics(env)
+            warm_sessions = {row.get('identity', {}).get('session') for row in metrics['recent_requests']}
+            if not bypass and (not warm_sessions or None in warm_sessions):
+                raise ValueError('warmup_correlation_missing')
+            with perf.ResourceSampler(env) as resources, StageCollector(env, warm_sessions) as stages:
+                measured = mixed_closed_loop(lambda client, serial: operation(client, serial, 'measurement'), text_count=text_count, duration=duration, clients=clients)
+                records.extend(measured['records'])
             if not bypass:
-                recent=stages.wait_for(len(records))
-                images=[row for row in recent if "extraction_run" in row["stages_ms"]]
-                samples=measured_stages(images,set(),len(measured["image_records"]))
-            else:samples=None
-            result=dict(measured,mode="bypass" if bypass else "proxy",population=env.population,
-                        text_outcomes=summarize_outcomes(measured["text_records"]),image_outcomes=summarize_outcomes(measured["image_records"]),
-                        outcomes=summarize_outcomes(records),stage_samples=samples,stage_poll_errors=stages.errors,
-                        resources=perf.resource_summary(resources.samples),warmup_completed=len(warm), warmup_seconds=warmup_elapsed,
-                        achieved_client_concurrency=perf.peak_concurrency(records),correlation_enabled=True,
-                        text_completions_per_second=perf.window_successes(measured["text_records"],measured["window_start_s"],measured["window_seconds"])/measured["window_seconds"],
-                        final_metrics=env.metrics(),performance_qualified=False)
-        result["environment"]=dict(before=before,after=perf.environment_info(binary))
+                recent = stages.wait_for(len(records))
+                images = [row for row in recent if 'extraction_run' in row['stages_ms']]
+                samples = measured_stages(images, set(), len(measured['image_records']))
+            else:
+                samples = None
+            result = dict(measured, mode='bypass' if bypass else 'proxy', population=env.population, text_outcomes=summarize_outcomes(measured['text_records']), image_outcomes=summarize_outcomes(measured['image_records']), outcomes=summarize_outcomes(records), stage_samples=samples, stage_poll_errors=stages.errors, resources=perf.resource_summary(resources.samples), warmup_completed=len(warm), warmup_seconds=warmup_elapsed, achieved_client_concurrency=perf.peak_concurrency(records), correlation_enabled=True, text_completions_per_second=perf.window_successes(measured['text_records'], measured['window_start_s'], measured['window_seconds']) / measured['window_seconds'], final_metrics=env.metrics(), performance_qualified=False, clients=clients)
+        result['environment'] = dict(before=before, after=perf.environment_info(binary))
         return result
-    except perf.PhaseFailure:raise
-    except Exception as error:_raise_phase_error(error,records)
+    except perf.PhaseFailure:
+        raise
+    except Exception as error:
+        _raise_phase_error(error, records)
 
 
 def run_overload_phase(binary, seed_binary, workload, *, size, rate, duration,

@@ -1,0 +1,33 @@
+import argparse,contextlib,datetime,hashlib,json,os,pathlib,subprocess,sys,traceback
+os.umask(0o077)
+parser=argparse.ArgumentParser();parser.add_argument('--repetition',type=int,required=True);parser.add_argument('--mode',choices=['proxy','bypass'],required=True);args=parser.parse_args()
+assert (args.repetition,args.mode) in {(0,'bypass'),(1,'bypass'),(1,'proxy'),(2,'proxy'),(2,'bypass')}
+ROOT=pathlib.Path('/private/tmp/cui-churn-measurements-25a96b1');CWD=pathlib.Path('/private/tmp/cui-mapping-churn');REV='25a96b16d23caf7658370ea92b63721aab5b4815'
+name=f'continuation-{args.repetition:03d}-{args.mode}';report_path=ROOT/(name+'.json');state_path=ROOT/(name+'-state.json')
+original=ROOT/'report.json';original_bytes=original.read_bytes();original_report=json.loads(original_bytes)
+assert original_report['measurements'][0]['mode']=='proxy' and original_report['measurements'][0]['repetition']==0
+r=subprocess.run(['git','rev-parse','HEAD'],cwd=CWD,capture_output=True,text=True,check=True);assert r.stdout.strip()==REV
+r=subprocess.run(['git','status','--porcelain','--untracked-files=no'],cwd=CWD,capture_output=True,text=True,check=True);assert not r.stdout.strip()
+with report_path.open('x'):pass
+state={'status':'running','pid':os.getpid(),'mode':args.mode,'repetition':args.repetition,'performance_qualified':False};state_path.write_text(json.dumps(state,indent=2))
+os.environ['GOTOOLCHAIN']='go1.26.11';sys.path.insert(0,str(CWD/'scripts/workflow'));failed=False;phase=None
+result={'schema_version':original_report['schema_version'],'performance_qualified':False,'workload':original_report['workload'],'settings':original_report['settings'],'measurements':[],'collection_scope':'independent phase continuation after fail-fast reference run','provenance':{'source_revision':REV,'original_failed_report_sha256':hashlib.sha256(original_bytes).hexdigest(),'launcher_sha256':hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest(),'measurement_function':'performance_churn.run_phase'}}
+with (ROOT/(name+'.log')).open('x') as log,contextlib.redirect_stdout(log),contextlib.redirect_stderr(log):
+ try:
+  import performance,performance_churn as churn
+  from performance_stats import summarize_outcomes
+  result['environment']={'before':performance.environment_info(pathlib.Path('/private/tmp/cui-reference-build-25a96b1/proxy'))}
+  workload=churn.ChurnWorkload(seed=1102026)
+  try:
+   phase=churn.run_phase(pathlib.Path('/private/tmp/cui-reference-build-25a96b1/proxy'),pathlib.Path('/private/tmp/cui-reference-build-25a96b1/seed'),workload,size=1048576,duration=600,bypass=args.mode=='bypass',warmup_seconds=60,warmup_count=100)
+  except churn.ChurnPhaseFailure as exc:
+   failed=True;phase=exc.report;result['phase_failure_kind']=type(exc).__name__;result['phase_failure_cause']=str(exc.__cause__) if exc.__cause__ else None
+  phase.update(repetition=args.repetition);phase.update(summarize_outcomes(phase['records']));result['measurements'].append(phase)
+  result['environment']['after']=performance.environment_info(pathlib.Path('/private/tmp/cui-reference-build-25a96b1/proxy'))
+ except BaseException as exc:
+  failed=True;result['setup_failure_kind']=type(exc).__name__;traceback.print_exc()
+result['phase_failed']=failed;result['finished_at']=datetime.datetime.now(datetime.timezone.utc).isoformat()
+temp=report_path.with_suffix('.tmp');temp.write_text(json.dumps(result,indent=2));temp.replace(report_path)
+state.update(status='failed' if failed else 'phase_complete',intended_exit_code=1 if failed else 0);state_path.write_text(json.dumps(state,indent=2))
+print(json.dumps({'mode':args.mode,'repetition':args.repetition,'phase_failed':failed,'retained_phases':len(result['measurements']),'performance_qualified':False}))
+raise SystemExit(1 if failed else 0)
