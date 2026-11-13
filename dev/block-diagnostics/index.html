@@ -1159,6 +1159,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#recovery-metadata-and-repeated-refusals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recovery metadata and repeated refusals
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1574,6 +1585,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#recovery-metadata-and-repeated-refusals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recovery metadata and repeated refusals
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1685,6 +1707,75 @@ forwarded. See <a href="../attachments/">Attachment inspection</a> for tools and
 <code>shape</code>, <code>unsupported</code>, <code>invalid</code>, <code>limit</code>, <code>failed</code>, <code>empty</code>, and <code>timeout</code>
 distinguish other failures. Details are persisted for <code>cui-proxy explain</code> without
 filenames or contents. Old records without details cannot recover the cause.</p>
+<h2 id="recovery-metadata-and-repeated-refusals">Recovery metadata and repeated refusals<a class="headerlink" href="#recovery-metadata-and-repeated-refusals" title="Permanent link">&para;</a></h2>
+<p>Proxy-generated JSON errors retain their existing HTTP status, <code>error.code</code>,
+<code>error.type</code>, message and request ID. They additionally include <code>error.recovery</code>
+with a closed <code>code</code>, <code>category</code>, <code>retry</code>, and fixed <code>remedy</code> text. The headers
+<code>X-Cui-Proxy-Recovery-Code</code> and <code>X-Cui-Proxy-Retry</code> carry the same guidance.
+No original values are included. Already-started streams are still aborted on
+restoration failure; recovery metadata cannot be added after response headers.
+Provider error responses retain provider semantics and are not reclassified.</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Examples</th>
+<th>Retry action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>policy</td>
+<td>blocking rule, rejected metadata</td>
+<td><code>after_change</code>: remove rejected content/metadata; keep protection enabled</td>
+</tr>
+<tr>
+<td>representation</td>
+<td>unsupported route, attachment shape/format, compressed input</td>
+<td><code>after_change</code>: use supported input, remove the rejected representation from history</td>
+</tr>
+<tr>
+<td>dependency</td>
+<td>missing extraction tool, audit storage failure</td>
+<td><code>after_repair</code>: repair the service environment or storage first</td>
+</tr>
+<tr>
+<td>budget</td>
+<td>body/depth/extraction limits, synthetic pool exhaustion, processing timeout</td>
+<td><code>after_change</code>: reduce the workload; preserve mappings needed by active sessions</td>
+</tr>
+<tr>
+<td>overload</td>
+<td>extraction queue deadline (<code>attachment_*_busy</code>)</td>
+<td><code>backoff</code>: bounded delay and lower attachment concurrency</td>
+</tr>
+<tr>
+<td>transient</td>
+<td>upstream connection failure</td>
+<td><code>backoff</code>: check task state because delivery may be uncertain, then retry with a bound</td>
+</tr>
+<tr>
+<td>internal</td>
+<td>unclassified failure</td>
+<td><code>after_repair</code>: investigate safe logs and request ID before retrying</td>
+</tr>
+</tbody>
+</table>
+<p>For deterministic categories, <code>category_occurrences</code> counts that category across
+all clients of one handler in a one-minute window (saturating at one million).
+It is <strong>not</strong> proof of an identical request or a particular client's retry loop.
+The tracker has at most 128 entries, uses only closed diagnostic codes, expires
+old entries and is never persisted. It stores no bodies or content hashes.
+Transient/overload categories have no recurrence count. <code>cui-proxy explain</code>
+provides recovery guidance from the persisted reason/attachment detail; it does
+not invent recurrence counts or recover kinds absent from the decision record.</p>
+<p>Client retry behavior is advisory: the proxy cannot force Codex or another
+client to honor custom headers/fields. No end-to-end suppression claim is made.
+If the same image or blocked value is retained in history, cancel the retrying
+operation, replace/remove that content locally, then start a fresh session with
+only permitted context if the client keeps resending it. Reopening the same
+session or repeating the same request is not a remedy. The proxy never deletes
+context or relaxes policy automatically.</p>
 
 
 

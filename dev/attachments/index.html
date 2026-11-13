@@ -884,6 +884,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#check-the-running-service-before-attachment-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check the running service before attachment work
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1618,6 +1629,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#check-the-running-service-before-attachment-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check the running service before attachment work
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1832,6 +1854,34 @@ without the unsupported result. Do not disable blocking rules or enable
 passthrough to recover. Install the updated proxy binary and restart the
 running service to use tool-result image extraction; reloading configuration
 alone cannot add support to an older binary.</p>
+<h2 id="check-the-running-service-before-attachment-work">Check the running service before attachment work<a class="headerlink" href="#check-the-running-service-before-attachment-work" title="Permanent link">&para;</a></h2>
+<p>Run <code>cui-proxy preflight -config PATH</code> after starting the service, or use
+<strong>Check readiness</strong> in the dashboard. The dashboard checks once on initial load.
+This queries the running dashboard's guarded <code>/api/preflight</code> endpoint; it does
+not substitute dependency discovery from the terminal's environment.</p>
+<p>The versioned JSON report identifies the running process (version, Go version,
+build revision when available and PID), effective policy enums, and dependency
+checks. With <code>attachments: extract_text</code>, it discovers <code>pdfinfo</code>, <code>pdftotext</code>,
+<code>pdftoppm</code> and <code>tesseract</code> through the service PATH, then checks <code>eng</code> through
+<code>tesseract --list-langs</code> using the same restricted child environment as
+extraction. Each tool result has a fixed remedy. Tool paths, stderr, language
+list contents and credentials are never returned.</p>
+<p>Install Poppler for PDF tools and Tesseract with English data for OCR. Ensure
+the service PATH finds them and restart the service after installation or
+service-environment changes. Extraction does not inherit <code>TESSDATA_PREFIX</code> or
+other shell variables, so English data must be available through the tool's
+default data discovery. A successful check confirms discovery and language
+listing, not that every document will extract successfully.</p>
+<p>Probes have a two-second deadline, 64 KiB output cap, one concurrent probe per
+checker and the existing extraction slot bound. Dependency results are cached
+for ten seconds; policy is read fresh each time. Wait ten seconds to recheck a
+repaired dependency. With attachments blocked, no extraction tools are required
+or probed; readiness means ready for that effective policy, not OCR capability.</p>
+<p>The CLI returns exit 0 for ready, 1 for unavailable/not-ready service or
+incompatible report, and 2 for usage errors. It accepts only a loopback HTTP
+service and never follows redirects. It prints the running build identity;
+<code>dev</code> or an unavailable revision cannot establish an exact binary revision.
+Keep detailed CLI output captured locally as described in verification guidance.</p>
 
 
 
