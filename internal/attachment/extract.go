@@ -28,8 +28,11 @@ const (
 
 var helperSlots = admission.New(admission.Limits{Active: 2, Queued: 2, Bytes: 2})
 
+var imageResults = newTextCache(32, 4<<20, 30*time.Second)
+
 // Extractor budgets a single request. It is not shared between requests.
 type Extractor struct {
+	cache                     *textCache
 	ctx                       context.Context
 	cancel                    context.CancelFunc
 	count, bytes, text, pages int
@@ -37,7 +40,7 @@ type Extractor struct {
 
 func New(ctx context.Context) *Extractor {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	return &Extractor{ctx: ctx, cancel: cancel}
+	return &Extractor{ctx: ctx, cancel: cancel, cache: imageResults}
 }
 func (e *Extractor) Close() { e.cancel() }
 
@@ -83,6 +86,11 @@ func (e *Extractor) Extract(c Category, data string) (string, error) {
 	}
 	var text string
 	var why Cause
+	var rawImage []byte
+	var imageKey [32]byte
+	var imagePath string
+	var imageArgs []string
+	var publishImage bool
 	if c == PDF {
 		if !bytes.HasPrefix(b, []byte("%PDF-")) {
 			return fail(Invalid)
@@ -96,9 +104,36 @@ func (e *Extractor) Extract(c Category, data string) (string, error) {
 		if dims.Width <= 0 || dims.Height <= 0 || int64(dims.Width)*int64(dims.Height) > maxPixels {
 			return fail(Limit)
 		}
-		var out []byte
-		out, why = e.run("tesseract", b, maxText-e.text, "stdin", "stdout", "-l", "eng")
-		text = string(out)
+		remaining := maxText - e.text
+		if remaining <= 0 {
+			return fail(Limit)
+		}
+		imagePath = "tesseract"
+		imageArgs = []string{"stdin", "stdout", "-l", "eng"}
+		cacheable := false
+		if e.cache != nil {
+			if resolved, err := exec.LookPath(imagePath); err == nil {
+				imagePath = resolved
+				imageKey, cacheable = imageCacheKey(b, format, imagePath, imageArgs, helperEnvironment())
+			}
+		}
+		if e.ctx.Err() != nil {
+			return fail(Timeout)
+		}
+		hit := false
+		if cacheable {
+			rawImage, hit = e.cache.get(imageKey)
+		}
+		if hit {
+			if len(rawImage) > remaining {
+				return fail(Limit)
+			}
+			why = success
+		} else {
+			rawImage, why = e.run(imagePath, b, remaining, imageArgs...)
+			publishImage = cacheable
+		}
+		text = string(rawImage)
 	}
 	if why != success {
 		return fail(why)
@@ -113,6 +148,19 @@ func (e *Extractor) Extract(c Category, data string) (string, error) {
 	e.text += len(text)
 	if e.text > maxText {
 		return fail(Limit)
+	}
+	if publishImage {
+		// Only validated successes enter the cache; replacement during OCR
+		// prevents publication under a stale helper identity.
+		key, ok := imageCacheKey(b, format, imagePath, imageArgs, helperEnvironment())
+		if e.ctx.Err() != nil {
+			return fail(Timeout)
+		}
+		if ok && key == imageKey {
+			e.cache.put(key, rawImage)
+		}
+	} else if e.ctx.Err() != nil {
+		return fail(Timeout)
 	}
 	return text, nil
 }
@@ -242,7 +290,7 @@ func (e *Extractor) run(name string, input []byte, limit int, args ...string) ([
 	defer cancel()
 	cmd := exec.CommandContext(ctx, path, args...)
 	// No shell, user config or inherited credentials. English OCR is explicit.
-	cmd.Env = []string{"LC_ALL=C", "OMP_THREAD_LIMIT=1"}
+	cmd.Env = helperEnvironment()
 	cmd.Stdin = bytes.NewReader(input)
 	out := &boundedOutput{limit: limit, cancel: cancel}
 	cmd.Stdout, cmd.Stderr = out, io.Discard
@@ -258,4 +306,9 @@ func (e *Extractor) run(name string, input []byte, limit int, args ...string) ([
 		return nil, Failed
 	}
 	return out.buf.Bytes(), success
+}
+
+// Keep execution and reuse identity on the exact same fixed environment.
+func helperEnvironment() []string {
+	return []string{"LC_ALL=C", "OMP_THREAD_LIMIT=1"}
 }

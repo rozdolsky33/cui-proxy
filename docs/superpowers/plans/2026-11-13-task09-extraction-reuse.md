@@ -28,10 +28,10 @@ Interfaces: newTextCache(entries, bytes int, ttl time.Duration) *textCache; get(
 ### Task 2: Image integration and policy/budget proof
 Files: internal/attachment/extract.go, reuse_test.go; internal/adapter/codex or proxy integration tests.
 Interfaces: Extractor holds a cache pointer; New(ctx) uses the shared default, tests may construct an uncached extractor. Only validated inline image OCR uses the cache. helperEnvironment() returns the same fresh fixed environment used for execution and identity.
-- [ ] Add counting-helper tests: repeated images hit; different inputs/identity miss; raw/text/count/byte limits still apply; errors/cancellation never populate; concurrent cold calls remain independent. Observe RED.
-- [ ] Integrate lookup after existing image validation and store only after successful validation/budget/cancellation checks; preserve PDF path. Tests GREEN under race detector.
-- [ ] Add the HTTP/current-policy reload regression before integration: require helper reuse and refusal under newly active rules with no original forwarding. Observe RED for missing reuse, then GREEN with both reuse and current-policy assertions satisfied.
-- [ ] Run affected attachment/adapter/proxy race suites, then commit.
+- [x] Add counting-helper tests: repeated images hit; different inputs/identity miss; raw/text/count/byte limits still apply; errors/cancellation never populate; concurrent cold calls remain independent. Observe RED.
+- [x] Integrate lookup after existing image validation and store only after successful validation/budget/cancellation checks; preserve PDF path. Tests GREEN under race detector.
+- [x] Add the HTTP/current-policy reload regression before integration: require helper reuse and refusal under newly active rules with no original forwarding. Observe RED for missing reuse, then GREEN with both reuse and current-policy assertions satisfied.
+- [x] Run affected attachment/adapter/proxy race suites, then commit.
 
 ### Task 3: Measurement, docs and integration
 Files: docs/extraction-reuse.md, manual/navigation, verification results and roadmap; focused workflow measurement/test support if existing runner cannot express reuse.
