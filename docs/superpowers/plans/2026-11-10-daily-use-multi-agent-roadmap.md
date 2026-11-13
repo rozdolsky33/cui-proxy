@@ -253,11 +253,13 @@ Client retry guidance remains advisory; preflight checks the running service.
 of simultaneous rewrites. Possible areas include detector scanning, restoration
 index updates, redundant parsing, or audit persistence.
 
-- [ ] Record the bottleneck, expected improvement and correctness invariants.
-- [ ] Implement one change with differential checks against the reference path.
-- [ ] Re-run normal/stress benchmarks and the semantic/policy corpus.
-- [ ] If audit batching is justified, preserve ordering and ensure requests
+- [x] Record the bottleneck, expected improvement and correctness invariants.
+- [x] Implement one change with differential checks against the reference path.
+- [x] Re-run normal/stress benchmarks and the semantic/policy corpus.
+- [x] If audit batching is justified, preserve ordering and ensure requests
       wait for their required durable record before forwarding.
+
+Evidence: [paired benchmark and verification report](../../verification-results/2026-11-13-task07-regex-indices.md). Audit batching was not selected; audit behavior is unchanged.
 
 **Acceptance:** Improvement exceeds run-to-run noise, no supported workload
 regresses materially, and safety/semantic gates pass. If caching is proposed,

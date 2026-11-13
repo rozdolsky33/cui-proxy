@@ -27,20 +27,20 @@ Continue review/commit/PR/merge under standing authorization.
 Files: internal/detect/indices_test.go and internal/detect/regex.go.
 Interfaces: test-only referenceFind/referenceScan preserve the old API path;
 production Detector interface unchanged.
-- [ ] Add differential tests across builtin/custom rules, profiles and edge inputs.
-- [ ] Add TestRequiredLiteralConservative and observe RED for unsafe inferred literals.
-- [ ] Implement bounded syntax-derived required literals; retain the reference regexp matching API.
-- [ ] Observe GREEN; run differential fuzzing and package tests.
-- [ ] Add paired Scan reference/candidate benchmarks for normal/stress payloads.
+- [x] Add differential tests across builtin/custom rules, profiles and edge inputs.
+- [x] Add TestRequiredLiteralConservative and observe RED for unsafe inferred literals.
+- [x] Implement bounded syntax-derived required literals; retain the reference regexp matching API.
+- [x] Observe GREEN; run differential fuzzing and package tests.
+- [x] Add paired Scan reference/candidate benchmarks for normal/stress payloads.
 
 ### Task 2: Measure end-to-end behavior
 
 Files: existing scripts/workflow harness (no semantic changes); verification report.
 Interfaces: base binary at 11f4c99 versus candidate binary; same workload recipe.
-- [ ] Inspect existing performance runner controls and record bounded paired plan.
-- [ ] Run alternating reference/candidate normal/stress workloads and compare noise.
-- [ ] Run semantic/policy HTTP corpus and full Go race/Python/vet/staticcheck gates.
-- [ ] Accept only evidence-backed improvement; record any workload regression.
+- [x] Inspect existing performance runner controls and record bounded paired plan.
+- [x] Run alternating reference/candidate normal/stress workloads and compare noise.
+- [x] Run semantic/policy HTTP corpus and full Go race/Python/vet/staticcheck gates.
+- [x] Accept only evidence-backed improvement; record any workload regression.
 
 ### Task 3: Review and integrate
 
