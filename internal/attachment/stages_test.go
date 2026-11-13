@@ -29,7 +29,7 @@ func TestExtractionWaitCancellationGauges(t *testing.T) {
 		time.Sleep(time.Millisecond)
 	}
 	cancel()
-	if <-done != Timeout {
+	if <-done != Busy {
 		t.Fatal("cancellation not respected")
 	}
 	s := r.Snapshot()

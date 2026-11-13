@@ -23,6 +23,7 @@ import (
 	"cui-proxy/internal/config"
 	"cui-proxy/internal/detect"
 	"cui-proxy/internal/metrics"
+	"cui-proxy/internal/preflight"
 	"cui-proxy/internal/transform"
 	"cui-proxy/internal/vault"
 )
@@ -53,11 +54,14 @@ type Deps struct {
 	Version   string
 }
 
-type server struct{ d Deps }
+type server struct {
+	d       Deps
+	checker *preflight.Checker
+}
 
 // New returns the dashboard handler.
 func New(d Deps) http.Handler {
-	s := &server{d: d}
+	s := &server{d: d, checker: preflight.New(d.Version)}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", s.static("static/index.html", "text/html; charset=utf-8"))
 	mux.HandleFunc("GET /app.js", s.static("static/app.js", "text/javascript; charset=utf-8"))
@@ -67,6 +71,9 @@ func New(d Deps) http.Handler {
 		_, _ = w.Write([]byte("ok"))
 	})
 	mux.HandleFunc("GET /api/config", s.config)
+	mux.HandleFunc("GET /api/preflight", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, s.checker.Check(r.Context(), s.d.Cfg()))
+	})
 	mux.HandleFunc("GET /api/metrics", s.metrics)
 	mux.HandleFunc("GET /api/events", s.events)
 	mux.HandleFunc("GET /api/stream", s.stream)

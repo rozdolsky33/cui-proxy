@@ -135,3 +135,37 @@ without the unsupported result. Do not disable blocking rules or enable
 passthrough to recover. Install the updated proxy binary and restart the
 running service to use tool-result image extraction; reloading configuration
 alone cannot add support to an older binary.
+
+## Check the running service before attachment work
+
+Run `cui-proxy preflight -config PATH` after starting the service, or use
+**Check readiness** in the dashboard. The dashboard checks once on initial load.
+This queries the running dashboard's guarded `/api/preflight` endpoint; it does
+not substitute dependency discovery from the terminal's environment.
+
+The versioned JSON report identifies the running process (version, Go version,
+build revision when available and PID), effective policy enums, and dependency
+checks. With `attachments: extract_text`, it discovers `pdfinfo`, `pdftotext`,
+`pdftoppm` and `tesseract` through the service PATH, then checks `eng` through
+`tesseract --list-langs` using the same restricted child environment as
+extraction. Each tool result has a fixed remedy. Tool paths, stderr, language
+list contents and credentials are never returned.
+
+Install Poppler for PDF tools and Tesseract with English data for OCR. Ensure
+the service PATH finds them and restart the service after installation or
+service-environment changes. Extraction does not inherit `TESSDATA_PREFIX` or
+other shell variables, so English data must be available through the tool's
+default data discovery. A successful check confirms discovery and language
+listing, not that every document will extract successfully.
+
+Probes have a two-second deadline, 64 KiB output cap, one concurrent probe per
+checker and the existing extraction slot bound. Dependency results are cached
+for ten seconds; policy is read fresh each time. Wait ten seconds to recheck a
+repaired dependency. With attachments blocked, no extraction tools are required
+or probed; readiness means ready for that effective policy, not OCR capability.
+
+The CLI returns exit 0 for ready, 1 for unavailable/not-ready service or
+incompatible report, and 2 for usage errors. It accepts only a loopback HTTP
+service and never follows redirects. It prints the running build identity;
+`dev` or an unavailable revision cannot establish an exact binary revision.
+Keep detailed CLI output captured locally as described in verification guidance.

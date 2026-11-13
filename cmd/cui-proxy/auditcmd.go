@@ -13,6 +13,7 @@ import (
 	"cui-proxy/internal/config"
 	"cui-proxy/internal/decisionlog"
 	"cui-proxy/internal/proxy"
+	"cui-proxy/internal/recovery"
 )
 
 const auditUsage = `usage: cui-proxy audit verify [-file PATH | -config PATH]
@@ -227,6 +228,8 @@ func runExplain(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stdout, "Attachment detail: %s. %s\n", r.Detail, attachment.Explain(r.Detail))
 		}
 		fmt.Fprintf(stdout, "Why, and what would change it: %s\n", change)
+		guidance := recovery.Lookup(r.Reason, "", r.Detail)
+		fmt.Fprintf(stdout, "Recovery: %s; retry=%s. %s\n", guidance.Code, guidance.Retry, guidance.Remedy)
 	case passthrough != "":
 		fmt.Fprintf(stdout, "The request was forwarded UNSANITIZED because policy.on_error is passthrough (UNSAFE): sanitizing failed (reason=%s).\n", passthrough)
 		fmt.Fprintln(stdout, "What would change it: policy.on_error: block refuses such a request instead.")

@@ -228,21 +228,24 @@ on an authorized provider run). No protocol allowlist was expanded.
 
 **Likely areas:** diagnostics, CLI, dashboard, client-facing documentation.
 
-- [ ] Distinguish policy decisions, unsupported representations, dependency
+- [x] Distinguish policy decisions, unsupported representations, dependency
       failures, exhausted budgets and transient overload with stable safe codes.
-- [ ] Provide an actionable remedy and retry classification for each code.
+- [x] Provide an actionable remedy and retry classification for each code.
       Preserve existing HTTP/error compatibility unless a versioned change is justified.
-- [ ] Detect recurring deterministic failures using bounded, value-free state
+- [x] Detect recurring deterministic failures using bounded, value-free state
       where possible. Do not persist raw bodies or reusable content fingerprints.
-- [ ] Where the client supports it, verify retry guidance actually stops futile
+- [x] Where the client supports it, verify retry guidance actually stops futile
       retries. Otherwise document the client limitation and exact recovery action.
-- [ ] Add preflight checks for the running binary, effective policy, extractor
+- [x] Add preflight checks for the running binary, effective policy, extractor
       discovery and language data, using the service's actual environment.
 
 **Acceptance:** A repeated unsupported-image scenario produces useful recovery
 instructions without upstream calls. A missing OCR executable is diagnosed
 before a user encounters an opaque failure. No automatic context deletion,
 policy weakening, or unsupported promise to control client retries.
+
+Evidence: [Task 06 recovery results](../../verification-results/2026-11-13-task06-recovery.md).
+Client retry guidance remains advisory; preflight checks the running service.
 
 ## Task 07 — Fix the largest measured processing cost
 
