@@ -158,11 +158,10 @@ class LoadTests(unittest.TestCase):
             return dict(operation_id=f"mixed-{client}-{serial}", supported=True,
                         completed=True, outcome="supported_success", duration_ms=1.0)
         result = load.mixed_closed_loop(operation, text_count=3, clients=1)
-        self.assertEqual(seen, [(0, 0), (1, 0), (1, 1), (1, 2), (0, 1),
-                                (1, 3), (1, 4), (1, 5), (0, 2)])
+        self.assertEqual(seen, [(0, 0), (1, 0), (1, 1), (1, 2), (0, 1), (1, 3), (1, 4), (1, 5), (0, 2), (1, 6), (1, 7), (1, 8)])
         self.assertEqual(len(result["text_records"]), 3)
-        self.assertEqual(len(result["image_records"]), 6)
-        self.assertEqual(len(result["records"]), 9)
+        self.assertEqual(len(result["image_records"]), 9)
+        self.assertEqual(len(result["records"]), 12)
         self.assertEqual({row["client"] for row in result["records"]}, {0})
         self.assertEqual(result["text_unsent"], 0)
         self.assertFalse(result["aborted"])
@@ -270,8 +269,8 @@ class LoadTests(unittest.TestCase):
                 self.assertEqual(len(offsets), max(2, clients))
                 self.assertEqual(offsets[0], 6)
                 if clients == 1:
-                    self.assertEqual(offsets, [6, 12])
-                    self.assertEqual(len(seen), 18)
+                    self.assertEqual(offsets, [6, 18])
+                    self.assertEqual(len(seen), 24)
                 else:
                     self.assertEqual({client for client, _ in seen}, set(range(clients)))
 
@@ -288,3 +287,65 @@ class LoadTests(unittest.TestCase):
                 self.assertEqual(len(measured), max(2, clients) * 3)
         self.assertEqual(load._mixed_operation_identity(0, 0, clients=4, warmup=True), 10000000)
         self.assertEqual(load._mixed_operation_identity(0, 0, clients=16, warmup=True), 16000000)
+
+    def test_single_client_count_completes_text_image_cycle(self):
+        import threading
+        import time
+        for count in (1, 2, 3):
+            with self.subTest(count=count):
+                calls = []
+                active = 0
+                peak = 0
+                lock = threading.Lock()
+                def operation(role, serial):
+                    nonlocal active, peak
+                    with lock:
+                        active += 1
+                        peak = max(peak, active)
+                        calls.append((role, serial))
+                    try:
+                        time.sleep(0.002)
+                        return {"operation_id": f"{role}:{serial}",
+                                "completed": True, "supported": True,
+                                "outcome": "supported_success", "status": 200}
+                    finally:
+                        with lock:
+                            active -= 1
+                result = load.mixed_closed_loop(operation, clients=1,
+                                                text_count=count)
+                self.assertEqual([role for role, _ in calls], [0, 1, 1, 1] * count)
+                self.assertEqual(len(result["text_records"]), count)
+                self.assertEqual(len(result["image_records"]), 3 * count)
+                self.assertEqual(len(set(calls)), 4 * count)
+                self.assertEqual(peak, 1)
+                self.assertFalse(result["aborted"])
+
+    def test_single_client_small_warmup_batches_include_images(self):
+        calls = []
+        offsets = None
+        def operation(role, serial):
+            calls.append((role, serial))
+            return {"operation_id": f"{role}:{serial}", "completed": True,
+                    "supported": True, "outcome": "supported_success", "status": 200}
+        for _ in range(3):
+            batch, offsets = load._mixed_warmup_batch(
+                operation, clients=1, text_count=1, offsets=offsets)
+            self.assertEqual(len(batch["text_records"]), 1)
+            self.assertEqual(len(batch["image_records"]), 3)
+        self.assertEqual([role for role, _ in calls], [0, 1, 1, 1] * 3)
+        self.assertEqual(len(set(calls)), 12)
+        self.assertEqual(offsets, [3, 9])
+
+    def test_single_client_count_one_retains_image_failure(self):
+        calls = []
+        def operation(role, serial):
+            calls.append((role, serial))
+            return {"operation_id": f"{role}:{serial}", "completed": True,
+                    "supported": True, "status": 200,
+                    "outcome": "supported_success" if role == 0 else "harness_invalid"}
+        result = load.mixed_closed_loop(operation, clients=1, text_count=1)
+        self.assertEqual([role for role, _ in calls], [0, 1])
+        self.assertEqual(len(result["text_records"]), 1)
+        self.assertEqual(len(result["image_records"]), 1)
+        self.assertEqual(result["image_records"][0]["outcome"], "harness_invalid")
+        self.assertTrue(result["aborted"])

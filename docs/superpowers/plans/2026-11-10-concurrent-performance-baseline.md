@@ -69,11 +69,11 @@ Use a dedicated performance runner alongside the correctness harness. Turning th
 - [x] Collect CPU, allocation, heap and mutex/block profiles locally with fixed private paths. Include audit durability cost and growing-vault effects without exposing request values.
 - [x] Perform contract warm-up and repeated measurement windows, including its ten-minute throughput windows. Record environment/load and per-run variation; avoid arbitrary shorter qualification runs.
 - [x] Evaluate normal-tier thresholds, report stress capacity separately, and identify the dominant measured cost or demonstrate all required normal-tier gates pass.
-- [ ] Run final correctness/race/lint checks and independent review; link evidence and limitations in the Task 04 completion record.
+- [x] Run final correctness/race/lint checks and independent review; link evidence and limitations in the Task 04 completion record.
 
 ## Current completion record — 2026-11-13
 
-Reference and supplemental collection, profiling, acceptance analysis, and final local Python/race/lint checks are complete. Numerical performance qualification remains false. The [consolidated baseline](../../verification-results/2026-11-11-task04-baseline-results.md) and its aggregate appendix retain failures and provenance. Independent final review and PR integration remain pending; historical progress notes below describe earlier stages and are not the current collection status.
+Reference and supplemental collection, profiling, acceptance analysis, and final local Python/race/lint checks are complete. Numerical performance qualification remains false. The [consolidated baseline](../../verification-results/2026-11-11-task04-baseline-results.md) and its aggregate appendix retain failures and provenance. Independent final review is complete, including the verified single-client count-cycle correction. The publishing PR records required CI and merge status; historical progress notes below describe earlier stages and are not the current collection status.
 
 ## Starting inventory
 
@@ -85,7 +85,7 @@ Task 03 provides fixed eight-stage timing rings, active/queued/extractor gauges,
 - [x] Selected isolated runner plus existing oracles and stage metrics.
 - [x] Implement paired first-byte statistics with eight new unit tests (RED: module absent; GREEN: all 26 Python tests pass). Pairing precedes nearest-rank quantiles; negative differences remain, incomplete/duplicate/invalid samples fail with fixed diagnostics.
 - [x] Finish outcome/timeout accounting and report schema; committed as `f8208c2`.
-- [ ] Complete the real-extraction, fairness, overload and qualification measurements. The text runner and component benchmarks are implemented; diagnostic measurements are in progress.
+- [x] Complete real-extraction, fairness, overload and acceptance measurements. Collection is complete; numerical qualification remains false, with failed gates and source limitations retained.
 
 ## Security and CI follow-up — 2026-11-10
 

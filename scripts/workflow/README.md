@@ -266,3 +266,8 @@ The extraction CLI accepts `--clients 1|4|8|16`. Its measured `--count` is an ex
 The fairness CLI accepts the same client counts and either `--count` or `--duration`, never both. Omitting both keeps the existing default of 1,000 text operations; the default remains four clients. At four/eight/sixteen clients, one worker sends text and the others send images. At one client, a single worker cycles text/image/image/image sequentially; this is mixed-traffic capacity, not concurrent fairness.
 
 Duration mode retains each arm's complete records, configured window, drain outcomes and per-class counts. Unequal arm sample sets remain an incomplete paired comparison; they are not truncated to manufacture matching samples. Settings use the metadata-only report schema. All supplemental reports remain explicitly unqualified. Short capacity windows do not replace the contract's normal text sample counts, ten-minute throughput windows, warm-up requirements or four-client acceptance gates.
+
+
+### Single-client count completion
+
+For mixed traffic with `--clients 1 --count N`, each successful text operation is followed by three image operations before count-mode completion. A successful count-one run therefore records one text and three images, and small warmup batches exercise both classes while retaining concurrency one. An operation failure still aborts promptly and remains in the recorded outcomes. Duration mode continues to stop at its measured window and can end partway through a cycle.

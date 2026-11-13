@@ -63,7 +63,9 @@
 - [x] Independently verify counts, class partition, concurrency, warm-up/window boundaries, semantic outcomes, stage coverage and resources; preserve failures and incomplete observations.
 - [x] Publish separate safe per-repetition tables including medians/tails, completion counts, timings and memory. Link the original reference evidence without pooling source revisions or declaring qualification.
 - [x] Reconcile every Task04 requirement, including the remaining median/completion summaries, churn evidence and earlier implementation checks. Do not check off unproven requirements.
-- [ ] Obtain one fresh whole-branch review, fix material findings with regression evidence, then commit, push, create PR, merge only after required checks, and synchronize clean primary main under standing authorization.
+- [x] Obtain one fresh whole-branch review and fix material findings with regression evidence. The one Important count-cycle finding is fixed; full Python and native count-one checks pass.
+
+**Integration requirement:** Commit, push, create PR, merge only after required checks, and synchronize clean primary main under standing authorization. The publishing PR and final main-state verification record completion of this finish-stage requirement.
 
 ## Self-review
 

@@ -6,7 +6,7 @@ The four-client normal-tier first-byte p95 target fails at all three tested text
 
 ## Current collection status
 
-Measurement collection is complete. Performance qualification remains **false**: several unchanged latency, throughput and memory gates fail, and the reference evidence spans separately identified source revisions. Task 04's report review and integration are still pending.
+Measurement collection is complete. Performance qualification remains **false**: several unchanged latency, throughput and memory gates fail, and the reference evidence spans separately identified source revisions. Local verification and independent review are complete. Required CI and merge status are recorded by the pull request publishing this report.
 
 | Workload | Retained collection | Result and limits |
 | :--- | :--- | :--- |
@@ -110,11 +110,9 @@ Private campaign manifests bind source, binary and report identities. Raw report
 
 The remaining non-text campaign will use a separate reviewed source identity containing the actual throughput origin and observed extraction/fairness warm-up fields. Historical reports will not be backfilled, and operation pairs or repetitions from incompatible identities will not be silently combined. [Measurement-boundary observations](2026-11-11-measurement-boundary-observations.md) explain the distinction.
 
-## Work still required
+## Verification and integration status
 
-1. Finish final correctness/race/lint verification and the independent whole-branch review; resolve material findings without changing gates.
-2. Reconcile the roadmap and implementation-plan completion records against this report and retained evidence.
-3. Commit and integrate the reviewed report and runner changes through passing required PR checks, then synchronize clean primary `main`.
+Collection, acceptance analysis, final local checks, and the independent whole-branch review are complete. The publishing pull request records required CI and merge status; final primary-checkout synchronization is verified during integration. Performance qualification remains false regardless of those development checks.
 
 ## Supporting measurements
 
@@ -903,10 +901,28 @@ Before continuation, all eight completed report hashes were independently checke
 
 ## Final local verification
 
-- Python discovery: 255 tests, 4 opt-in skips, no failures or errors. Native extraction/mixed smoke and the real supplemental measurements are recorded separately above; skipped opt-in tests are not counted as executed.
+- Python discovery after the review correction: 258 tests, 4 opt-in skips, no failures or errors. Native extraction/mixed smoke and the real supplemental measurements are recorded separately above; skipped opt-in tests are not counted as executed.
 - Go race checks: all 20 tested packages pass with Go 1.26.11.
 - Lint: `go vet` and the full configured Staticcheck checks pass. The first invocation used an older default analyzer built for Go 1.23 and failed on the Go 1.26 toolchain. Repeating lint with the existing compatible Staticcheck 2026.2.2 binary passed; no checks or source code were changed to suppress that failure.
 - Aggregate verification: 15 supplemental report hashes, 30 environment snapshots, 24 phase accounting/resource checks, 18 mixed-window boundary checks, and 2,088 quantiles across 696 appendix rows pass independent checks.
 - The eight reports produced before the supplemental supervisor interruption retain their original hashes. The continuation exited with status 0 and no benchmark executables remained running.
 
-Independent whole-branch review and required PR checks remain pending. The checks above establish code/report validation, not performance qualification.
+The fresh whole-branch review identified one Important issue and no Critical or Minor findings. The correction and its regression evidence are recorded below. Required CI and merge status belong to the publishing PR. These development checks do not establish performance qualification.
+
+
+### Review correction and measurement provenance
+
+The review found that a count-based one-client mixed run could stop immediately after its last text request, omitting the final images; count-one warmup batches could therefore contain no images. Count mode now completes each text-plus-three-images cycle before successful completion. Failed operations still abort promptly and remain recorded, and duration mode keeps its existing time-window stopping behavior.
+
+Three new regression methods first reproduced the defect, then passed after the minimal completion-condition change. The full Python suite passes, and an isolated native count-one check completed two arms with one text and three images each, warmup covering both classes, concurrency one, and complete proxy extraction-stage timing. These eight diagnostic measured operations are separate from the baseline corpus.
+
+The 24 supplemental measurement phases remain attributed to frozen source `9dd4fcdde6c867c9cd1a3abd5143b0052a19f74c`, before this review correction. Their retained warmup satisfies both required minima and their measured mixed phases use duration windows. They have not been relabeled or rerun as evidence for the later runner. The unchanged Go source/build definitions retain the successful race and lint evidence.
+
+Review scope decisions:
+
+- Production optimization follows the measured baseline; the existing performance failures remain work to address.
+- Soak, recovery, and live qualification belong to later roadmap work; this baseline does not establish those properties.
+- Pre-existing identity-stride exhaustion in extremely long benchmark runs was not changed. All contracted measurements are below that boundary and their operation identities were checked; this is not an unbounded-run qualification.
+- Historical campaigns remain preserved under their original source identities. Their results do not establish the performance of later runner revisions.
+
+No Critical or Important review finding remains unresolved, and no Minor finding was deferred.

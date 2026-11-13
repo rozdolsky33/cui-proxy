@@ -64,7 +64,7 @@ def mixed_closed_loop(operation, *, text_count=None, duration=None, clock=time.m
             if row['outcome'] != 'supported_success':
                 finish(aborted=True)
                 break
-            if index == 0 and text_count is not None and (text_completed >= text_count):
+            if (index == 0 and text_count is not None and (text_completed >= text_count)) and (clients != 1 or serial % 4 == 0):
                 finish()
                 break
     with concurrent.futures.ThreadPoolExecutor(max_workers=clients) as pool:

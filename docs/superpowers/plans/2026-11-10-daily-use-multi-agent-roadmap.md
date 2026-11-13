@@ -196,7 +196,7 @@ visual verification and screenshots.
 with evidence, or show that all normal-tier performance targets already pass.
 Publish a safe baseline summary; keep detailed profiles local.
 
-Baseline collection and local verification are complete; numerical qualification remains false. See the [measured baseline and limitations](../../verification-results/2026-11-11-task04-baseline-results.md). Final independent review and integration are tracked with the baseline implementation plan.
+Baseline collection and local verification are complete; numerical qualification remains false. See the [measured baseline and limitations](../../verification-results/2026-11-11-task04-baseline-results.md). Independent review and its regression-verified correction are complete. Required CI and merge status are tracked by the publishing PR; primary-main synchronization is verified during integration.
 
 ## Task 05 — Verify task semantics and long-session compatibility
 
