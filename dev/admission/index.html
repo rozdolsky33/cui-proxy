@@ -16,7 +16,7 @@
         <link rel="prev" href="../block-diagnostics/">
       
       
-        <link rel="next" href="../architecture/">
+        <link rel="next" href="../extraction-reuse/">
       
       
         
@@ -896,6 +896,8 @@
       
         
       
+        
+      
     
     
     
@@ -1145,6 +1147,34 @@
 
       </a>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extraction-reuse/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repeated image extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1610,6 +1640,7 @@
 <p>Extraction saturation retains the existing <code>attachment_*_busy</code> diagnostic and backoff guidance. The two helper slots and two wait positions are independent of text processing. Unsupported or oversized attachments retain their existing refusal behavior. Neither admission overload nor extraction saturation forwards original content, including when sanitization error passthrough is configured.</p>
 <p><code>/api/metrics</code> exposes <code>admission.active</code>, <code>admission.queued</code>, and <code>admission.reserved_input_bytes</code>. The <code>admission_wait</code> timing stage includes admission acquisition, with the same fixed-cardinality summaries as other stages. Existing extraction active/queued gauges and wait timing remain available. No request bodies, client labels or sensitive values are added to metrics or logs.</p>
 <p>These fixed defaults target the four-agent workload. They bound admitted requests and waiting work, not network connection counts or all operating-system allocations. Sustained throughput and the mixed-traffic latency budget remain subject to the roadmap's measured acceptance gate.</p>
+<p>Successful inline-image OCR may use a <a href="../extraction-reuse/">bounded short-lived result cache</a>. Cache hits still charge request budgets and apply current policy; helper slots are needed only for actual helper executions. The cache retains up to 4 MiB of extracted text for 30 seconds and does not change admission bounds.</p>
 
 
 
@@ -1662,13 +1693,13 @@
         
         
           
-          <a href="../architecture/" class="md-footer__link md-footer__link--next" aria-label="Next: Life of a request">
+          <a href="../extraction-reuse/" class="md-footer__link md-footer__link--next" aria-label="Next: Repeated image extraction">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Life of a request
+                Repeated image extraction
               </div>
             </div>
             <div class="md-footer__button md-icon">
