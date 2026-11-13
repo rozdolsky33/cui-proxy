@@ -36,7 +36,7 @@ Interfaces: consumes Task 1 pre-forward persistence contract and existing Vault 
 
 ### Task 3: Operations contract and integration
 Files: docs/vault-recovery.md, navigation/manual, verification results and roadmap; update Task 09 integrated status after its merge.
-- [ ] Document saved versus ephemeral state, crash contract and failed-save behavior, shared-agent versus unrelated-workspace boundaries, lifetime lock, retention/no-eviction and safe retirement. Record measurement and storage limitations.
-- [ ] Rebuild manual; run full Go race, Python workflow, vet/staticcheck, HTTP corpus and manual verification with captured output; expected all zero.
+- [x] Document saved versus ephemeral state, crash contract and failed-save behavior, shared-agent versus unrelated-workspace boundaries, lifetime lock, retention/no-eviction and safe retirement. Record measurement and storage limitations.
+- [x] Rebuild manual; run full Go race, Python workflow, vet/staticcheck, HTTP corpus and manual verification with captured output; expected all zero.
 - [ ] Perform one fresh whole-branch review, fix material findings with RED/GREEN and affected/full gates; archive rulings and defer minors.
 - [ ] Push/PR, require exact-head CI/security gates, merge and synchronize clean main; continue the roadmap.

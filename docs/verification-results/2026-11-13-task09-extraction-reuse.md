@@ -1,6 +1,6 @@
 # Task 09 extraction reuse evidence — 2026-11-13
 
-Status: final local validation complete; branch review and remote integration pending. Task 08 remains open; sustained qualification is not claimed.
+Status: integrated through [PR #43](https://github.com/rozdolsky33/cui-proxy/pull/43), squash `5509f3a`, after independent review with no findings and all CI/security/packaging gates passed. Task 08 remains open; sustained qualification is not claimed.
 
 ## Method and provenance
 

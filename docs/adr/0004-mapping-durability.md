@@ -1,6 +1,6 @@
 # ADR 0004: Persist file-vault mappings before forwarding
 
-- Status: Accepted for implementation; verification and integration in progress.
+- Status: Accepted
 - Date: 2026-11-13
 - Related: Task 10 mapping lifetime and recovery.
 
@@ -25,3 +25,11 @@ The guarantee concerns successful filesystem operations and process crashes, not
 ## Verification
 
 Task 10 requires pre-forward snapshot inspection, failure/refusal/retry, metadata-only routes, cancellation, concurrent checkpoints, crash/restart exact restoration, lifetime locking and growth measurements. Record costs at 1,000 and 10,000 mappings and preserve the open mixed-text performance gate. No sustained qualification follows from this ADR.
+
+## Operability
+
+Roll out without changing the encrypted snapshot format. Monitor HTTP 503 `vault` refusals and value-free save-error kinds; repair storage and retry without deleting mappings. Preserve the same vault/key pair across restart and drain cooperating agents before retiring histories. A healthy listener is not a durability check. Older binaries can read the same format, but rollback removes the pre-forward guarantee and reintroduces the periodic-save crash window.
+
+## Status log
+
+- 2026-11-13: Accepted after the pre-forward persistence regression reproduced model-visible mapping loss; implementation and recovery verification proceed under Task 10.

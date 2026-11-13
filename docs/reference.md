@@ -61,16 +61,15 @@ credential exceptions.
 
 ### Vault fields
 
+File mode checkpoints mappings before forwarding and refuses requests if saving fails. See [mapping lifetime and recovery](vault-recovery.md) for crash guarantees, storage repair, shared-agent boundaries and retention limits.
+
 | YAML field | Loader default | Accepted value and behavior | Apply |
 | --- | --- | --- | --- |
 | `vault.mode` | `memory` | `memory` or `file`. Memory mappings and their random key last only for the process. | Restart |
 | `vault.file` | Empty | Required in file mode: encrypted mapping file. A damaged or unreadable existing vault stops startup rather than being overwritten. | Restart |
 | `vault.key_file` | Empty | Required in file mode: 32-byte key file. Created with mode 0600 if no existing vault requires an existing key. Keys with broader permissions are refused. | Restart |
 
-File mode uses AES-256-GCM and format `CUIV2`. It saves changed mappings every
-30 seconds and on orderly shutdown; a crash can lose newer changes. One process
-holds a lifetime lock on the file vault. Keep the key, encrypted vault and parent
-directory private. Reload preserves the live mappings in either mode.
+File mode uses AES-256-GCM and format `CUIV2`. It checkpoints mappings before forwarding, saves other changes every 30 seconds, and saves on shutdown. Unforwarded changes can be lost on a crash. One process holds a lifetime lock on the file vault. Keep the key, encrypted vault and parent directory private. Reload preserves live mappings in either mode. See [mapping recovery](vault-recovery.md).
 
 After a memory-mode restart, old synthetics in client history are unknown to
 the new vault and cannot be restored. Read [architecture](architecture.md) for

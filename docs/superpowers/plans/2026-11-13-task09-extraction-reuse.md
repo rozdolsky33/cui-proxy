@@ -38,5 +38,5 @@ Files: docs/extraction-reuse.md, manual/navigation, verification results and roa
 - [x] Measure exact image reuse patterns and compare repeated and unique image runs against unchanged main; capture private evidence and report aggregate latency/helper work/RSS.
 - [x] Retest mixed text fairness with the original target; document retained plaintext lifetime, helper-upgrade invalidation limits and evidence limitations.
 - [x] Run full Go race, Python workflow, vet/staticcheck, HTTP corpus and manual verification; all exited zero before the frozen campaign. Re-run affected gates if further code changes occur.
-- [ ] Fresh whole-branch review, one RED/GREEN fix pass for material findings; archive all rulings and defer minors.
-- [ ] Push/PR, require all CI/security gates on exact head, merge and synchronize clean main.
+- [x] Fresh whole-branch review, one RED/GREEN fix pass for material findings; archive all rulings and defer minors.
+- [x] Push/PR, require all CI/security gates on exact head, merge and synchronize clean main.

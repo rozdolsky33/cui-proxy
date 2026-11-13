@@ -90,3 +90,7 @@ operation, replace/remove that content locally, then start a fresh session with
 only permitted context if the client keeps resending it. Reopening the same
 session or repeating the same request is not a remedy. The proxy never deletes
 context or relaxes policy automatically.
+
+## Vault persistence refusal
+
+HTTP 503 with reason `vault` means the required mapping checkpoint failed. The request was not forwarded. Repair storage space, path availability or permissions, then retry; preserve the vault and its key. Recovery metadata classifies this as a `dependency` requiring `after_repair`. See [mapping recovery](vault-recovery.md).
