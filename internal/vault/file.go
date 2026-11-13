@@ -51,6 +51,10 @@ func newGCMRaw(key []byte) (cipher.AEAD, error) {
 // Save writes the vault encrypted with AES-256-GCM using the vault key. The
 // write is atomic: temp file (0600) in the same directory, fsync, rename.
 func (v *Vault) Save(path string) error {
+	return v.save(path, syncDirectory)
+}
+
+func (v *Vault) save(path string, syncDir func(string) error) error {
 	gcm, err := newGCM(v.key)
 	if err != nil {
 		return err
@@ -103,9 +107,8 @@ func (v *Vault) Save(path string) error {
 		os.Remove(tmpName)
 		return fmt.Errorf("vault: save: %w", err)
 	}
-	if d, err := os.Open(dir); err == nil {
-		d.Sync()
-		d.Close()
+	if err := syncDir(dir); err != nil {
+		return fmt.Errorf("vault: directory sync: %w", err)
 	}
 	return nil
 }
@@ -176,4 +179,16 @@ func firstByte(b []byte) byte {
 		}
 	}
 	return 0
+}
+
+func syncDirectory(dir string) error {
+	d, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	err = d.Sync()
+	if cerr := d.Close(); err == nil {
+		err = cerr
+	}
+	return err
 }

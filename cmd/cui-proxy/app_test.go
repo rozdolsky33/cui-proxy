@@ -560,9 +560,12 @@ func TestVaultFilePeriodicSave(t *testing.T) {
 			}
 		}
 	})
-	px, _ := a.Addrs()
-	ask(t, px, realIP)
-	syn := up.next(t)
+	// Request mappings now checkpoint before forwarding. Allocate directly to
+	// exercise the periodic backstop for changes not exposed by a request.
+	syn, err := a.vault.Pseudonym("ipv4", realIP)
+	if err != nil {
+		t.Fatal("mapping allocation failed")
+	}
 	select {
 	case n := <-saved:
 		if n < 1 {

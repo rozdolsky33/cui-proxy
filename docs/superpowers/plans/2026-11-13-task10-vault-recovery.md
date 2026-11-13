@@ -20,11 +20,11 @@ No secrets or fixture contents in tool output. No mapping eviction, per-agent va
 ### Task 1: Characterize and enforce the durability boundary
 Files: cmd/cui-proxy/vault_recovery_test.go, app.go; internal/proxy/proxy.go and persistence_test.go; internal/vault/file.go and durability_test.go; docs/adr/0004-mapping-durability.md.
 Interfaces: proxy.Deps.PersistMappings func(context.Context) error; App.persistMappings(ctx context.Context) error; App.saveIfChanged() error serialized by saveMu; vault.Save(path string) error must propagate directory-sync failures.
-- [ ] Add an app-level regression that inspects the encrypted snapshot inside the upstream handler, before shutdown or the periodic timer; require every forwarded synthetic to restore exactly. Observe RED on current periodic-only behavior.
-- [ ] Add failure/refusal/retry, pre-cancelled forwarding and concurrent checkpoint tests. Include header-only mapping persistence and memory-mode no-op assertions.
-- [ ] Add directory-sync error propagation coverage with a narrow internal injectable save helper; observe RED while the existing implementation ignores errors.
-- [ ] Implement the checkpoint callback before the forward/audit success boundary, value-free 503 vault failure, serialized change-counter handling and directory-sync propagation. Preserve existing disk format and shutdown/periodic retry.
-- [ ] Run captured go test -race ./internal/vault ./internal/proxy ./cmd/cui-proxy; expected exit zero. Record ADR alternatives and observed regression, then commit.
+- [x] Add an app-level regression that inspects the encrypted snapshot inside the upstream handler, before shutdown or the periodic timer; require every forwarded synthetic to restore exactly. Observe RED on current periodic-only behavior.
+- [x] Add failure/refusal/retry, pre-cancelled forwarding and concurrent checkpoint tests. Include header-only mapping persistence and memory-mode no-op assertions.
+- [x] Add directory-sync error propagation coverage with a narrow internal injectable save helper; observe RED while the existing implementation ignores errors.
+- [x] Implement the checkpoint callback before the forward/audit success boundary, value-free 503 vault failure, serialized change-counter handling and directory-sync propagation. Preserve existing disk format and shutdown/periodic retry.
+- [x] Run captured go test -race ./internal/vault ./internal/proxy ./cmd/cui-proxy; expected exit zero. Record ADR alternatives and observed regression, then commit.
 
 ### Task 2: Recovery, collision safety and growth evidence
 Files: cmd/cui-proxy/vault_recovery_test.go; internal/vault/recovery_test.go; scripts/workflow recovery diagnostic only if a separate driver is necessary.

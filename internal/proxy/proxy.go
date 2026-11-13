@@ -63,9 +63,11 @@ type Deps struct {
 	// Snapshot is evaluated exactly once per request, so a reload never
 	// changes an in-flight request's policy or rules.
 	Snapshot func() Snapshot
-	VaultLen func() int // reported via Metrics.SetVaultSize after each request; nil ok
-	Metrics  *metrics.Registry
-	Audit    *audit.Log
+	// PersistMappings commits mappings before forwarding; nil for ephemeral callers.
+	PersistMappings func(context.Context) error
+	VaultLen        func() int // reported via Metrics.SetVaultSize after each request; nil ok
+	Metrics         *metrics.Registry
+	Audit           *audit.Log
 	// Decisions is the persisted decision log (decisionlog.Discard when
 	// audit.enabled is false). One record per request, written before the
 	// request is forwarded; Snapshot().Cfg.AuditBlocks says whether a failed
@@ -80,6 +82,7 @@ type Deps struct {
 const (
 	reasonClient       = "client"
 	reasonOverload     = "overload"
+	reasonVault        = "vault"
 	reasonRoute        = "route"
 	reasonTooLarge     = "body_too_large"
 	reasonCompressed   = "compressed"
@@ -92,8 +95,9 @@ const (
 	// policy.on_error: passthrough never forwards it.
 	reasonPolicy = "policy"
 	// reasonHeader: a request header or the query string holds a detected
-	// value. Headers are never rewritten, so this always blocks, whatever
-	// policy.on_error says.
+	// value that cannot be safely rewritten. Confirmed structured Codex
+	// metadata fields may be sanitized; other detected metadata always blocks,
+	// whatever policy.on_error says.
 	reasonHeader = "header"
 	// reasonStreamRewrite marks a response stream cut because it could not be
 	// rewritten. It is counted with Metrics.IncError, not IncBlocked: the
@@ -116,6 +120,7 @@ const requestIDHeader = "X-Cui-Proxy-Request-Id"
 var blockStatus = map[string]int{
 	reasonClient:        http.StatusForbidden,
 	reasonOverload:      http.StatusServiceUnavailable,
+	reasonVault:         http.StatusServiceUnavailable,
 	reasonRoute:         http.StatusForbidden,
 	reasonTooLarge:      http.StatusRequestEntityTooLarge,
 	reasonCompressed:    http.StatusUnsupportedMediaType,
@@ -132,6 +137,7 @@ var blockStatus = map[string]int{
 var blockMessage = map[string]string{
 	reasonClient:        "browser requests or non-local host names are not allowed",
 	reasonOverload:      "proxy capacity is busy; retry with bounded backoff",
+	reasonVault:         "mappings could not be persisted; retry after storage recovers",
 	reasonRoute:         "unsupported route",
 	reasonTooLarge:      "request body too large",
 	reasonCompressed:    "compressed request bodies are not supported",
@@ -565,6 +571,14 @@ func (h *handler) forward(x *exchange, r *http.Request, route adapter.Route, bod
 		return h.block(x, reasonInternal)
 	}
 	out.Header = upstreamHeader(r.Header)
+
+	// A model-visible synthetic must already be recoverable after a process
+	// crash. Never treat a persistence failure as sanitization passthrough.
+	if h.d.PersistMappings != nil {
+		if err := h.d.PersistMappings(r.Context()); err != nil {
+			return h.block(x, reasonVault)
+		}
+	}
 
 	// The decision is recorded before the request leaves; a failed write
 	// blocks it when audit blocks. Nothing below this line runs otherwise.

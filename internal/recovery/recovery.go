@@ -17,6 +17,7 @@ type Guidance struct {
 }
 
 var catalogue = map[string]Guidance{
+	"vault":                   {Category: "dependency", Retry: "after_repair", Remedy: "Repair vault storage space or permissions, then retry. Preserve the vault and its key; do not delete mappings needed by active or resumable histories."},
 	"overload":                {Category: "overload", Retry: "backoff", Remedy: "Retry with bounded backoff after active work drains. Reduce concurrent requests or body size if saturation persists; keep sanitization enabled."},
 	"policy":                  {Category: "policy", Retry: "after_change", Remedy: "Remove the blocked content from the request and retained history. If the client resends old history, start a fresh session with only permitted content. Keep blocking rules enabled."},
 	"header":                  {Category: "policy", Retry: "after_change", Remedy: "Correct or remove rejected request metadata. Use the request ID with cui-proxy explain; keep detection enabled."},

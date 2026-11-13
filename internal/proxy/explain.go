@@ -6,6 +6,7 @@ import "cui-proxy/internal/recovery"
 // docs/block-diagnostics.md table and docs/verification.md; it names
 // settings and actions, never request data.
 var remedy = map[string]string{
+	reasonVault:    recovery.Lookup("vault", "", "").Remedy,
 	reasonOverload: recovery.Lookup("overload", "", "").Remedy,
 	reasonClient:   "use a native client with a loopback base URL; the proxy API does not accept browser requests or DNS-rebound host names.",
 	reasonPolicy:   recovery.Lookup("policy", "", "").Remedy,
