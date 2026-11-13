@@ -64,7 +64,7 @@ def run_phase(binary,seed_binary,workload,directory,manifest,template,clients=1,
     import performance as perf
     import extraction_fixtures as fixtures
     from performance_stats import summarize_outcomes
-    if type(clients) is not int or clients not in (1,4) or type(count) is not int or count < 1 or count > 100 or count % clients or type(warmup_seconds) not in (int,float) or not math.isfinite(warmup_seconds) or warmup_seconds < 0 or type(warmup_count) is not int or warmup_count < 1:
+    if type(clients) is not int or clients not in (1, 4, 8, 16) or type(count) is not int or (count < 1) or (count > 100) or (type(warmup_seconds) not in (int, float)) or (not math.isfinite(warmup_seconds)) or (warmup_seconds < 0) or (type(warmup_count) is not int) or (warmup_count < 1):
         raise ValueError("invalid_measurement_settings")
     fixtures.validate_coverage(manifest)
     if isinstance(template,int):
@@ -102,13 +102,12 @@ def run_phase(binary,seed_binary,workload,directory,manifest,template,clients=1,
             warm_sessions={row.get("identity",{}).get("session") for row in env.metrics(include_recent=True)["recent_requests"]}
             if not warm_sessions or None in warm_sessions:
                 raise ValueError("stage_coverage_invalid")
-            per_client=count//clients
             def measured_operation(client,serial):
-                index=client*per_client+serial
+                index=client * (count // clients) + min(client, count % clients) + serial
                 fixture=measured_fixtures[0] if repeated or not isinstance(template,int) else measured_fixtures[index]
                 return send(fixture,index,"measurement")
             with perf.ResourceSampler(env) as sampler, StageCollector(env, warm_sessions) as collector:
-                measured,_=perf.closed_loop(measured_operation,clients,per_client=per_client)
+                measured,_=perf.closed_loop(measured_operation,clients,total_count=count)
                 records.extend(measured)
             # Request accounting is finalized just after the terminal response.
             collector.wait_for(count)
@@ -185,7 +184,7 @@ def main():
     parser.add_argument("--fixtures",required=True,type=Path)
     parser.add_argument("--report",required=True,type=Path)
     parser.add_argument("--template",required=True,choices=["0","1","2","3","pdf-text","pdf-scan"])
-    parser.add_argument("--clients",type=int,choices=[1,4],default=1)
+    parser.add_argument("--clients",type=int,choices=[1, 4, 8, 16],default=1)
     parser.add_argument("--count",type=int,default=100)
     parser.add_argument("--warmup-seconds",type=nonnegative_seconds,default=60)
     parser.add_argument("--warmup-count",type=int,default=100)

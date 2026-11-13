@@ -216,3 +216,70 @@ class ExtractionPerformanceTests(unittest.TestCase):
                 with self.assertRaises(OSError): extraction.write_report(report,{})
             self.assertEqual(report.read_bytes(),b"previous evidence")
             self.assertEqual(list(root.iterdir()),[report])
+
+    def test_capacity_clients_preserve_exact_distinct_count(self):
+        import threading
+        import time
+        from unittest.mock import MagicMock, patch
+        import extraction_fixtures as fixtures
+        import extraction_performance as extraction
+        import performance_load as load
+        manifest = dict(version=fixtures.VERSION, seed=1102026, count=100, images=fixtures.recipes('warmup', 100) + fixtures.recipes('measurement', 100), pdfs=fixtures.pdf_recipes())
+        expected = {item["id"] for item in manifest["images"]
+                    if item["template"] == 0 and item in fixtures.recipes("measurement", 100)}
+        self.assertEqual(len(expected), 100)
+        for clients in (8, 16):
+            with self.subTest(clients=clients):
+                seen = []
+                lock = threading.Lock()
+                first = threading.Barrier(clients, timeout=5)
+                local = threading.local()
+                env = MagicMock()
+                env.__enter__.return_value = env
+                env.metrics.return_value = dict(recent_requests=[dict(identity=dict(session="capacity-warm"))])
+                sampler = MagicMock()
+                sampler.__enter__.return_value = sampler
+                sampler.samples = []
+                collector = MagicMock()
+                collector.__enter__.return_value = collector
+                collector.records = []
+                collector.errors = []
+                def make_case(workload, serial, size, fixture, directory, mappings, session, **kwargs):
+                    return dict(body={}, identity=dict(session=session), serial=str(serial), session=session,
+                                fixture_id=fixture["id"]), None
+                def request(url, case, *args, **kwargs):
+                    start = time.monotonic()
+                    measured = case["fixture_id"] in expected
+                    if measured:
+                        with lock:
+                            seen.append(case["fixture_id"])
+                        if not getattr(local, "measured", False):
+                            local.measured = True
+                            first.wait()
+                    time.sleep(0.001)
+                    return dict(operation_id=case["serial"], identity=case["identity"], supported=True, completed=True,
+                                outcome="supported_success", duration_ms=1.0,
+                                started_s=start, finished_s=time.monotonic())
+                with patch.object(perf, "Environment", return_value=env), \
+                     patch.object(perf, "ResourceSampler", return_value=sampler), \
+                     patch.object(load, "StageCollector", return_value=collector), \
+                     patch.object(extraction, "measured_stages", return_value=[]), \
+                     patch.object(extraction, "attachment_case", side_effect=make_case), \
+                     patch.object(perf, "request", side_effect=request):
+                    result = extraction.run_phase(None, None, object(), Path("."), manifest,
+                                                  0, clients=clients, count=100,
+                                                  warmup_seconds=0, warmup_count=clients)
+                self.assertEqual(len(seen), 100)
+                self.assertEqual(set(seen), expected)
+                self.assertEqual(len(result["records"]), 100)
+                self.assertEqual(result["outcomes"]["supported_success"], 100)
+                self.assertEqual(result["achieved_concurrency"], clients)
+
+    def test_capacity_rejects_invalid_clients_before_fixture_work(self):
+        import extraction_performance as extraction
+        for clients in (0, -1, 2, 3, True, 16.0):
+            with self.subTest(clients=clients):
+                with self.assertRaisesRegex(ValueError, "^invalid_measurement_settings$"):
+                    extraction.run_phase(None, None, object(), Path("."), {}, 0,
+                                         clients=clients, count=1,
+                                         warmup_seconds=0, warmup_count=1)

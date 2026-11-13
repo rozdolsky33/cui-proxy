@@ -225,3 +225,58 @@ class PerformanceTests(unittest.TestCase):
             with p.FakeBackend(delay=0.0, interval=0.0) as backend:
                 result = p.request(backend.url, case)
         self.assertEqual(result["outcome"], "supported_success")
+
+    def test_closed_loop_total_count_balances_workers(self):
+        import performance
+        from collections import Counter
+        import threading
+        for clients, expected in ((8, [13, 13, 13, 13, 12, 12, 12, 12]),
+                                  (16, [7, 7, 7, 7, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6])):
+            with self.subTest(clients=clients):
+                first = threading.Barrier(clients, timeout=5)
+                seen = []
+                lock = threading.Lock()
+                def operation(client, serial):
+                    if serial == 0:
+                        first.wait()
+                    with lock:
+                        seen.append((client, serial))
+                    return dict(operation_id=f"capacity-{client}-{serial}",
+                                supported=True, completed=True, duration_ms=1.0,
+                                outcome="supported_success")
+                try:
+                    rows, summary = performance.closed_loop(operation, clients, total_count=100)
+                except TypeError as error:
+                    self.fail(f"Exact total-count scheduling unavailable: {type(error).__name__}")
+                self.assertEqual(len(rows), 100)
+                self.assertEqual(len(set(seen)), 100)
+                counts = Counter(client for client, _ in seen)
+                self.assertEqual([counts[i] for i in range(clients)], expected)
+                self.assertEqual(summary["attempted"], 100)
+
+    def test_closed_loop_total_count_rejects_invalid_and_conflicting_modes(self):
+        import performance
+        def operation(client, serial):
+            self.fail("Invalid scheduling settings must not dispatch work")
+        for total in (0, -1, True, 1.5, float("nan"), float("inf")):
+            with self.subTest(total=total):
+                with self.assertRaises(ValueError):
+                    performance.closed_loop(operation, 4, total_count=total)
+        for kwargs in (dict(per_client=1), dict(duration=1)):
+            with self.subTest(mode=next(iter(kwargs))):
+                with self.assertRaises(ValueError):
+                    performance.closed_loop(operation, 4, total_count=100, **kwargs)
+
+    def test_closed_loop_total_count_retains_unsuccessful_operations(self):
+        import performance
+        def operation(client, serial):
+            return dict(operation_id=f"capacity-{client}-{serial}", supported=True,
+                        completed=serial != 0, duration_ms=1.0,
+                        outcome="supported_success" if serial != 0 else "upstream_failure")
+        try:
+            rows, _ = performance.closed_loop(operation, 8, total_count=100)
+        except TypeError as error:
+            self.fail(f"Exact total-count scheduling unavailable: {type(error).__name__}")
+        self.assertEqual(len(rows), 100)
+        self.assertEqual(sum(row["outcome"] == "upstream_failure" for row in rows), 8)
+        self.assertEqual(sum(row["outcome"] == "supported_success" for row in rows), 92)
