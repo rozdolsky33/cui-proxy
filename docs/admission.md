@@ -27,3 +27,5 @@ Extraction saturation retains the existing `attachment_*_busy` diagnostic and ba
 `/api/metrics` exposes `admission.active`, `admission.queued`, and `admission.reserved_input_bytes`. The `admission_wait` timing stage includes admission acquisition, with the same fixed-cardinality summaries as other stages. Existing extraction active/queued gauges and wait timing remain available. No request bodies, client labels or sensitive values are added to metrics or logs.
 
 These fixed defaults target the four-agent workload. They bound admitted requests and waiting work, not network connection counts or all operating-system allocations. Sustained throughput and the mixed-traffic latency budget remain subject to the roadmap's measured acceptance gate.
+
+Successful inline-image OCR may use a [bounded short-lived result cache](extraction-reuse.md). Cache hits still charge request budgets and apply current policy; helper slots are needed only for actual helper executions. The cache retains up to 4 MiB of extracted text for 30 seconds and does not change admission bounds.

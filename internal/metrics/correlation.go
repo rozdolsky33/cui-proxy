@@ -16,6 +16,7 @@ type Identity struct {
 	Workspace string `json:"workspace,omitempty"`
 }
 type RecentRequest struct {
+	ExtractionCacheHits int64              `json:"extraction_cache_hits"`
 	Time                time.Time          `json:"time"`
 	Identity            Identity           `json:"identity"`
 	WorkspaceAttributed bool               `json:"workspace_attributed"`
@@ -113,7 +114,7 @@ func (r *Registry) observeRecent(id Identity, s observe.Snapshot) {
 		copy(r.correlation.recent, r.correlation.recent[1:])
 		r.correlation.recent = r.correlation.recent[:255]
 	}
-	r.correlation.recent = append(r.correlation.recent, RecentRequest{r.now(), id, id.Workspace != "", stages})
+	r.correlation.recent = append(r.correlation.recent, RecentRequest{Time: r.now(), Identity: id, WorkspaceAttributed: id.Workspace != "", StagesMS: stages, ExtractionCacheHits: s.ExtractionCacheHits})
 }
 func (r *Registry) pruneRecent() {
 	cutoff := r.now().Add(-15 * time.Minute)

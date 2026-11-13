@@ -412,6 +412,7 @@ REPORT_KEYS = REPORT_KEYS | frozenset(['boundary_sha256', 'churn_index', 'final_
 
 REPORT_KEYS = set(REPORT_KEYS) | {"template", "repeated", "stage_samples", "relay_samples_valid", "added_relay_ms", "added_relay_flush_ms", "upstream_send_ms", "upstream_flush_ms", "relay_ms", "relay_flush_ms", "warmup_count", "warmup_completed", "fixture_generator_version", "tool_versions", "swift", "tesseract", "pdftotext", "pdftoppm", "extraction_generator_sha256", "extraction_runner_sha256", "renderer_sha256", "request_bytes", "resources", "extraction_run", "extraction_wait", "achieved_concurrency"}
 REPORT_KEYS = set(REPORT_KEYS) | {"workload_kind", "text_records", "image_records", "text_unsent", "aborted", "window_start_s", "stage_poll_errors", "text_outcomes", "image_outcomes", "text_completions_per_second", "correlation_enabled", "scheduled", "sent", "completed", "rejected", "client_unsent", "unsent_records", "scheduled_s", "dispatched_s", "reason"}
+REPORT_KEYS = REPORT_KEYS | {"extraction_cache_hits"}
 
 
 
@@ -588,7 +589,7 @@ class Environment(harness.Environment):
             value = json.load(response)
         # Explicit projection: neither correlation data nor audit values enter
         # benchmark evidence. Unavailable runtime heap data remains unavailable.
-        fields = ("stages_ms", "active_requests", "extractor_active", "extractor_queued", "vault_size", "runtime")
+        fields = ('stages_ms', 'active_requests', 'extractor_active', 'extractor_queued', 'vault_size', 'runtime', 'extraction_cache_hits')
         return ({key: value[key] for key in fields if key in value}) | ({"recent_requests": value.get("recent_requests", [])} if include_recent else {})
 
 

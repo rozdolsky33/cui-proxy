@@ -1,6 +1,6 @@
 # Task 08 bounded admission and detector scheduling
 
-**Status: local correctness gates and fresh review pass; CI pending. Mixed latency acceptance remains open.**
+**Status: integrated in PR #42 after local gates, fresh review and all required CI/security/packaging checks passed. Mixed latency acceptance remains open.**
 
 This increment bounds admitted requests and extraction queues and reduces detector CPU latency. It does not qualify the normal workload or complete roadmap Task 08. The unchanged added first-byte target is p95 ≤150 ms and p99 ≤500 ms.
 

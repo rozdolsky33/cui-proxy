@@ -31,6 +31,7 @@ var sizeNames = [5]string{"le_4096", "le_65536", "le_1048576", "le_16777216", "g
 func (r *Registry) ObserveStages(s observe.Snapshot, bytes int) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.extractionCacheHits += s.ExtractionCacheHits
 	for i, seen := range s.Observed {
 		if !seen {
 			continue
@@ -63,6 +64,7 @@ func snapshotStages(rings [len(observe.Names)]stageRing, s *Snapshot) {
 	}
 }
 func (r *Registry) snapshotSizesAndRecent(s *Snapshot) {
+	s.ExtractionCacheHits = r.extractionCacheHits
 	s.RequestSizeBuckets = make(map[string]int64, 5)
 	for i, n := range r.sizeBuckets {
 		s.RequestSizeBuckets[sizeNames[i]] = n

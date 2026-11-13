@@ -263,7 +263,7 @@ class ExtractionPerformanceTests(unittest.TestCase):
                 with patch.object(perf, "Environment", return_value=env), \
                      patch.object(perf, "ResourceSampler", return_value=sampler), \
                      patch.object(load, "StageCollector", return_value=collector), \
-                     patch.object(extraction, "measured_stages", return_value=[]), \
+                     patch.object(extraction, "measured_stages", return_value=[]), patch.object(extraction, "measured_cache_hits", return_value=0), \
                      patch.object(extraction, "attachment_case", side_effect=make_case), \
                      patch.object(perf, "request", side_effect=request):
                     result = extraction.run_phase(None, None, object(), Path("."), manifest,

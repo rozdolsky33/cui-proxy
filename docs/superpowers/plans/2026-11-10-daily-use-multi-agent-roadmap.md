@@ -113,7 +113,7 @@ permission between already authorized tasks.
 | 06 | Improve refusal recovery and dependency preflight | P0 | 03, 05 | done |
 | 07 | Fix the largest measured processing cost | P1 | 04, 05 | done |
 | 08 | Bound contention and protect text-workload fairness | P1 | 04, 07 | in progress |
-| 09 | Make repeated attachment processing efficient | P1 | 04, 05, 08 bounds | ready after Task 08 bounds merge |
+| 09 | Make repeated attachment processing efficient | P1 | 04, 05, 08 bounds | in progress |
 | 10 | Verify mapping lifetime and recovery | P1 | 02, 04, 05 | ready |
 | 11 | Run sustained four-agent acceptance and tune | P0 release gate | 06–10 | blocked |
 | 12 | Establish release and regression gates | P0 release gate | 11 | blocked |
@@ -288,20 +288,22 @@ Bounded admission and detector scheduling are implemented; mixed latency accepta
 
 **Conditional work:** Implement only if repeated extraction is material in Task 04.
 
-- [ ] Measure image reuse across history/retries and extraction queue costs.
-- [ ] Compare no cache with a bounded, process-local extraction cache. Document
+- [x] Measure image reuse across history/retries and extraction queue costs.
+- [x] Compare no cache with a bounded, process-local extraction cache. Document
       sensitive-text retention and scope before implementing a cache.
-- [ ] Key any extraction reuse by attachment content plus extractor version/
+- [x] Key any extraction reuse by attachment content plus extractor version/
       options. Keep fingerprints private; do not turn them into public metrics.
-- [ ] Reapply current sanitization and blocking rules to reused extracted text.
+- [x] Reapply current sanitization and blocking rules to reused extracted text.
       Cache hits must still count toward logical request count/byte/text limits.
-- [ ] Verify eviction, concurrent identical requests, cancellation and policy
+- [x] Verify eviction, concurrent identical requests, cancellation and policy
       reload; do not cache transient failures as permanent refusals.
 
 **Acceptance:** Repeated-image latency or resource use improves measurably,
 current rules cannot be bypassed by a cache hit, memory stays bounded, and
 failed/cancelled extraction does not poison other requests. If retention costs
 outweigh the benefit, close with evidence and retain uncached extraction.
+
+Implementation and local acceptance are complete; review/CI integration is pending. See [Task 09 evidence](../../verification-results/2026-11-13-task09-extraction-reuse.md). The repeated-image cache does not close Task 08's mixed-text latency gap.
 
 ## Task 10 — Verify mapping lifetime and recovery
 
