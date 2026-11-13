@@ -1,6 +1,6 @@
 # Task 08 bounded admission and detector scheduling
 
-**Status: local correctness gates pass; review and CI pending. Mixed latency acceptance remains open.**
+**Status: local correctness gates and fresh review pass; CI pending. Mixed latency acceptance remains open.**
 
 This increment bounds admitted requests and extraction queues and reduces detector CPU latency. It does not qualify the normal workload or complete roadmap Task 08. The unchanged added first-byte target is p95 ≤150 ms and p99 ≤500 ms.
 
@@ -63,3 +63,7 @@ The first full gate sequence passed 23 Go race packages, 268 Python tests, vet a
 The final bounded-worker differential fuzz run completed 41,034 executions with no mismatch against sequential spans and block decisions. The worker budget, unknown/cheap detector fallback, policy-wrapper fallback, panic containment, ordering and uneven-work scheduling have regression coverage.
 
 Final local gates: all 23 Go packages passed `go test -race -json ./...`; all 270 Python workflow tests passed (four opt-in skips); `go vet ./...` and staticcheck with all checks passed; the HTTP corpus passed all 125 scenarios and its final observation assertions. Manual snapshot verification is included in the Go suite.
+
+## Fresh branch review
+
+The independent whole-branch review found no Critical or Important issues across all seven review areas and approved incremental integration subject to CI. One minor was deferred: the historical spec still says round-robin partitions although the implementation and recorded design ruling use dynamic assignment. Sustained qualification, long-duration memory behavior and extraction-reuse effectiveness remain unproven; remote required checks must pass before merge.

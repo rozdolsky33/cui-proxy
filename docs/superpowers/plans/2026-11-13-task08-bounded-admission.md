@@ -45,7 +45,7 @@ Files: docs/admission.md; docs/verification-results/2026-11-13-task08-admission.
 - [x] Run bounded mixed-traffic measurements and report all outcomes, latency and memory; compare with unchanged target, no discarded failures.
 - [x] Document exact bounds, unknown-length behavior and overload recovery; update roadmap status accurately.
 - [x] Full Go race, Python workflow, HTTP corpus, vet/staticcheck and manual checks all exit zero.
-- [ ] Fresh whole-branch review; fix material findings with RED/GREEN proof, archive rulings.
+- [x] Fresh whole-branch review; no material findings; one historical spec wording minor deferred. Rulings retained in the execution ledger and archived at integration.
 - [ ] Push/PR, require passing CI, merge and sync clean main.
 
 ## Measured acceptance follow-up
