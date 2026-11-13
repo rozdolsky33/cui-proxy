@@ -26,10 +26,11 @@ const (
 	Failed
 	Empty
 	Timeout
+	Busy
 )
 
 var categories = [...]string{"binary", "pdf", "image", "file", "audio"}
-var causes = [...]string{"disabled", "reference", "unsupported", "shape", "invalid", "limit", "missing_tool", "failed", "empty", "timeout"}
+var causes = [...]string{"disabled", "reference", "unsupported", "shape", "invalid", "limit", "missing_tool", "failed", "empty", "timeout", "busy"}
 
 // Error contains only enumerated metadata; tool output and input values are discarded.
 type Error struct {
@@ -78,6 +79,7 @@ func Explain(s string) string {
 				"Local attachment extraction failed. Check local Poppler or Tesseract installation, export an unlocked document, or paste text.",
 				"No readable text was extracted. Supply clearer text or paste the text directly.",
 				"Attachment processing timed out or was cancelled. Reduce or split the attachment and retry.",
+				"Local extraction capacity is busy. Retry with bounded backoff or reduce concurrent attachment requests.",
 			}[i]
 		}
 	}

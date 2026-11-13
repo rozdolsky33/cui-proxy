@@ -184,6 +184,25 @@
   }
   function startFeed() { feedStatus("connecting...", false); connect(); }
 
+  function checkReadiness() {
+    var btn = $("preflight"), status = $("preflight-status"), list = $("preflight-tools");
+    btn.disabled = true;
+    status.textContent = "Checking the running service...";
+    clear(list);
+    getJSON("/api/preflight").then(function (r) {
+      status.textContent = (r.ready ? "Ready for the configured policy. " : "Not ready: " + r.probe_code + ". ") +
+        "Running version " + r.version + "; attachment policy: " + r.policy.attachments + ".";
+      (r.tools || []).forEach(function (tool) {
+        list.appendChild(el("li", null, tool.name + ": " + tool.code + ". " + tool.remedy));
+      });
+      if (!r.ready) {
+        list.appendChild(el("li", null, "Follow the reported remedies, then check readiness again. Keep blocking rules enabled."));
+      }
+    }).catch(function () { status.textContent = "Readiness unavailable. Check that the service is running."; })
+      .then(function () { btn.disabled = false; });
+  }
+  $("preflight").addEventListener("click", checkReadiness);
+
   // Test box
   $("test-run").addEventListener("click", function () {
     var btn = $("test-run"), out = $("test-out"), ul = $("test-matches");
@@ -198,6 +217,7 @@
   });
 
   loadConfig();
+  checkReadiness();
   pollMetrics();
   setInterval(pollMetrics, 2000);
   startFeed();

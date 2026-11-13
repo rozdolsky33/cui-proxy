@@ -18,7 +18,7 @@ func TestMetricsStageAPIAndCorrelationOff(t *testing.T) {
 	r.ObserveStages(tr.Snapshot(), 10)
 	r.SetCorrelationEnabled(true)
 	r.ObserveRecent(r.Identity(http.Header{"Session_id": []string{"valid"}}), tr.Snapshot())
-	s := server{Deps{Cfg: func() *config.Config { return &config.Config{} }, Metrics: r, Audit: audit.New(1)}}
+	s := server{d: Deps{Cfg: func() *config.Config { return &config.Config{} }, Metrics: r, Audit: audit.New(1)}}
 	w := httptest.NewRecorder()
 	s.metrics(w, httptest.NewRequest("GET", "/api/metrics", nil))
 	var v map[string]json.RawMessage

@@ -22,6 +22,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"log"
@@ -39,6 +40,7 @@ import (
 	"cui-proxy/internal/decisionlog"
 	"cui-proxy/internal/metrics"
 	"cui-proxy/internal/observe"
+	"cui-proxy/internal/recovery"
 	"cui-proxy/internal/sse"
 	"cui-proxy/internal/synth"
 	"cui-proxy/internal/transform"
@@ -239,18 +241,21 @@ func newTransport() *http.Transport {
 }
 
 type handler struct {
-	d         Deps
-	auditWarn rateLimit
+	d           Deps
+	auditWarn   rateLimit
+	recurrences recovery.Tracker
 }
 
 // exchange is the state of one request.
 type exchange struct {
-	trace       *observe.Trace
-	correlation metrics.CorrelationToken
-	w           *countingWriter
-	id          decisionlog.ID
-	cfg         *config.Config // the request's snapshot config; nil until loaded
-	entry       audit.Entry
+	recurrence   *recovery.Tracker
+	recoveryKind string
+	trace        *observe.Trace
+	correlation  metrics.CorrelationToken
+	w            *countingWriter
+	id           decisionlog.ID
+	cfg          *config.Config // the request's snapshot config; nil until loaded
+	entry        audit.Entry
 	// recorded: the decision record was attempted. There is at most one
 	// attempt per request; later failures (a stream cut, a redirect) do not
 	// rewrite it.
@@ -279,9 +284,10 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer done()
 	id := decisionlog.NewID()
 	x := &exchange{
-		trace: trace,
-		w:     &countingWriter{rw: w},
-		id:    id,
+		trace:      trace,
+		recurrence: &h.recurrences,
+		w:          &countingWriter{rw: w},
+		id:         id,
 		entry: audit.Entry{Time: start, RequestID: id.String(), Adapter: h.d.Adapter.Name(),
 			Method: auditMethod(r.Method), Path: r.URL.Path},
 	}
@@ -804,6 +810,7 @@ func (h *handler) block(x *exchange, reason string) bool {
 // "blocked:<rule>") and the 422 message. Metrics keys stay the reason.
 func (h *handler) blockDiag(x *exchange, reason string, d diag) bool {
 	x.detail = d.detail
+	x.recoveryKind = d.kind
 	var counts map[string]int
 	if d.rule != "" {
 		counts = map[string]int{d.rule: 1}
@@ -845,9 +852,16 @@ func writeError(x *exchange, status int, code, typ, msg string) {
 	h.Set("Cache-Control", "no-store")
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set(requestIDHeader, id)
+	guidance := recovery.Lookup(code, x.recoveryKind, x.detail)
+	if x.recurrence != nil {
+		guidance.Occurrences = x.recurrence.Record(guidance.Code, time.Now())
+	}
+	h.Set("X-Cui-Proxy-Recovery-Code", guidance.Code)
+	h.Set("X-Cui-Proxy-Retry", guidance.Retry)
 	x.w.WriteHeader(status)
-	// The values are constants, safeName output or hex: no characters that need escaping.
-	_, _ = io.WriteString(x.w, `{"error":{"message":"cui-proxy: `+msg+` request_id=`+id+`","type":"`+typ+`","code":"`+code+`","request_id":"`+id+`"}}`)
+	_ = json.NewEncoder(x.w).Encode(map[string]any{"error": map[string]any{
+		"message": "cui-proxy: " + msg + " request_id=" + id, "type": typ, "code": code, "request_id": id, "recovery": guidance,
+	}})
 }
 
 // errKind names an error's category without its text (which may carry the

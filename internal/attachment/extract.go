@@ -224,7 +224,7 @@ func (e *Extractor) run(name string, input []byte, limit int, args ...string) ([
 		}
 	}()
 	if !acquired {
-		return nil, Timeout
+		return nil, Busy
 	}
 	if gauges != nil {
 		gauges.ExtractorActive(1)

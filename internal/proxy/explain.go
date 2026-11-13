@@ -1,12 +1,13 @@
 package proxy
 
+import "cui-proxy/internal/recovery"
+
 // remedy says what would change a block, per reason. The wording follows the
 // docs/block-diagnostics.md table and docs/verification.md; it names
 // settings and actions, never request data.
 var remedy = map[string]string{
 	reasonClient: "use a native client with a loopback base URL; the proxy API does not accept browser requests or DNS-rebound host names.",
-	reasonPolicy: "a blocking rule matched (the strict profile, or a rule with action: block). Expected: remove the value, " +
-		"or use the sanitize profile / a rule without action: block if masking is allowed.",
+	reasonPolicy: recovery.Lookup("policy", "", "").Remedy,
 	reasonHeader: "request metadata could not be safely forwarded. Codex workspaces and cwd are sanitized using the active rules; " +
 		"strict/block rules, malformed metadata, and sensitive values in other headers, query strings or unchanged metadata fields still block. " +
 		"Use the reported kind and rule to diagnose the failure; never disable detection globally to allow a Git remote.",

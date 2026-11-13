@@ -30,6 +30,7 @@ commands:
   check-config -config PATH [-adapter NAME]  validate a config and its rule files
   audit verify [-file P | -config P]   check the decision log's hash chain
   explain [-config P] REQUEST-ID       say why a request was forwarded, sanitized or blocked
+  preflight -config PATH               check dependencies in the running service
   info -config PATH                    print the proxy and dashboard URLs
   test-rules -config PATH              sanitize stdin with the rules (throwaway vault)
   menubar install|uninstall|status     macOS: menu-bar app that runs the proxy in the background
@@ -60,6 +61,8 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return runAudit(rest, stdout, stderr)
 	case "explain":
 		return runExplain(rest, stdout, stderr)
+	case "preflight":
+		return runPreflight(rest, stdout, stderr)
 	case "info":
 		return runInfo(rest, stdout, stderr)
 	case "menubar":

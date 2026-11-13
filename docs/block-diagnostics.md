@@ -53,3 +53,40 @@ Attachment errors retain `reason=sanitize kind=bad_body` and add a safe
 `shape`, `unsupported`, `invalid`, `limit`, `failed`, `empty`, and `timeout`
 distinguish other failures. Details are persisted for `cui-proxy explain` without
 filenames or contents. Old records without details cannot recover the cause.
+
+## Recovery metadata and repeated refusals
+
+Proxy-generated JSON errors retain their existing HTTP status, `error.code`,
+`error.type`, message and request ID. They additionally include `error.recovery`
+with a closed `code`, `category`, `retry`, and fixed `remedy` text. The headers
+`X-Cui-Proxy-Recovery-Code` and `X-Cui-Proxy-Retry` carry the same guidance.
+No original values are included. Already-started streams are still aborted on
+restoration failure; recovery metadata cannot be added after response headers.
+Provider error responses retain provider semantics and are not reclassified.
+
+| Category | Examples | Retry action |
+| --- | --- | --- |
+| policy | blocking rule, rejected metadata | `after_change`: remove rejected content/metadata; keep protection enabled |
+| representation | unsupported route, attachment shape/format, compressed input | `after_change`: use supported input, remove the rejected representation from history |
+| dependency | missing extraction tool, audit storage failure | `after_repair`: repair the service environment or storage first |
+| budget | body/depth/extraction limits, synthetic pool exhaustion, processing timeout | `after_change`: reduce the workload; preserve mappings needed by active sessions |
+| overload | extraction queue deadline (`attachment_*_busy`) | `backoff`: bounded delay and lower attachment concurrency |
+| transient | upstream connection failure | `backoff`: check task state because delivery may be uncertain, then retry with a bound |
+| internal | unclassified failure | `after_repair`: investigate safe logs and request ID before retrying |
+
+For deterministic categories, `category_occurrences` counts that category across
+all clients of one handler in a one-minute window (saturating at one million).
+It is **not** proof of an identical request or a particular client's retry loop.
+The tracker has at most 128 entries, uses only closed diagnostic codes, expires
+old entries and is never persisted. It stores no bodies or content hashes.
+Transient/overload categories have no recurrence count. `cui-proxy explain`
+provides recovery guidance from the persisted reason/attachment detail; it does
+not invent recurrence counts or recover kinds absent from the decision record.
+
+Client retry behavior is advisory: the proxy cannot force Codex or another
+client to honor custom headers/fields. No end-to-end suppression claim is made.
+If the same image or blocked value is retained in history, cancel the retrying
+operation, replace/remove that content locally, then start a fresh session with
+only permitted context if the client keeps resending it. Reopening the same
+session or repeating the same request is not a remedy. The proxy never deletes
+context or relaxes policy automatically.
