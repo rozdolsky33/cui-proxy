@@ -3,10 +3,12 @@ package detect
 import (
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 type regexDetector struct {
 	name, class string
+	required    string
 	re          *regexp.Regexp
 	refine      refiner // nil: accept every match
 	find        finder  // if set, replaces refine: may return several spans per candidate
@@ -21,7 +23,7 @@ func newRegex(name, class, pattern, validate string) (*regexDetector, error) {
 	if err != nil {
 		return nil, fmt.Errorf("detect: rule %q: bad pattern: %w", name, err)
 	}
-	d := &regexDetector{name: name, class: class, re: re}
+	d := &regexDetector{name: name, class: class, re: re, required: detectorLiteral(re)}
 	if validate != "" {
 		r, ok := refiners[validate]
 		if !ok {
@@ -68,6 +70,9 @@ func (d *regexDetector) groupMatches(s string) [][]int {
 }
 
 func (d *regexDetector) Find(s string) []Span {
+	if !d.group && d.required != "" && !strings.Contains(s, d.required) {
+		return nil
+	}
 	var out []Span
 	var ms [][]int
 	if d.group {

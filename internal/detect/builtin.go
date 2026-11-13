@@ -36,9 +36,11 @@ var builtinDefs = []builtinDef{
 func builtinSet(prefix string) []Detector {
 	out := make([]Detector, 0, len(builtinDefs))
 	for _, b := range builtinDefs {
+		compiled := regexp.MustCompile(b.pattern)
 		out = append(out, &regexDetector{
 			name: prefix + b.class, class: b.class,
-			re: regexp.MustCompile(b.pattern), refine: b.refine, find: b.find, group: b.group,
+			required: detectorLiteral(compiled),
+			re:       compiled, refine: b.refine, find: b.find, group: b.group,
 		})
 	}
 	return out
