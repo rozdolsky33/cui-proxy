@@ -99,6 +99,7 @@ nav:
       - Install and upgrade: install.md
       - End-to-end tutorial: tutorial.md
       - Connect Codex: codex.md
+      - Protocol support: protocol-support.md
   - Configure:
       - Configuration walkthrough: configuration.md
       - Rules and synthetic values: rules.md
