@@ -17,6 +17,7 @@ type Guidance struct {
 }
 
 var catalogue = map[string]Guidance{
+	"overload":                {Category: "overload", Retry: "backoff", Remedy: "Retry with bounded backoff after active work drains. Reduce concurrent requests or body size if saturation persists; keep sanitization enabled."},
 	"policy":                  {Category: "policy", Retry: "after_change", Remedy: "Remove the blocked content from the request and retained history. If the client resends old history, start a fresh session with only permitted content. Keep blocking rules enabled."},
 	"header":                  {Category: "policy", Retry: "after_change", Remedy: "Correct or remove rejected request metadata. Use the request ID with cui-proxy explain; keep detection enabled."},
 	"client":                  {Category: "representation", Retry: "after_change", Remedy: "Use a native client with a loopback base URL."},

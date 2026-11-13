@@ -51,7 +51,7 @@ func (r *Registry) ObserveStages(s observe.Snapshot, bytes int) {
 	}
 	r.sizeBuckets[bucket]++
 }
-func snapshotStages(rings [8]stageRing, s *Snapshot) {
+func snapshotStages(rings [len(observe.Names)]stageRing, s *Snapshot) {
 	s.StagesMS = make(map[string]StageLatency)
 	for i, v := range rings {
 		if v.n == 0 {

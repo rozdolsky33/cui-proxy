@@ -259,6 +259,19 @@ class _TimedRaw(io.RawIOBase):
         super().close()
 
 
+def failure_outcome(status, body):
+    """Recognize only the proxy's closed overload response, never arbitrary 503s."""
+    if status == 503:
+        try:
+            payload = json.loads(body)
+            error = payload.get("error") if isinstance(payload, dict) else None
+            if isinstance(error, dict) and error.get("code") == "overload" and error.get("type") == "cui_proxy_blocked":
+                return "proxy_overload"
+        except (ValueError, UnicodeError):
+            pass
+    return "unexpected_proxy_refusal" if status < 500 else "upstream_failure"
+
+
 def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None, *, defer_boundary=False):
     if defer_boundary and (expected_hash is not None or expected_layout_hash is not None):
         raise ValueError("deferred_boundary_arguments")
@@ -307,7 +320,7 @@ def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None
         row["completed"] = True
         if response.status == 200:
             row["outcome"] = "supported_success" if boundary_ok and observer.valid() else "transformation_error"
-        else: row["outcome"] = "unexpected_proxy_refusal" if response.status < 500 else "upstream_failure"
+        else: row["outcome"] = failure_outcome(response.status, response.read(4096) if response.status == 503 else b"")
     except (TimeoutError, socket.timeout): row["outcome"] = "unresolved"
     except (ValueError, KeyError, TypeError, UnicodeError): row["outcome"] = "transformation_error"
     except (OSError, http.client.HTTPException): row["outcome"] = "client_or_model_failure"
@@ -394,7 +407,7 @@ REPORT_KEYS = frozenset("""
  setup_failure phase collection_failed proxy_rss_samples child_rss_samples activity_samples population vault_entries compiled_detectors runtime_environment
  os architecture hardware_model logical_cpus memory_bytes go_version load_average on_ac low_power
  before after runner_sha256 generator_sha256
-""".split()) | OUTCOMES
+""".split()) | OUTCOMES | frozenset({"admission", "active", "queued", "reserved_input_bytes", "admission_wait"})
 REPORT_KEYS = REPORT_KEYS | frozenset(['boundary_sha256', 'churn_index', 'final_vault_population', 'initial_metrics', 'initial_vault_population', 'live_vault_population', 'observed_new_pairs', 'planned_pairs', 'rate', 'unresolved_indices', 'verified_new_pairs', 'warmup_records', 'warmup_resource_samples'])
 
 REPORT_KEYS = set(REPORT_KEYS) | {"template", "repeated", "stage_samples", "relay_samples_valid", "added_relay_ms", "added_relay_flush_ms", "upstream_send_ms", "upstream_flush_ms", "relay_ms", "relay_flush_ms", "warmup_count", "warmup_completed", "fixture_generator_version", "tool_versions", "swift", "tesseract", "pdftotext", "pdftoppm", "extraction_generator_sha256", "extraction_runner_sha256", "renderer_sha256", "request_bytes", "resources", "extraction_run", "extraction_wait", "achieved_concurrency"}

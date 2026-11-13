@@ -44,7 +44,7 @@ func (d Decision) valid() bool { return d == Forwarded || d == Sanitized || d ==
 // block reasons (internal/proxy) plus "audit". A proxy test checks that every
 // proxy block reason is in this set.
 var reasons = map[string]bool{
-	"route": true, "body_too_large": true, "compressed": true, "sanitize": true,
+	"route": true, "overload": true, "body_too_large": true, "compressed": true, "sanitize": true,
 	"unrestorable": true, "bad_request": true, "internal": true, "policy": true,
 	"header": true, "audit": true, "client": true,
 }

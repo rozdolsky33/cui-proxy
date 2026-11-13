@@ -9,9 +9,10 @@ import (
 )
 
 func TestExtractionWaitCancellationGauges(t *testing.T) {
-	slots <- struct{}{}
-	slots <- struct{}{}
-	defer func() { <-slots; <-slots }()
+	releaseA, _ := helperSlots.Acquire(context.Background(), 1)
+	releaseB, _ := helperSlots.Acquire(context.Background(), 1)
+	defer releaseA()
+	defer releaseB()
 	r := metrics.New()
 	tr := observe.NewTrace()
 	tr.Gauges = r

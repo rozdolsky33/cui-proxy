@@ -9,6 +9,7 @@ import (
 type regexDetector struct {
 	name, class string
 	required    string
+	costly      bool
 	re          *regexp.Regexp
 	refine      refiner // nil: accept every match
 	find        finder  // if set, replaces refine: may return several spans per candidate
@@ -23,7 +24,7 @@ func newRegex(name, class, pattern, validate string) (*regexDetector, error) {
 	if err != nil {
 		return nil, fmt.Errorf("detect: rule %q: bad pattern: %w", name, err)
 	}
-	d := &regexDetector{name: name, class: class, re: re, required: detectorLiteral(re)}
+	d := &regexDetector{name: name, class: class, re: re, required: detectorLiteral(re), costly: regexCostly(re)}
 	if validate != "" {
 		r, ok := refiners[validate]
 		if !ok {

@@ -7,14 +7,10 @@ import (
 )
 
 func TestExtractionQueueTimeoutIsBusy(t *testing.T) {
-	for i := 0; i < cap(slots); i++ {
-		slots <- struct{}{}
-	}
-	defer func() {
-		for i := 0; i < cap(slots); i++ {
-			<-slots
-		}
-	}()
+	releaseA, _ := helperSlots.Acquire(context.Background(), 1)
+	releaseB, _ := helperSlots.Acquire(context.Background(), 1)
+	defer releaseA()
+	defer releaseB()
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 	defer cancel()
 	e := New(ctx)

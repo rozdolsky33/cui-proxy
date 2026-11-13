@@ -3,6 +3,7 @@ package attachment
 import (
 	"bytes"
 	"context"
+	"cui-proxy/internal/admission"
 	"cui-proxy/internal/observe"
 	"encoding/base64"
 	"image"
@@ -25,7 +26,7 @@ const (
 	success   Cause = 255
 )
 
-var slots = make(chan struct{}, 2)
+var helperSlots = admission.New(admission.Limits{Active: 2, Queued: 2, Bytes: 2})
 
 // Extractor budgets a single request. It is not shared between requests.
 type Extractor struct {
@@ -211,19 +212,16 @@ func (e *Extractor) run(name string, input []byte, limit int, args ...string) ([
 	if gauges != nil {
 		gauges.ExtractorQueued(1)
 	}
-	acquired := false
+	var release func()
+	var acquireErr error
 	func() {
 		defer endWait()
 		if gauges != nil {
 			defer gauges.ExtractorQueued(-1)
 		}
-		select {
-		case slots <- struct{}{}:
-			acquired = true
-		case <-e.ctx.Done():
-		}
+		release, acquireErr = helperSlots.Acquire(e.ctx, 1)
 	}()
-	if !acquired {
+	if acquireErr != nil {
 		return nil, Busy
 	}
 	if gauges != nil {
@@ -234,7 +232,7 @@ func (e *Extractor) run(name string, input []byte, limit int, args ...string) ([
 		if gauges != nil {
 			gauges.ExtractorActive(-1)
 		}
-		<-slots
+		release()
 	}()
 	path, err := exec.LookPath(name)
 	if err != nil {
