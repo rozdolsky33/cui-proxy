@@ -1,0 +1,18 @@
+# Task 09: bounded reuse of image extraction
+
+## Intent and evidence
+Repeated image extraction should avoid spawning the same OCR helper again without bypassing current policy or request limits. Task 08 measured material extraction/run and queue costs; its mixed campaign still misses the 150 ms target for larger text sizes. The fixture corpus contains 800 unique images and mixed selection varies with operation sequence, so reuse benefits must be measured explicitly; the existing mixed campaign is not assumed to be a cache-hit workload.
+
+## Approach and decisions
+The owner has opted out of routine planning approvals and authorized roadmap execution. These are implementation choices, not preferences attributed to the owner.
+
+Compare uncached extraction with a bounded process-local success cache. Retaining no cache preserves minimum retention but repeats costly OCR. Request-only memoization avoids cross-request retention but does not help retries. Choose short-lived process-local reuse for validated inline PNG/JPEG OCR; leave PDFs uncached because their page and per-page budgets need separate treatment. Concurrent cold misses run independently through the existing bounded helper gate: cancellation or failure of one caller cannot poison another, and no unbounded singleflight waiter queue is added.
+
+Cache at most 32 entries and 4 MiB of raw OCR output, with 30-second expiry. Each entry is at most the existing 2 MiB extraction-output cap. Use LRU eviction and bounded expiry timers; remove and clear retained byte buffers on eviction/expiry. These are bounds on retained cache output, not total RSS or guaranteed secure erasure. Cached output can contain sensitive plaintext until eviction/expiry; process memory compromise remains in scope of the existing local trust model. No cache persistence, original-image retention, public fingerprints or value-bearing telemetry. Do not cache empty, invalid, failed, limited or cancelled extraction.
+
+Keys are private SHA-256 identities of image bytes, validated format, cache/algorithm version, exact helper executable content/path, arguments and the fixed helper environment. Limit executable fingerprint reads to 32 MiB; inability to fingerprint disables reuse and falls back to normal extraction. Resolve current helper identity before every lookup; missing/unreadable/changed helpers cannot make an old entry appear to be a fresh extraction. Recheck identity before storing. External library/language-data changes require process restart to invalidate reuse immediately; expiry limits residual reuse otherwise. Document this limitation.
+
+All MIME/base64/dimension/pixel, count and decoded-byte validation happens before lookup. Every hit charges the logical request count, bytes and text exactly as uncached extraction, including checking raw helper-output size against the remaining output budget before trimming. Current sanitization/block rules always run after extraction, including hits and policy reload. Do not store policy-transformed output. Cancellation is checked before lookup and before publishing a successful result.
+
+## Acceptance
+A repeated-image benchmark improves latency or helper invocation/resource use measurably versus main 046f40b. Unique-image controls remain functional and report overhead. Prove count/byte/text limits on hits, current-policy block after reload, helper identity/options invalidation, expiry/LRU/byte bounds, concurrent callers, and failed/cancelled extraction isolation. Full local and remote gates and one fresh final branch review remain mandatory. Retest Task 08 mixed fairness without relaxing its target; retain its open status unless evidence passes. No sustained qualification is claimed.
