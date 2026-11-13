@@ -108,13 +108,13 @@ permission between already authorized tasks.
 | 01 | Define workloads and acceptance contract | P0 | — | done |
 | 02 | Build deterministic workflow harness | P0 | 01 | done |
 | 03 | Add stage timings and safe workload correlation | P0 | 01, 02 | done |
-| 04 | Establish concurrent performance baseline | P0 | 02, 03 | in progress |
-| 05 | Verify task semantics and long-session compatibility | P0 | 02 | ready |
-| 06 | Improve refusal recovery and dependency preflight | P0 | 03, 05 | blocked |
-| 07 | Fix the largest measured processing cost | P1 | 04, 05 | blocked |
-| 08 | Bound contention and protect text-workload fairness | P1 | 04, 07 | blocked |
-| 09 | Make repeated attachment processing efficient | P1 | 04, 05, 08 | blocked |
-| 10 | Verify mapping lifetime and recovery | P1 | 02, 04, 05 | blocked |
+| 04 | Establish concurrent performance baseline | P0 | 02, 03 | done (baseline not qualified) |
+| 05 | Verify task semantics and long-session compatibility | P0 | 02 | done |
+| 06 | Improve refusal recovery and dependency preflight | P0 | 03, 05 | done |
+| 07 | Fix the largest measured processing cost | P1 | 04, 05 | done |
+| 08 | Bound contention and protect text-workload fairness | P1 | 04, 07 | in progress |
+| 09 | Make repeated attachment processing efficient | P1 | 04, 05, 08 bounds | ready after Task 08 bounds merge |
+| 10 | Verify mapping lifetime and recovery | P1 | 02, 04, 05 | ready |
 | 11 | Run sustained four-agent acceptance and tune | P0 release gate | 06–10 | blocked |
 | 12 | Establish release and regression gates | P0 release gate | 11 | blocked |
 
@@ -270,17 +270,19 @@ designed explicitly. No complete-request bypass cache is assumed safe.
 
 **Likely areas:** proxy admission, attachment extraction scheduling, metrics.
 
-- [ ] Use baseline data to choose bounds for in-flight work, queued work and
+- [x] Use baseline data to choose bounds for in-flight work, queued work and
       estimated memory. Define behavior at each bound.
-- [ ] Ensure cancellation removes queued work and releases resources promptly.
+- [x] Ensure cancellation removes queued work and releases resources promptly.
 - [ ] Separate expensive extraction work from lightweight text requests where
       measurements show interference; prevent starvation.
-- [ ] Add per-workload fairness only where identity can be used reliably; do
+- [x] Add per-workload fairness only where identity can be used reliably; do
       not treat client-supplied labels as a security boundary.
 
 **Acceptance:** Saturation produces a documented bounded response instead of
 unbounded memory/queues. Mixed traffic meets the text fairness target; cancelled
 clients do not consume persistent queue slots. Overload cannot forward originals.
+
+Bounded admission and detector scheduling are implemented; mixed latency acceptance remains open. The [Task 08 measurements](../../verification-results/2026-11-13-task08-admission.md) show pooled added p95 of 125/162/172 ms at 256/768/1024 KiB. Task 09 may proceed after these bounds integrate; retest Task 08 after measured extraction improvements. This sequencing does not waive the 150 ms target.
 
 ## Task 09 — Make repeated attachment processing efficient
 

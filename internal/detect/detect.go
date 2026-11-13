@@ -105,9 +105,5 @@ func BuildForProfile(rules []config.Rule, baseDir, profile string) ([]Detector, 
 // Scan runs every detector over s and returns non-overlapping spans sorted by
 // Start (longest span wins on overlap).
 func Scan(ds []Detector, s string) []Span {
-	var all []Span
-	for _, d := range ds {
-		all = append(all, d.Find(s)...)
-	}
-	return resolve(all)
+	return resolve(scanCandidates(ds, s))
 }

@@ -39,8 +39,8 @@ func builtinSet(prefix string) []Detector {
 		compiled := regexp.MustCompile(b.pattern)
 		out = append(out, &regexDetector{
 			name: prefix + b.class, class: b.class,
-			required: detectorLiteral(compiled),
-			re:       compiled, refine: b.refine, find: b.find, group: b.group,
+			required: detectorLiteral(compiled), costly: regexCostly(compiled),
+			re: compiled, refine: b.refine, find: b.find, group: b.group,
 		})
 	}
 	return out
