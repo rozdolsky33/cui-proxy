@@ -139,3 +139,8 @@ will no longer be inspected by cui-proxy.
 
 See [Life of a request](architecture.md), [Git/SSH troubleshooting](troubleshooting.md),
 and [supported overrides](configuration.md#overrides-that-exist-and-ones-that-do-not).
+
+## Compatibility evidence
+
+See the [protocol support matrix](protocol-support.md) for supported fields,
+stream behavior, attachment limits and deterministic task-effect tests.

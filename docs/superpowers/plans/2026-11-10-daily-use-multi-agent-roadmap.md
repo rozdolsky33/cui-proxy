@@ -202,22 +202,27 @@ Baseline collection and local verification are complete; numerical qualification
 
 **Likely areas:** `internal/adapter/codex/`, `internal/transform/`, workflow corpus.
 
-- [ ] Maintain a client/protocol support matrix covering item types, response
+- [x] Maintain a client/protocol support matrix covering item types, response
       events, transport modes and attachment positions. Unsupported entries
       have explicit diagnostics and tests.
-- [ ] Test repeated history, compaction representations, delegated context,
+- [x] Test repeated history, compaction representations, delegated context,
       reconnect/resume and supported stream variants with synthetic inputs.
-- [ ] Verify commands, arguments, files and configuration edits retain their
+- [x] Verify commands, arguments, files and configuration edits retain their
       intended effects after a round trip. Include quoting and numeric forms.
-- [ ] Separate representational correctness from model reasoning quality:
+- [x] Separate representational correctness from model reasoning quality:
       synthetics may change relationships or tokenization. Measure those
       effects with a small paired live corpus when authorized.
-- [ ] Add regressions for each observed compatibility failure; expand the
+- [x] Add regressions for each observed compatibility failure; expand the
       allowlist only when the protocol form and safe transformation are known.
 
 **Acceptance:** Every advertised workflow passes the deterministic contract;
 live outcomes report model variance and proxy failures separately. No blanket
 acceptance of unknown fields, images or transports is used to make tests pass.
+
+Implementation evidence: [Task 05 results](../../verification-results/2026-11-13-task05-semantics.md)
+and [protocol support matrix](../../protocol-support.md). Deterministic scope is
+qualified; paired live model quality remains explicitly unmeasured (conditional
+on an authorized provider run). No protocol allowlist was expanded.
 
 ## Task 06 — Improve refusal recovery and dependency preflight
 
