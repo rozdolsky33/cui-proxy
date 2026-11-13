@@ -182,19 +182,21 @@ visual verification and screenshots.
 
 ## Task 04 — Establish concurrent performance baseline
 
-- [ ] Add Go benchmarks for detection, request walking and restoration with
+- [x] Add Go benchmarks for detection, request walking and restoration with
       controlled rule counts, content sizes and vault sizes.
-- [ ] Run the workflow harness at 1/4/8/16 concurrent clients for text-only,
+- [x] Run the workflow harness at 1/4/8/16 concurrent clients for text-only,
       attachment-only and mixed traffic; report offered load and completions.
-- [ ] Collect CPU, allocation, heap and lock-contention profiles locally.
-- [ ] Measure long-history rescanning, audit-write latency, mapping churn and
+- [x] Collect CPU, allocation, heap and lock-contention profiles locally.
+- [x] Measure long-history rescanning, audit-write latency, mapping churn and
       restoration-index rebuilding rather than inferring their cost.
-- [ ] Compare proxy and bypass under identical backend pacing; report p50/p95/
+- [x] Compare proxy and bypass under identical backend pacing; report p50/p95/
       p99, throughput, memory, queue delay and failure counts.
 
 **Acceptance:** Repeated runs show variation and identify the dominant cost
 with evidence, or show that all normal-tier performance targets already pass.
 Publish a safe baseline summary; keep detailed profiles local.
+
+Baseline collection and local verification are complete; numerical qualification remains false. See the [measured baseline and limitations](../../verification-results/2026-11-11-task04-baseline-results.md). Final independent review and integration are tracked with the baseline implementation plan.
 
 ## Task 05 — Verify task semantics and long-session compatibility
 

@@ -46,30 +46,34 @@ Use a dedicated performance runner alongside the correctness harness. Turning th
 **Files:** create `scripts/workflow/performance_workload.py`, `scripts/workflow/test_performance_workload.py`; add benchmark files beside detection, adapter request walking and transformation/restoration implementations.
 **Interface:** generator returns seed/operation metadata plus private local request/oracle data; reports receive only metadata. Tier settings come directly from workload-contract sections 3 and 5.
 
-- [ ] Test exact configured rule/dictionary populations, payload byte ranges, supported shapes, vault-state populations, reproducibility and tier rejection.
-- [ ] Implement normal and stress fixtures with deterministic size construction and isolated file vaults. Validate transformations using existing oracles.
-- [ ] Add Go benchmarks varying rule count, input size and live mappings; include long-history rescans and restorer index rebuilding.
-- [ ] Run captured unit/race checks and benchmark smoke; make no performance claim yet.
+- [x] Test exact configured rule/dictionary populations, payload byte ranges, supported shapes, vault-state populations, reproducibility and tier rejection.
+- [x] Implement normal and stress fixtures with deterministic size construction and isolated file vaults. Validate transformations using existing oracles.
+- [x] Add Go benchmarks varying rule count, input size and live mappings; include long-history rescans and restorer index rebuilding.
+- [x] Run captured unit/race checks and benchmark smoke; make no performance claim yet.
 
 ## Task 3 — Matched load runner and measurements
 
 **Files:** create `scripts/workflow/performance.py`, `scripts/workflow/test_performance.py`; extend reusable environment helpers only where needed.
 **Interface:** CLI accepts binary, tier, concurrency, seed, measurement duration, repetitions and private report path. A short smoke mode always reports `performance_qualified: false`.
 
-- [ ] Test pacing, attempt/completion accounting, timeout/cancellation cleanup, pair-key stability and missing metrics behavior with controlled clocks/backends.
-- [ ] Run text-only, attachment-only and mixed workloads at 1/4/8/16 clients; reuse independent semantic oracles and record achieved concurrency.
-- [ ] Use matched separate proxy/bypass runs with identical backend scripts. Record first byte, end-to-end completion, decoded logical prefix relay timing, stage snapshots, queue wait and outcome counts.
-- [ ] Exercise real OCR/PDF separately from the deterministic stand-in; label tool versions and source generation parameters. Missing tools make qualification incomplete, not successful.
-- [ ] Run smoke against an isolated binary and test cleanup on deliberate failure before long measurements.
+- [x] Test pacing, attempt/completion accounting, timeout/cancellation cleanup, pair-key stability and missing metrics behavior with controlled clocks/backends.
+- [x] Run text-only, attachment-only and mixed workloads at 1/4/8/16 clients; reuse independent semantic oracles and record achieved concurrency.
+- [x] Use matched separate proxy/bypass runs with identical backend scripts. Record first byte, end-to-end completion, decoded logical prefix relay timing, stage snapshots, queue wait and outcome counts.
+- [x] Exercise real OCR/PDF separately from the deterministic stand-in; label tool versions and source generation parameters. Missing tools make qualification incomplete, not successful.
+- [x] Run smoke against an isolated binary and test cleanup on deliberate failure before long measurements.
 
 ## Task 4 — Profiles, repeated baseline and bottleneck report
 
 **Files:** add local profiling support to benchmark/runner tooling and a safe summary under `docs/verification-results/`; update roadmap and harness guide.
 
-- [ ] Collect CPU, allocation, heap and mutex/block profiles locally with fixed private paths. Include audit durability cost and growing-vault effects without exposing request values.
-- [ ] Perform contract warm-up and repeated measurement windows, including its ten-minute throughput windows. Record environment/load and per-run variation; avoid arbitrary shorter qualification runs.
-- [ ] Evaluate normal-tier thresholds, report stress capacity separately, and identify the dominant measured cost or demonstrate all required normal-tier gates pass.
+- [x] Collect CPU, allocation, heap and mutex/block profiles locally with fixed private paths. Include audit durability cost and growing-vault effects without exposing request values.
+- [x] Perform contract warm-up and repeated measurement windows, including its ten-minute throughput windows. Record environment/load and per-run variation; avoid arbitrary shorter qualification runs.
+- [x] Evaluate normal-tier thresholds, report stress capacity separately, and identify the dominant measured cost or demonstrate all required normal-tier gates pass.
 - [ ] Run final correctness/race/lint checks and independent review; link evidence and limitations in the Task 04 completion record.
+
+## Current completion record — 2026-11-13
+
+Reference and supplemental collection, profiling, acceptance analysis, and final local Python/race/lint checks are complete. Numerical performance qualification remains false. The [consolidated baseline](../../verification-results/2026-11-11-task04-baseline-results.md) and its aggregate appendix retain failures and provenance. Independent final review and PR integration remain pending; historical progress notes below describe earlier stages and are not the current collection status.
 
 ## Starting inventory
 

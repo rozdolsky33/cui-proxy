@@ -58,11 +58,11 @@
 
 **Files:** `scripts/workflow/README.md`, Task04 baseline report, original baseline plan and roadmap completion record.
 
-- [ ] With churn finished, run captured full Python discovery, native extraction/mixed smoke, Go race tests and lint as required; resolve failures without weakening checks.
-- [ ] Record clean new runner/build provenance. Run six template0 distinct-image phases (8/16 clients ×3 repetitions) and eighteen mixed arms (1/8/16 clients ×3 repetitions ×proxy/bypass), serially with the design's warm-up/windows and no competing tests.
-- [ ] Independently verify counts, class partition, concurrency, warm-up/window boundaries, semantic outcomes, stage coverage and resources; preserve failures and incomplete observations.
-- [ ] Publish separate safe per-repetition tables including medians/tails, completion counts, timings and memory. Link the original reference evidence without pooling source revisions or declaring qualification.
-- [ ] Reconcile every Task04 requirement, including the remaining median/completion summaries, churn evidence and earlier implementation checks. Do not check off unproven requirements.
+- [x] With churn finished, run captured full Python discovery, native extraction/mixed smoke, Go race tests and lint as required; resolve failures without weakening checks.
+- [x] Record clean new runner/build provenance. Run six template0 distinct-image phases (8/16 clients ×3 repetitions) and eighteen mixed arms (1/8/16 clients ×3 repetitions ×proxy/bypass), serially with the design's warm-up/windows and no competing tests.
+- [x] Independently verify counts, class partition, concurrency, warm-up/window boundaries, semantic outcomes, stage coverage and resources; preserve failures and incomplete observations.
+- [x] Publish separate safe per-repetition tables including medians/tails, completion counts, timings and memory. Link the original reference evidence without pooling source revisions or declaring qualification.
+- [x] Reconcile every Task04 requirement, including the remaining median/completion summaries, churn evidence and earlier implementation checks. Do not check off unproven requirements.
 - [ ] Obtain one fresh whole-branch review, fix material findings with regression evidence, then commit, push, create PR, merge only after required checks, and synchronize clean primary main under standing authorization.
 
 ## Self-review

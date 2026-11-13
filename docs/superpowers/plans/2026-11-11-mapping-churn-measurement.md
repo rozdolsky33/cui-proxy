@@ -4,7 +4,7 @@ Continue Task 04 under the daily-use workload contract. This is diagnostic capac
 
 ## Required behavior
 
-Start with the normal policy and 10,000 prepopulated original/class pairs. Offer one new deterministic pair every 0.6 seconds (100 per minute), bounded to four in-flight requests, for 600 seconds and three repetitions. Each 1 MiB request retains the normal request shapes and sensitive-value population, substituting exactly one existing occurrence with a fresh pair of the same class. Warm up with existing pairs only for at least 60 seconds and 100 successful operations. Record scheduled, sent, unsent, completed and supported-success counts without dropping failures. Never count a scheduled but unsent pair as an actual new mapping.
+Start with the normal policy and 10,000 prepopulated original/class pairs. Offer one new deterministic pair every 0.6 seconds (100 per minute), bounded to four in-flight requests, for 600 seconds and three repetitions. Each 1 MiB request retains the normal request shapes and sensitive-value population, replacing one selected original/class pair at its existing repeated occurrences with a fresh pair of the same class. Warm up with existing pairs only for at least 60 seconds and 100 successful operations. Record scheduled, sent, unsent, completed and supported-success counts without dropping failures. Never count a scheduled but unsent pair as an actual new mapping.
 
 Use the normal corpus prefix of the vault-tier generator for initial state and its disjoint suffix for fresh values; verify policy equality, prefix identity, uniqueness, class identity and body-size limits. Preserve all negative controls and semantic stream checks.
 
