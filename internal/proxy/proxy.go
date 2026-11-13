@@ -386,6 +386,8 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 	release, readLimit, admissionErr := admit(r, limit, x.trace)
 	if admissionErr != nil {
 		w.Header().Set("Retry-After", "1")
+		// Avoid net/http draining an unread slow HTTP/1 body before the refusal.
+		w.Header().Set("Connection", "close")
 		return h.block(x, reasonOverload)
 	}
 	defer release()

@@ -1,11 +1,13 @@
 package proxy
 
 import (
+	"bufio"
 	"context"
 	"cui-proxy/internal/admission"
 	"cui-proxy/internal/decisionlog"
 	"errors"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -256,4 +258,33 @@ func TestAdmissionAuditFailureStillDoesNotForward(t *testing.T) {
 	if s.AuditWriteFailed != 1 || s.Admission != (admission.State{}) || s.StagesMS["admission_wait"].Samples != 1 {
 		t.Fatal("missing safe audit/admission instrumentation")
 	}
+}
+
+func TestAdmissionRefusesSlowHTTPBodyWithoutDraining(t *testing.T) {
+	h := newHarness(t, nil)
+	defer h.close()
+	release := saturatedAdmission(t)
+	defer release()
+	r := h.req(http.MethodPost, "/v1/responses", "")
+	conn, err := net.Dial("tcp", r.URL.Host)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(time.Second))
+	// Announce a body but deliberately send none. A pre-read overload reply
+	// must not wait for net/http's implicit keep-alive body drain.
+	_, err = io.WriteString(conn, "POST /v1/responses HTTP/1.1\r\nHost: "+r.URL.Host+"\r\nContent-Length: 4096\r\n\r\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := http.ReadResponse(bufio.NewReader(conn), r)
+	if err != nil {
+		t.Fatal("overload response waited for the unread body")
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusServiceUnavailable || !res.Close {
+		t.Fatalf("status=%d close=%v", res.StatusCode, res.Close)
+	}
+	h.noUpstreamCall()
 }

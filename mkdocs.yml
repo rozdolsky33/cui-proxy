@@ -115,6 +115,7 @@ nav:
       - Decision log: decision-log.md
       - Troubleshooting: troubleshooting.md
       - Block diagnostics: block-diagnostics.md
+      - Capacity and overload: admission.md
   - Understand:
       - Life of a request: architecture.md
       - Capabilities and limitations: limitations.md

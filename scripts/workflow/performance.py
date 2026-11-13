@@ -259,6 +259,19 @@ class _TimedRaw(io.RawIOBase):
         super().close()
 
 
+def failure_outcome(status, body):
+    """Recognize only the proxy's closed overload response, never arbitrary 503s."""
+    if status == 503:
+        try:
+            payload = json.loads(body)
+            error = payload.get("error") if isinstance(payload, dict) else None
+            if isinstance(error, dict) and error.get("code") == "overload" and error.get("type") == "cui_proxy_blocked":
+                return "proxy_overload"
+        except (ValueError, UnicodeError):
+            pass
+    return "unexpected_proxy_refusal" if status < 500 else "upstream_failure"
+
+
 def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None, *, defer_boundary=False):
     if defer_boundary and (expected_hash is not None or expected_layout_hash is not None):
         raise ValueError("deferred_boundary_arguments")
@@ -307,7 +320,7 @@ def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None
         row["completed"] = True
         if response.status == 200:
             row["outcome"] = "supported_success" if boundary_ok and observer.valid() else "transformation_error"
-        else: row["outcome"] = "unexpected_proxy_refusal" if response.status < 500 else "upstream_failure"
+        else: row["outcome"] = failure_outcome(response.status, response.read(4096) if response.status == 503 else b"")
     except (TimeoutError, socket.timeout): row["outcome"] = "unresolved"
     except (ValueError, KeyError, TypeError, UnicodeError): row["outcome"] = "transformation_error"
     except (OSError, http.client.HTTPException): row["outcome"] = "client_or_model_failure"
