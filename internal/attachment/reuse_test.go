@@ -1,11 +1,14 @@
 package attachment
 
 import (
+	"bytes"
 	"context"
 	"cui-proxy/internal/observe"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"image"
+	"image/jpeg"
 	"os"
 	"path/filepath"
 	"strings"
@@ -248,5 +251,23 @@ func TestImageReuseEmitsCacheHitAccounting(t *testing.T) {
 	s := trace.Snapshot()
 	if s.ExtractionCacheHits != 1 || !s.Observed[observe.ExtractionWait] || s.Duration[observe.ExtractionWait] != 0 || !s.Observed[observe.ExtractionRun] {
 		t.Fatal("cached extraction accounting incomplete")
+	}
+}
+
+func TestJPEGReuseAcrossRequests(t *testing.T) {
+	counter, c := reuseTool(t, "alpha\n")
+	var encoded bytes.Buffer
+	if err := jpeg.Encode(&encoded, image.NewRGBA(image.Rect(0, 0, 2, 2)), nil); err != nil {
+		t.Fatal(err)
+	}
+	data := "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(encoded.Bytes())
+	for range 2 {
+		out, err := reuseExtract(context.Background(), c, data)
+		if err != nil || out != "alpha" {
+			t.Fatal("JPEG reuse failed")
+		}
+	}
+	if reuseCalls(t, counter) != 1 {
+		t.Fatal("JPEG image repeated helper work")
 	}
 }

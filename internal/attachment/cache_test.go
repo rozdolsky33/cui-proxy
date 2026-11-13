@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -205,5 +206,33 @@ func TestImageCacheIdentityUnreadable(t *testing.T) {
 	defer os.Chmod(path, 0700)
 	if _, ok := imageCacheKey(nil, "png", path, nil, nil); ok {
 		t.Fatal("unreadable helper fingerprinted")
+	}
+}
+
+func TestImageCacheIdentityRejectsFIFOWithoutBlocking(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "helper")
+	if err := syscall.Mkfifo(path, 0700); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan bool, 1)
+	go func() { _, ok := imageCacheKey(nil, "png", path, nil, nil); done <- ok }()
+	select {
+	case ok := <-done:
+		if ok {
+			t.Fatal("nonregular helper accepted")
+		}
+	case <-time.After(time.Second):
+		// Release a blocked reader so even the failing regression leaves no goroutine.
+		f, err := os.OpenFile(path, os.O_RDWR|syscall.O_NONBLOCK, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+		select {
+		case <-done:
+		case <-time.After(time.Second):
+			t.Fatal("blocked fingerprint reader did not clean up")
+		}
+		t.Fatal("fingerprinting blocked on a nonregular helper")
 	}
 }

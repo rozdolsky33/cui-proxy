@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -118,14 +119,20 @@ func imageCacheKey(input []byte, format, path string, args, environment []string
 	if err != nil {
 		return zero, false
 	}
-	f, err := os.Open(absolute)
+	const maxHelperBytes = 32 << 20
+	initial, err := os.Stat(absolute)
+	if err != nil || !initial.Mode().IsRegular() || initial.Size() > maxHelperBytes {
+		return zero, false
+	}
+	// Optional fingerprinting must not block opening a FIFO, including one
+	// swapped into place between stat and open. Normal helper symlinks work.
+	f, err := os.OpenFile(absolute, os.O_RDONLY|syscall.O_NONBLOCK|syscall.O_CLOEXEC, 0)
 	if err != nil {
 		return zero, false
 	}
 	defer f.Close()
 	before, err := f.Stat()
-	const maxHelperBytes = 32 << 20
-	if err != nil || !before.Mode().IsRegular() || before.Size() > maxHelperBytes {
+	if err != nil || !before.Mode().IsRegular() || !os.SameFile(initial, before) || before.Size() > maxHelperBytes {
 		return zero, false
 	}
 	executable := sha256.New()
