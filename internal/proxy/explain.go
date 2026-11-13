@@ -6,8 +6,9 @@ import "cui-proxy/internal/recovery"
 // docs/block-diagnostics.md table and docs/verification.md; it names
 // settings and actions, never request data.
 var remedy = map[string]string{
-	reasonClient: "use a native client with a loopback base URL; the proxy API does not accept browser requests or DNS-rebound host names.",
-	reasonPolicy: recovery.Lookup("policy", "", "").Remedy,
+	reasonOverload: recovery.Lookup("overload", "", "").Remedy,
+	reasonClient:   "use a native client with a loopback base URL; the proxy API does not accept browser requests or DNS-rebound host names.",
+	reasonPolicy:   recovery.Lookup("policy", "", "").Remedy,
 	reasonHeader: "request metadata could not be safely forwarded. Codex workspaces and cwd are sanitized using the active rules; " +
 		"strict/block rules, malformed metadata, and sensitive values in other headers, query strings or unchanged metadata fields still block. " +
 		"Use the reported kind and rule to diagnose the failure; never disable detection globally to allow a Git remote.",

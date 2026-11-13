@@ -79,6 +79,7 @@ type Deps struct {
 // error code and audit.Entry.Blocked.
 const (
 	reasonClient       = "client"
+	reasonOverload     = "overload"
 	reasonRoute        = "route"
 	reasonTooLarge     = "body_too_large"
 	reasonCompressed   = "compressed"
@@ -114,6 +115,7 @@ const requestIDHeader = "X-Cui-Proxy-Request-Id"
 
 var blockStatus = map[string]int{
 	reasonClient:        http.StatusForbidden,
+	reasonOverload:      http.StatusServiceUnavailable,
 	reasonRoute:         http.StatusForbidden,
 	reasonTooLarge:      http.StatusRequestEntityTooLarge,
 	reasonCompressed:    http.StatusUnsupportedMediaType,
@@ -129,6 +131,7 @@ var blockStatus = map[string]int{
 
 var blockMessage = map[string]string{
 	reasonClient:        "browser requests or non-local host names are not allowed",
+	reasonOverload:      "proxy capacity is busy; retry with bounded backoff",
 	reasonRoute:         "unsupported route",
 	reasonTooLarge:      "request body too large",
 	reasonCompressed:    "compressed request bodies are not supported",
@@ -373,6 +376,19 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 	if encoded(r.Header) {
 		return h.block(x, reasonCompressed)
 	}
+	limit := cfg.Policy.MaxBodyBytes
+	if limit <= 0 {
+		limit = defaultMaxBody
+	}
+	if r.ContentLength > limit {
+		return h.block(x, reasonTooLarge)
+	}
+	release, readLimit, admissionErr := admit(r, limit, x.trace)
+	if admissionErr != nil {
+		w.Header().Set("Retry-After", "1")
+		return h.block(x, reasonOverload)
+	}
+	defer release()
 	var metadataReason string
 	var metadataDiag diag
 	func() {
@@ -404,15 +420,11 @@ func (h *handler) serve(x *exchange, w http.ResponseWriter, r *http.Request) boo
 		return h.blockDiag(x, metadataReason, metadataDiag)
 	}
 
-	limit := cfg.Policy.MaxBodyBytes
-	if limit <= 0 {
-		limit = defaultMaxBody
-	}
 	var body []byte
 	var err error
 	func() {
 		defer x.trace.Measure(observe.IngressRead)()
-		body, err = io.ReadAll(http.MaxBytesReader(w, r.Body, limit))
+		body, err = io.ReadAll(http.MaxBytesReader(w, r.Body, readLimit))
 	}()
 	x.entry.BytesIn = len(body)
 	if err != nil {

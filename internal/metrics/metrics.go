@@ -3,6 +3,8 @@
 package metrics
 
 import (
+	"cui-proxy/internal/admission"
+	"cui-proxy/internal/observe"
 	"sort"
 
 	"sync"
@@ -22,6 +24,7 @@ const (
 // passthrough, replacements, replacements_by_rule, downgraded, requests_per_minute,
 // overhead_ms{p50,p95,samples}, vault_size, uptime_seconds, audit_write_failed.
 type Snapshot struct {
+	Admission          admission.State         `json:"admission"`
 	Runtime            RuntimeStats            `json:"runtime"`
 	StagesMS           map[string]StageLatency `json:"stages_ms"`
 	ActiveRequests     int64                   `json:"active_requests"`
@@ -64,7 +67,7 @@ type rpmSlot struct {
 
 // Registry is safe for concurrent use. It implements transform.Sink.
 type Registry struct {
-	stageRings                                       [8]stageRing
+	stageRings                                       [len(observe.Names)]stageRing
 	sizeBuckets                                      [5]int64
 	activeRequests, extractorQueued, extractorActive atomic.Int64
 	correlation                                      correlation
@@ -164,6 +167,7 @@ func (r *Registry) Snapshot() Snapshot {
 	s := Snapshot{
 		Runtime:        runtimeSnapshot(),
 		Requests:       r.requests.Load(),
+		Admission:      admission.Requests.Snapshot(),
 		ActiveRequests: r.activeRequests.Load(), ExtractorQueued: r.extractorQueued.Load(), ExtractorActive: r.extractorActive.Load(),
 		Blocked:      r.blocked.Load(),
 		Passthrough:  r.passthrough.Load(),

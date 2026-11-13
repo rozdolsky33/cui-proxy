@@ -102,6 +102,8 @@ func TestControlledIngressMetadataAndUpstreamAttribution(t *testing.T) {
 		return Snapshot{cfg, transform.NewSanitizer(nil, nil, nil), transform.NewRestorer(nil)}
 	}, Metrics: r, Audit: audit.New(1), Decisions: stageRecorder{}, Transport: delayedTransport{}, Logf: func(string, ...any) {}})
 	req := httptest.NewRequest("POST", "http://localhost/test", nil)
+
+	req.ContentLength = -1 // Custom reader has unknown length.
 	req.Body = delayedBody{strings.NewReader("{}")}
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)

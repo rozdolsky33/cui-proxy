@@ -394,7 +394,7 @@ REPORT_KEYS = frozenset("""
  setup_failure phase collection_failed proxy_rss_samples child_rss_samples activity_samples population vault_entries compiled_detectors runtime_environment
  os architecture hardware_model logical_cpus memory_bytes go_version load_average on_ac low_power
  before after runner_sha256 generator_sha256
-""".split()) | OUTCOMES
+""".split()) | OUTCOMES | frozenset({"admission", "active", "queued", "reserved_input_bytes", "admission_wait"})
 REPORT_KEYS = REPORT_KEYS | frozenset(['boundary_sha256', 'churn_index', 'final_vault_population', 'initial_metrics', 'initial_vault_population', 'live_vault_population', 'observed_new_pairs', 'planned_pairs', 'rate', 'unresolved_indices', 'verified_new_pairs', 'warmup_records', 'warmup_resource_samples'])
 
 REPORT_KEYS = set(REPORT_KEYS) | {"template", "repeated", "stage_samples", "relay_samples_valid", "added_relay_ms", "added_relay_flush_ms", "upstream_send_ms", "upstream_flush_ms", "relay_ms", "relay_flush_ms", "warmup_count", "warmup_completed", "fixture_generator_version", "tool_versions", "swift", "tesseract", "pdftotext", "pdftoppm", "extraction_generator_sha256", "extraction_runner_sha256", "renderer_sha256", "request_bytes", "resources", "extraction_run", "extraction_wait", "achieved_concurrency"}
