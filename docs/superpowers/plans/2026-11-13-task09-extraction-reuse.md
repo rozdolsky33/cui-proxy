@@ -20,10 +20,10 @@
 ### Task 1: Bounded success cache and private identity
 Files: internal/attachment/cache.go, cache_test.go.
 Interfaces: newTextCache(entries, bytes int, ttl time.Duration) *textCache; get(key [32]byte) ([]byte,bool); put(key [32]byte, data []byte); close(). imageCacheKey(input []byte, format, path string, args, environment []string) ([32]byte,bool).
-- [ ] Add tests for LRU/entry/byte bounds, owned copies, expiry without access, concurrent use and close; observe RED.
-- [ ] Implement mutex-protected LRU, bounded expiry timers and buffer clearing; race tests GREEN.
-- [ ] Add identity tests for input/format/path/executable/options/environment changes and unreadable/oversized executable fallback; observe RED then implement private hashes; tests GREEN.
-- [ ] Commit after targeted race verification.
+- [x] Add tests for LRU/entry/byte bounds, owned copies, expiry without access, concurrent use and close; observe RED.
+- [x] Implement mutex-protected LRU, bounded expiry timers and buffer clearing; race tests GREEN.
+- [x] Add identity tests for input/format/path/executable/options/environment changes and unreadable/oversized executable fallback; observe RED then implement private hashes; tests GREEN.
+- [x] Commit after targeted race verification.
 
 ### Task 2: Image integration and policy/budget proof
 Files: internal/attachment/extract.go, reuse_test.go; internal/adapter/codex or proxy integration tests.
