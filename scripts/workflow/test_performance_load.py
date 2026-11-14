@@ -140,6 +140,14 @@ class LoadTests(unittest.TestCase):
             runs=[]
             for bypass in (True,False):
                 result=load.run_fairness_phase(os.environ["CUI_PROXY_BINARY"],os.environ["CUI_SEED_BINARY"],Workload(),root/"fixtures",manifest,bypass=bypass,text_count=2,warmup_seconds=0,warmup_count=4)
+                if bypass:
+                    self.assertIsNone(result["request_stage_samples"])
+                else:
+                    for kind in ("text", "image"):
+                        group = result["request_stage_samples"][kind + "_requests"]
+                        expected = len(result[kind + "_records"])
+                        self.assertEqual(group["requests"], expected)
+                        self.assertEqual(group["coverage"]["mapping_checkpoint"], expected)
                 self.assertEqual(result["text_outcomes"]["supported_success"],2)
                 self.assertGreaterEqual(result["image_outcomes"]["supported_success"],3)
                 self.assertFalse(result["aborted"])

@@ -53,7 +53,7 @@ func TestCheckpointStageRecordsEveryInvokedOutcome(t *testing.T) {
 				t.Fatalf("checkpoint observed=%v, want %v", seen, expectedCalls == 1)
 			}
 			if seen && stage.Samples != 1 {
-				t.Fatalf("checkpoint samples %d, want1", stage.Samples)
+				t.Fatalf("checkpoint samples %d, want 1", stage.Samples)
 			}
 			if snap.ActiveRequests != 0 {
 				t.Fatal("request gauge did not drain")

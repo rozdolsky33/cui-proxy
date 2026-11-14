@@ -3,6 +3,7 @@ import concurrent.futures
 import math
 import threading
 import time
+from stage_attribution import workload_stages
 
 
 def _attempt(operation,args,clock):
@@ -283,9 +284,11 @@ def run_fairness_phase(binary, seed_binary, workload, directory, manifest, *, by
                 recent = stages.wait_for(len(records))
                 images = [row for row in recent if 'extraction_run' in row['stages_ms']]
                 samples = measured_stages(images, set(), len(measured['image_records']))
+                request_samples = workload_stages(recent, set(), len(measured["text_records"]), len(measured["image_records"]))
             else:
                 samples = None
-            result = dict(measured, mode='bypass' if bypass else 'proxy', population=env.population, text_outcomes=summarize_outcomes(measured['text_records']), image_outcomes=summarize_outcomes(measured['image_records']), outcomes=summarize_outcomes(records), stage_samples=samples, stage_poll_errors=stages.errors, resources=perf.resource_summary(resources.samples), warmup_completed=len(warm), warmup_seconds=warmup_elapsed, achieved_client_concurrency=perf.peak_concurrency(records), correlation_enabled=True, text_completions_per_second=perf.window_successes(measured['text_records'], measured['window_start_s'], measured['window_seconds']) / measured['window_seconds'], final_metrics=env.metrics(), performance_qualified=False, clients=clients)
+                request_samples = None
+            result = dict(measured, mode='bypass' if bypass else 'proxy', population=env.population, text_outcomes=summarize_outcomes(measured['text_records']), image_outcomes=summarize_outcomes(measured['image_records']), outcomes=summarize_outcomes(records), request_stage_samples=request_samples, stage_samples=samples, stage_poll_errors=stages.errors, resources=perf.resource_summary(resources.samples), warmup_completed=len(warm), warmup_seconds=warmup_elapsed, achieved_client_concurrency=perf.peak_concurrency(records), correlation_enabled=True, text_completions_per_second=perf.window_successes(measured['text_records'], measured['window_start_s'], measured['window_seconds']) / measured['window_seconds'], final_metrics=env.metrics(), performance_qualified=False, clients=clients)
         result['environment'] = dict(before=before, after=perf.environment_info(binary))
         return result
     except perf.PhaseFailure:

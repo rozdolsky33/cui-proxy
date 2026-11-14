@@ -21,12 +21,12 @@ Files: internal/observe/trace.go, internal/proxy/proxy.go, affected observe/metr
 
 ### Task 2: Mixed-workload attribution
 Files: scripts/workflow/performance_load.py, appropriate stats helper and tests, fairness report.
-- [ ] Add tests for exact text/image counts, warmup exclusion, missing/duplicate/invalid rows and older binary checkpoint absence; observe RED.
-- [ ] Produce numeric per-workload stage arrays and explicit coverage from existing correlated records; preserve extraction-only reports.
-- [ ] Run all workflow tests and captured short four-client diagnostic at the known failing768KiB size. Report text-only/checkpoint percentiles and limitations; commit.
+- [x] Add tests for exact text/image counts, warmup exclusion, missing/duplicate/invalid rows and older binary checkpoint absence; observe RED.
+- [x] Produce numeric per-workload stage arrays and explicit coverage from existing correlated records; preserve extraction-only reports.
+- [x] Run all workflow tests and captured short four-client diagnostic at the known failing768KiB size. Report text-only/checkpoint percentiles and limitations; commit.
 
 ### Task 3: Verification and integration
-- [ ] Record PR45 integration, diagnostic result and next evidence-based action; retain Task08/11/12 open items.
-- [ ] Full race, workflow, vet/staticcheck, HTTP corpus and manual verification.
+- [x] Record PR45 integration, diagnostic result and next evidence-based action; retain Task08/11/12 open items.
+- [x] Full race, workflow, vet/staticcheck, HTTP corpus and manual verification.
 - [ ] One fresh whole-branch review; one material fix pass with RED/GREEN; archive own rulings.
 - [ ] Push/PR, pass exact-head remote gates, merge and sync clean main; continue next Task11 step.

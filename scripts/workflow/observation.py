@@ -6,7 +6,18 @@ import time
 import harness
 
 
-STAGES = ('ingress_read', 'metadata_inspect', 'body_inspect', 'extraction_wait', 'extraction_run', 'audit_write', 'upstream_wait', 'restore', 'admission_wait', 'mapping_checkpoint')
+STAGES = (
+    'ingress_read',
+    'metadata_inspect',
+    'body_inspect',
+    'extraction_wait',
+    'extraction_run',
+    'audit_write',
+    'upstream_wait',
+    'restore',
+    'admission_wait',
+    'mapping_checkpoint',
+)
 
 
 def check_snapshots(text, image):
