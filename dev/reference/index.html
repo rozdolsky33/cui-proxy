@@ -1086,6 +1086,8 @@
       
         
       
+        
+      
     
     
     
@@ -1342,6 +1344,34 @@
     
   
     Repeated image extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vault-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mapping recovery
   
 
     
@@ -2031,6 +2061,7 @@ bound. <code>localhost</code> is accepted. Do not point Codex at the dashboard p
 <code>action: allow</code>. See <a href="../limitations/">limitations</a> for supported content and
 credential exceptions.</p>
 <h3 id="vault-fields">Vault fields<a class="headerlink" href="#vault-fields" title="Permanent link">&para;</a></h3>
+<p>File mode checkpoints mappings before forwarding and refuses requests if saving fails. See <a href="../vault-recovery/">mapping lifetime and recovery</a> for crash guarantees, storage repair, shared-agent boundaries and retention limits.</p>
 <table>
 <thead>
 <tr>
@@ -2061,10 +2092,7 @@ credential exceptions.</p>
 </tr>
 </tbody>
 </table>
-<p>File mode uses AES-256-GCM and format <code>CUIV2</code>. It saves changed mappings every
-30 seconds and on orderly shutdown; a crash can lose newer changes. One process
-holds a lifetime lock on the file vault. Keep the key, encrypted vault and parent
-directory private. Reload preserves the live mappings in either mode.</p>
+<p>File mode uses AES-256-GCM and format <code>CUIV2</code>. It checkpoints mappings before forwarding, saves other changes every 30 seconds, and saves on shutdown. Unforwarded changes can be lost on a crash. One process holds a lifetime lock on the file vault. Keep the key, encrypted vault and parent directory private. Reload preserves live mappings in either mode. See <a href="../vault-recovery/">mapping recovery</a>.</p>
 <p>After a memory-mode restart, old synthetics in client history are unknown to
 the new vault and cannot be restored. Read <a href="../architecture/">architecture</a> for
 mapping lifecycle and <a href="../configuration/">configuration</a> for pool behavior.</p>

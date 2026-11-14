@@ -898,6 +898,8 @@
       
         
       
+        
+      
     
     
     
@@ -1174,6 +1176,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#vault-persistence-refusal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vault persistence refusal
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1226,6 +1239,34 @@
     
   
     Repeated image extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vault-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mapping recovery
   
 
     
@@ -1656,6 +1697,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#vault-persistence-refusal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vault persistence refusal
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1836,6 +1888,8 @@ operation, replace/remove that content locally, then start a fresh session with
 only permitted context if the client keeps resending it. Reopening the same
 session or repeating the same request is not a remedy. The proxy never deletes
 context or relaxes policy automatically.</p>
+<h2 id="vault-persistence-refusal">Vault persistence refusal<a class="headerlink" href="#vault-persistence-refusal" title="Permanent link">&para;</a></h2>
+<p>HTTP 503 with reason <code>vault</code> means the required mapping checkpoint failed. The request was not forwarded. Repair storage space, path availability or permissions, then retry; preserve the vault and its key. Recovery metadata classifies this as a <code>dependency</code> requiring <code>after_repair</code>. See <a href="../vault-recovery/">mapping recovery</a>.</p>
 
 
 

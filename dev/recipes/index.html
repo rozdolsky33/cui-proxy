@@ -1025,6 +1025,8 @@
       
         
       
+        
+      
     
     
     
@@ -1281,6 +1283,34 @@
     
   
     Repeated image extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vault-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mapping recovery
   
 
     
@@ -2080,6 +2110,7 @@ restricted name or an AWS access-key-shaped value.</p>
 contains both, the entire request blocks. A blocking rule wins even when its
 match overlaps a sanitizing rule. Reordering rules cannot create an exception.</p>
 <h2 id="keep-mappings-across-restarts">Keep mappings across restarts<a class="headerlink" href="#keep-mappings-across-restarts" title="Permanent link">&para;</a></h2>
+<p>File mode checkpoints mappings before forwarding and refuses requests if saving fails. See <a href="../vault-recovery/">mapping lifetime and recovery</a> for crash guarantees, storage repair, shared-agent boundaries and retention limits.</p>
 <p>Use a file vault when a conversation must retain its synthetic mappings across
 normal proxy restarts. The key and encrypted mapping file are both local.</p>
 <div class="highlight"><span class="filename">persistent-vault.yaml — complete file</span><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># Complete configuration. Save hosts.txt beside this file.</span>
@@ -2117,11 +2148,7 @@ normal proxy restarts. The key and encrypted mapping file are both local.</p>
 <a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a><span class="w">    </span><span class="nt">pattern</span><span class="p">:</span><span class="w"> </span><span class="s">'\bDEMO-[0-9]{6}\b'</span>
 <a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a><span class="w">    </span><span class="nt">synth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">secret</span>
 </code></pre></div>
-<p>The proxy creates missing state directories/files with private permissions.
-Keep the key and vault together in your private backup process; someone with
-both can recover the mappings. Only one proxy may use this vault at a time.
-Writes are periodic and on clean shutdown, so an abrupt crash can lose recent
-mappings. Do not delete or rotate the key while expecting old mappings to work.</p>
+<p>The proxy creates missing state directories/files with private permissions. Keep the key and vault together in your private backup process; someone with both can recover the mappings. Only one proxy may use this vault at a time. File mode checkpoints mappings before forwarding; unforwarded changes can still be lost on a crash. Do not delete or rotate the key while expecting old mappings to work. See <a href="../vault-recovery/">mapping recovery</a>.</p>
 <p><code>test-rules</code> still uses a throwaway vault even when given this configuration.
 It does not inspect or change the production file vault.</p>
 <h2 id="adapt-a-recipe-for-your-environment">Adapt a recipe for your environment<a class="headerlink" href="#adapt-a-recipe-for-your-environment" title="Permanent link">&para;</a></h2>
