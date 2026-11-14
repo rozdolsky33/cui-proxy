@@ -43,16 +43,16 @@
 
 **Interfaces:** run_probe(options) owns setup/identity, thread-local connection tracking, original warmup, three trial sequences, evidence binding and cleanup. evaluate_cancellation(report, expected_identity) combines all three trial bounds with the existing provenance/warmup oracles and receipt/audit, privacy and cleanup evidence; only that fully bound result may set cancellation_qualified=true, while performance_qualified remains false. CLI accepts the existing runtime/source/seed/corpus identity options and a fresh output root; no paid/live service or installation changes.
 
-- [ ] Add failing fake-transport/state-sequence tests for queue cancellation, identified active-helper termination/new slot admission, unrelated connection exclusion, unexpected success, upstream receipt presence, ambiguous audit differences and incomplete cleanup at every failure point.
-- [ ] Implement the collector phase hook and measurement sequence; preserve actual observed outcomes and distinguish oracle time from cancellation time.
-- [ ] Verify baseline/recovery requests with existing semantic/receipt oracles, request-ID audit matching, privacy and owned-process checks; commit.
+- [x] Add failing fake-transport/state-sequence tests for queue cancellation, identified active-helper termination/new slot admission, unrelated connection exclusion, unexpected success, upstream receipt presence, ambiguous audit differences and incomplete cleanup at every failure point.
+- [x] Implement the collector phase hook and measurement sequence; preserve actual observed outcomes and distinguish oracle time from cancellation time.
+- [x] Verify baseline/recovery requests with existing semantic/receipt oracles, request-ID audit matching, privacy and owned-process checks; commit.
 
 ### Task 3: Native verification and integration
 
 **Files:** Add a verification record under docs/verification-results/; update this plan/ledger.
 
-- [ ] In a verified quiet gap, run the full workflow suite and the original-warmup three-trial native diagnostic against the frozen optimized binary. Preserve failures; fix reproduced defects without weakening thresholds.
-- [ ] Validate all original cancellation criteria, identities, privacy and cleanup. Do not claim full performance/soak qualification.
+- [x] In a verified quiet gap, run the full workflow suite and the original-warmup three-trial native diagnostic against the frozen optimized binary. Preserve failures; fix reproduced defects without weakening thresholds.
+- [x] Validate all original cancellation criteria, identities, privacy and cleanup. Do not claim full performance/soak qualification.
 - [ ] Run required docs/regression checks and one independent final branch review; commit/push/PR, fix CI, merge only after required checks pass, synchronize primary main.
 
 ## Self-review
