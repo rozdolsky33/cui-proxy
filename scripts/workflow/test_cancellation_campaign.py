@@ -16,6 +16,9 @@ from test_cancellation_qualification import report as qualification_report
 
 class CancellationCampaignTests(unittest.TestCase):
     def setUp(self):
+        corpus_patch = mock.patch.object(campaign, "expected_corpus_identity", side_effect=lambda base, fixtures: base)
+        corpus_patch.start()
+        self.addCleanup(corpus_patch.stop)
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name) / "run"

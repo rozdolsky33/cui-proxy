@@ -77,3 +77,24 @@ class WorkerFailureTests(unittest.TestCase):
             entry["request"]["identity"] = ("fixed", 0, index)
             entry["result"]["operation_id"] = f"soak-fixed-0-{index}"
         self.assertTrue(evaluate_trial_evidence(report)["trial_verified"])
+
+    def test_expected_corpus_is_attested_independently(self):
+        from unittest.mock import patch
+        from cancellation_campaign import expected_corpus_identity
+        base = {"binary_sha256": "a" * 64}
+        proof = {"verified": True}
+        with patch("cancellation_campaign.load_manifest", return_value={}) as manifest, \
+             patch("cancellation_campaign.attest_corpus", return_value=proof) as attest:
+            result = expected_corpus_identity(base, "/fixture-root")
+        self.assertEqual(result, {**base, "corpus": proof})
+        self.assertNotIn("corpus", base)
+        manifest.assert_called_once()
+        attest.assert_called_once()
+
+    def test_conflicting_expected_corpus_is_rejected(self):
+        from unittest.mock import patch
+        from cancellation_campaign import expected_corpus_identity
+        with patch("cancellation_campaign.load_manifest", return_value={}), \
+             patch("cancellation_campaign.attest_corpus", return_value={"verified": True}):
+            with self.assertRaises(ValueError):
+                expected_corpus_identity({"corpus": {"verified": False}}, "/fixture-root")

@@ -22,6 +22,8 @@ from soak_rejections import verify_log_privacy
 from soak_schedule import plan_request
 
 
+from soak_corpus_attestation import attest_corpus, load_manifest
+
 class _DiagnosticComplete(Exception):
     pass
 
@@ -34,10 +36,15 @@ def _write(path, value):
 
 def _paths(root):
     suffixes = {
-        "gate": ".cancellation-gate", "log": ".cancellation-driver.log",
-        "partial": ".cancellation-partial.json", "report": ".cancellation.json",
-        "evaluation": ".cancellation-evaluation.json", "expected": ".expected-identity.json",
-        "failure": ".cancellation-failure.json", "failure_log": ".cancellation-failure.log",
+        'gate': '.cancellation-gate',
+        'log': '.cancellation-driver.log',
+        'partial': '.cancellation-partial.json',
+        'report': '.cancellation.json',
+        'evaluation': '.cancellation-evaluation.json',
+        'expected': '.expected-identity.json',
+        'failure': '.cancellation-failure.json',
+        'failure_log': '.cancellation-failure.log',
+        'expected_complete': '.expected-complete-identity.json',
     }
     paths = {key: root.parent / (root.name + suffix) for key, suffix in suffixes.items()}
     if not root.parent.is_dir() or any(os.path.lexists(path) for path in (root, *paths.values())):
@@ -86,6 +93,14 @@ def _collector(root):
     bound = warmups[0]
     warmup = read_report_bytes(_capture(root / bound["name"], expected_hash=bound["sha256"], expected_size=bound["bytes"]))
     return starts[0]["identity"], starts[0]["settings"], warmup
+
+
+def expected_corpus_identity(base, fixtures):
+    """Bind expected provenance to a fresh, independent corpus attestation."""
+    proof = attest_corpus(load_manifest(Path(fixtures)), Path(fixtures))
+    if "corpus" in base and base["corpus"] != proof:
+        raise ValueError("cancellation_expected_corpus_mismatch")
+    return {**base, "corpus": proof}
 
 
 def run_probe(options, *, clock=time.monotonic):
@@ -177,6 +192,8 @@ def run_probe(options, *, clock=time.monotonic):
             os.environ["PATH"] = original_path
         report["identity"], report["settings"], report["warmup"] = _collector(root)
         expected = read_report_bytes(_capture(paths["expected"]))
+        expected = expected_corpus_identity(expected, options.fixtures)
+        _write(paths["expected_complete"], expected)
         _write(paths["partial"], report)
         started = clock()
         env = retained["env"]
