@@ -23,12 +23,12 @@
 - [x] Verify bounded per-call standard-encoded fragment planning, ownership and differential output; affected race tests and 20-second differential fuzz pass.
 
 ### Task 2: Performance acceptance
-- [ ] Build identical private benchmark harnesses against reference/candidate; eight alternating equal-work pairs plus existing controls.
-- [ ] Require at least10% allocation reduction and no material latency regression; otherwise restore reference and record rejection.
-- [ ] If accepted by microbenchmarks, three short paired four-client768KiB mixed runs with exact stage coverage and outcomes. Stop on failure; no full qualification claim. Commit evidence.
+- [x] Build identical private benchmark harnesses against reference/candidate; eight alternating equal-work pairs plus existing controls.
+- [x] Require at least10% allocation reduction and no material latency regression: rotating allocation -22.783%, latency -0.438%.
+- [x] Three short paired four-client768KiB mixed runs pass with exact stage coverage and zero failures; no full qualification claim.
 
 ### Task 3: Integration and continuation
-- [ ] Update PR46 integration and record evidence/limitations/next step.
-- [ ] Full race/workflow/lint/HTTP/manual checks.
+- [x] Update PR46 integration and record evidence/limitations/next step.
+- [x] Full race/workflow/lint/HTTP/manual checks.
 - [ ] Fresh whole-branch review; one material RED/GREEN fix pass; archive own rulings.
 - [ ] Push/PR, pass required exact-head gates, merge and sync clean main; continue Task11 acceptance work.
