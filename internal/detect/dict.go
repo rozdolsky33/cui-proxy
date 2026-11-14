@@ -12,6 +12,7 @@ var compileDict = regexp.Compile
 
 type dictDetector struct {
 	name, class string
+	folded      string
 	re          *regexp.Regexp // nil when the dictionary is empty
 	entries     []string       // longest first
 }
@@ -47,6 +48,7 @@ func newDict(name, class, text string) (*dictDetector, error) {
 		return nil, fmt.Errorf("detect: rule %q: dictionary too large or invalid", name)
 	}
 	d.re = re
+	d.folded = foldedDetectorLiteral(re)
 	return d, nil
 }
 
