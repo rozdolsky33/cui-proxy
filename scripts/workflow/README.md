@@ -271,3 +271,30 @@ Duration mode retains each arm's complete records, configured window, drain outc
 ### Single-client count completion
 
 For mixed traffic with `--clients 1 --count N`, each successful text operation is followed by three image operations before count-mode completion. A successful count-one run therefore records one text and three images, and small warmup batches exercise both classes while retaining concurrency one. An operation failure still aborts promptly and remains in the recorded outcomes. Duration mode continues to stop at its measured window and can end partway through a cycle.
+
+
+### Short report-only benchmark comparison
+
+CI runs `BenchmarkRequestWalk` only after correctness and packaging gates pass.
+It builds both revisions with the same Go toolchain, requires identical Go
+benchmark sources, and generates one shared normal-tier 768 KiB fixture using
+`performance.prepare`. Five alternating pairs each use ten iterations and
+`-test.cpu=2`; each invocation has a 30-second test timeout and the CI step has
+a five-minute limit. Numeric changes are diagnostic, never a release threshold.
+
+For local use, build the two `internal/benchmark` test executables first, create
+an isolated fixture directory using the existing workload/seed-vault helpers,
+and set `CUI_BENCH_FIXTURE_DIR` to that directory. Invoke
+`python3 scripts/workflow/benchmark_comparison.py` with `--base-binary`,
+`--candidate-binary`, full `--base-commit`/`--candidate-commit`, a new `--report`
+path and a new `--captures` directory. Capture stdout/stderr as with other
+workflow runners. The tool retains raw logs privately, refuses to overwrite
+existing evidence, checks immutable executable hashes, and reports only fixed
+benchmark identity and numeric summaries. Missing/skipped benchmarks fail the
+comparison instead of producing zero-valued results. Keep source/build and
+fixture provenance with the report; supplied commit identifiers alone do not
+prove how an executable was built.
+
+The CI artifact contains no raw benchmark log or generated fixture. An absent
+or unavailable comparison is not performance qualification. Full acceptance
+still uses the reference workload contract and controlled-machine campaigns.

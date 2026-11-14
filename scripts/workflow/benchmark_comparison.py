@@ -18,7 +18,7 @@ ITERATIONS = 10
 REPETITIONS = 5
 _LINE = re.compile(
     r"BenchmarkRequestWalk-[1-9][0-9]*\s+([0-9]+)\s+(\S+)\s+ns/op"
-    r"\s+([0-9]+)\s+B/op\s+([0-9]+)\s+allocs/op"
+    r"(?:\s+(\S+)\s+MB/s)?\s+([0-9]+)\s+B/op\s+([0-9]+)\s+allocs/op"
 )
 
 
@@ -55,7 +55,11 @@ def parse_output(text, iterations=ITERATIONS):
             raise ValueError("benchmark_output_shape")
         try:
             sample = dict(iterations=int(match[1]), ns_per_op=float(match[2]),
-                          bytes_per_op=int(match[3]), allocations_per_op=int(match[4]))
+                          bytes_per_op=int(match[4]), allocations_per_op=int(match[5]))
+            if match[3] is not None:
+                throughput = float(match[3])
+                if not math.isfinite(throughput) or throughput < 0:
+                    raise ValueError("benchmark_throughput_range")
         except (ValueError, OverflowError) as error:
             raise ValueError("benchmark_output_numeric") from error
         _validate_sample(sample)
@@ -114,6 +118,8 @@ def run_comparison(base_binary, candidate_binary, base_commit, candidate_commit,
     descriptor = os.open(report_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     os.close(descriptor)
     report = dict(schema_version=1, report_only=True, performance_qualified=False,
+                  benchmark="BenchmarkRequestWalk", iterations=ITERATIONS,
+                  repetitions=REPETITIONS, gomaxprocs=2,
                   status="incomplete", base_commit=base_commit, candidate_commit=candidate_commit,
                   base_binary_sha256=identities["base"],
                   candidate_binary_sha256=identities["candidate"], completed_invocations=0)

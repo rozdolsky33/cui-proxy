@@ -30,15 +30,15 @@ Files: internal/vault/file.go, existing TestOpenOldVersionClearError in internal
 
 Files: scripts/workflow/benchmark_comparison.py, scripts/workflow/test_benchmark_comparison.py, .github/workflows/ci.yml.
 Interfaces: parser consumes captured Go benchmark lines; comparator consumes five finite samples per benchmark per arm (positive ns/op; nonnegative bytes/op and allocations/op) and source identities; emits only names, counts, median ns/op, bytes/op, allocations/op and relative differences.
-- [ ] Test malformed/duplicate/missing samples, unequal repetition counts, zero/non-finite baselines, preserved negative improvements, and allocation regressions.
-- [ ] Observe RED, implement strict parsing/comparison, GREEN.
-- [ ] Integrate a bounded base/candidate comparison after correctness gates, using `BenchmarkRequestWalk` with 10 iterations per invocation and five alternating base/candidate pairs; capture raw logs privately and upload safe aggregate artifact only. Keep timings report-only.
+- [x] Test malformed/duplicate/missing samples, unequal repetition counts, zero/non-finite baselines, preserved negative improvements, and allocation regressions.
+- [x] Observe RED, implement strict parsing/comparison, GREEN.
+- [x] Integrate a bounded base/candidate comparison after correctness gates, using `BenchmarkRequestWalk` with 10 iterations per invocation and five alternating base/candidate pairs; capture raw logs privately and upload safe aggregate artifact only. Keep timings report-only.
 - [ ] Verify command failure and cancellation retain evidence and do not launch later work; unit tests and full workflow suite pass.
 
 ## Task 3: Operator release evidence
 
 Files: docs/release-readiness.md, docs/vault-recovery.md, docs/install.md, roadmap completion records.
-- [ ] Record release evidence identity, required gates, on-demand/pre-release long qualification, safe retention policy, compatibility matrix and measured limitations.
+- [x] Record release evidence identity, required gates, on-demand/pre-release long qualification, safe retention policy, compatibility matrix and measured limitations.
 - [ ] Verify packaging/upgrade/running binary/dependency preflight/rollback against existing isolated correctness harnesses; no user installation modifications.
 - [ ] Record all unmet acceptance items and reassess ratings without treating diagnostics as qualification.
 - [ ] Run full appropriate regression/docs gates; independent review, one material RED/GREEN fix pass; authorized PR/CI/merge and clean-main sync.
@@ -46,3 +46,7 @@ Files: docs/release-readiness.md, docs/vault-recovery.md, docs/install.md, roadm
 ## Sequencing ruling
 
 While Task 11 timing runs, only plan/design and lightweight source inspection proceed here. Local builds/tests wait. The complete Task 12 milestone also depends on final Task 08/11 evidence; this branch must not close those gates by documentation.
+
+## Infrastructure integration boundary
+
+This branch delivers report-only CI comparison, safer recovery wording and release-evidence documentation. Final measured operating-envelope publication and the roadmap Task12 completion claim remain dependent on Task08/11 acceptance. They are explicitly deferred to the final evidence update, not waived by this infrastructure PR.

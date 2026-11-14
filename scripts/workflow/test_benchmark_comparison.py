@@ -24,6 +24,15 @@ class BenchmarkComparisonTests(unittest.TestCase):
     def test_parse_reports_only_the_fixed_benchmark_and_numeric_metrics(self):
         self.assertEqual(comparison.parse_output(self.output()), self.sample())
 
+    def test_accepts_go_throughput_column_without_exporting_raw_output(self):
+        text = self.output().replace("ns/op", "ns/op 7852.30 MB/s")
+        self.assertEqual(comparison.parse_output(text), self.sample())
+
+    def test_rejects_invalid_optional_throughput(self):
+        for value in ("NaN", "Inf", "-1"):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                comparison.parse_output(self.output().replace("ns/op", f"ns/op {value} MB/s"))
+
     def test_rejects_missing_duplicate_or_unknown_benchmark(self):
         for text in ("PASS\n", self.output() + self.output(),
                      self.output().replace("BenchmarkRequestWalk", "BenchmarkOther")):
@@ -110,6 +119,10 @@ class BenchmarkRunnerTests(unittest.TestCase):
                                      "base", "candidate", "candidate", "base",
                                      "base", "candidate"])
         self.assertEqual(result["status"], "complete")
+        self.assertEqual(result.get("benchmark"), "BenchmarkRequestWalk")
+        self.assertEqual(result.get("iterations"), 10)
+        self.assertEqual(result.get("repetitions"), 5)
+        self.assertEqual(result.get("gomaxprocs"), 2)
         self.assertTrue(result["report_only"])
         self.assertFalse(result["performance_qualified"])
         self.assertEqual(result["comparison"]["relative_change_percent"]["ns_per_op"], -10)
