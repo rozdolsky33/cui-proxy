@@ -25,7 +25,7 @@ def measured_cache_hits(recent, warm_sessions, count):
     return sum(values)
 
 
-def attachment_case(workload, serial, size, fixture, directory, mappings, session, text_only_reply=False):
+def attachment_case(workload, serial, size, fixture, directory, mappings, session, text_only_reply=False, *, include_expected_body=False):
     import base64
     import copy
     import hashlib
@@ -65,6 +65,8 @@ def attachment_case(workload, serial, size, fixture, directory, mappings, sessio
     if text_only_reply:
         case["occurrences"]=case["occurrences"][:-1]
         case["benchmark_text_only"]=True
+    if include_expected_body:
+        return case, expected_bytes
     return case,perf.text_layout_hash(expected_bytes)
 
 
