@@ -111,7 +111,7 @@ def values_from_body(body, *, allow_attachments=False):
                 continue
             if item["type"] == "custom_tool_call_output":
                 item = dict(item, type="function_call_output")
-        if item.get("type") == "function_call":
+        if item.get("type") in ("function_call", "reasoning", "compaction"):
             continue
         if allow_attachments and item.get("type") != "function_call_output":
             content = item.get("content", [])

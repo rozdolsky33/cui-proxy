@@ -1,0 +1,26 @@
+# Task 11 sustained harness integration smoke
+
+The new harness has passed isolated real-proxy checks for the five text/tool scenarios and the two image scenarios. These are integration smoke tests, not sustained-run or performance qualification.
+
+The proxy binary is the retained candidate built from `600c803c198f64642dc41d4b98a3c1ca5569cc91`, whose runtime tree matches merged `main` at `9eea84d`. The tests use the normal workload policy and seeded file vault in temporary environments. They do not modify the user's running proxy or configuration.
+
+| Scope | Result |
+| --- | --- |
+| Full workflow unit/integration suite before live smoke | 404 tests passed in 38.097 seconds |
+| W01 identifier response | Complete response, restored semantics and independent upstream-body hash passed |
+| W02 file-edit tool effect | Complete structured stream, actual temporary-file effect and upstream-body hash passed |
+| W03 test-output follow-up | Complete structured stream, typed arguments/call association and upstream-body hash passed |
+| W04 command arguments | Complete structured stream, independently parsed command arguments and upstream-body hash passed |
+| W08 conversation request | Expected response association and upstream-body hash passed; policy-reload coherence remains untested here |
+| W05 text plus two tool-output images | Real OCR proxy path and original-image bypass path passed |
+| W06 user image followed by tool-output image | Real OCR proxy path and original-image bypass path passed |
+
+Text/tool smoke took 10.857 seconds. Image smoke took 8.926 seconds and used both available image formats selected from the retained reference corpus `/private/tmp/cui-real-extraction-reference-v2/manifest.json`. Image source hashes are checked by the existing attachment builder. The proxy path verifies the expected extracted upstream structure and restored response; bypass verifies the original body and does not pretend to perform OCR. All nine smoke requests returned HTTP 200 and passed their semantic checks.
+
+## Retained local evidence
+
+- `/private/tmp/cui-task11-soak-full-workflow.log` and `-summary.json`
+- `/private/tmp/cui-task11-soak-live-text-smoke.py`, `.json`, `.log`, and `-summary.json`
+- `/private/tmp/cui-task11-soak-live-image-smoke.py`, `.json`, `.log`, and `-summary.json`
+
+The lifecycle requests, restart/reload orchestration, sustained phases, all-window acceptance, and remaining original qualification gates are still required. The separately retained full fairness pair failed its unchanged first-byte p95 limit. None of these smoke results overrides that failure.

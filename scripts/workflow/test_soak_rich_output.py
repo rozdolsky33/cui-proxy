@@ -19,3 +19,7 @@ class RichOutputTests(unittest.TestCase):
     def test_user_image_is_opaque_on_bypass(self):
         body = {"input": [{"role": "user", "content": [{"type": "input_image", "image_url": "data:image/png;base64,AA=="}]}, {"role": "user", "content": [{"type": "input_text", "text": "first"}]}]}
         self.assertEqual(values_from_body(body), ["first"])
+
+    def test_documented_opaque_history_is_not_interpreted_as_text(self):
+        body = {"input": [{"type": "compaction", "encrypted_content": "b3BhcXVl"}, {"type": "reasoning", "encrypted_content": "b3BhcXVl"}, {"role": "user", "content": [{"type": "input_text", "text": "first"}]}]}
+        self.assertEqual(values_from_body(body), ["first"])
