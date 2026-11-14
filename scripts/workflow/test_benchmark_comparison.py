@@ -1,4 +1,8 @@
 import unittest
+import json
+from pathlib import Path
+import tempfile
+from unittest import mock
 
 import benchmark_comparison as comparison
 
@@ -71,6 +75,87 @@ class BenchmarkComparisonTests(unittest.TestCase):
         result = self.compared(base, candidate)
         self.assertEqual(result["base"]["ns_per_op"], 100)
         self.assertEqual(result["candidate"]["ns_per_op"], 50)
+
+
+
+
+class BenchmarkRunnerTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        self.base = self.root / "base"
+        self.candidate = self.root / "candidate"
+        self.base.write_bytes(b"base executable")
+        self.candidate.write_bytes(b"candidate executable")
+        self.report = self.root / "summary.json"
+        self.captures = self.root / "private"
+        self.calls = []
+
+    def execute(self, command, log):
+        arm = Path(command[0]).name
+        self.calls.append(arm)
+        ns = 100 if arm == "base" else 90
+        Path(log).write_text(f"BenchmarkRequestWalk-2 10 {ns} ns/op 20 B/op 2 allocs/op\nPASS\n")
+        return 0
+
+    def run_comparison(self):
+        return comparison.run_comparison(self.base, self.candidate, "a" * 40,
+                                         "b" * 40, self.report, self.captures)
+
+    def test_alternates_five_equal_work_pairs_and_reports_identities(self):
+        with mock.patch.object(comparison, "execute_command", self.execute, create=True):
+            result = self.run_comparison()
+        self.assertEqual(self.calls, ["base", "candidate", "candidate", "base",
+                                     "base", "candidate", "candidate", "base",
+                                     "base", "candidate"])
+        self.assertEqual(result["status"], "complete")
+        self.assertTrue(result["report_only"])
+        self.assertFalse(result["performance_qualified"])
+        self.assertEqual(result["comparison"]["relative_change_percent"]["ns_per_op"], -10)
+        self.assertEqual(result["base_commit"], "a" * 40)
+        self.assertEqual(len(result["base_binary_sha256"]), 64)
+        self.assertEqual(json.loads(self.report.read_text()), result)
+
+    def test_command_failure_stops_later_pairs_and_retains_safe_failure(self):
+        def failed(command, log):
+            if len(self.calls) == 2:
+                self.calls.append("failed")
+                Path(log).write_text("private diagnostic marker")
+                return 7
+            return self.execute(command, log)
+        with mock.patch.object(comparison, "execute_command", failed, create=True):
+            with self.assertRaises(RuntimeError):
+                self.run_comparison()
+        self.assertEqual(len(self.calls), 3)
+        report = json.loads(self.report.read_text())
+        self.assertEqual(report["status"], "failed")
+        self.assertNotIn("private diagnostic marker", self.report.read_text())
+
+    def test_interrupt_propagates_after_incomplete_evidence_is_recorded(self):
+        with mock.patch.object(comparison, "execute_command", side_effect=KeyboardInterrupt,
+                               create=True):
+            with self.assertRaises(KeyboardInterrupt):
+                self.run_comparison()
+        self.assertEqual(json.loads(self.report.read_text())["status"], "interrupted")
+
+    def test_binary_changes_during_measurement_are_rejected(self):
+        def changed(command, log):
+            code = self.execute(command, log)
+            self.candidate.write_bytes(b"changed executable")
+            return code
+        with mock.patch.object(comparison, "execute_command", changed, create=True):
+            with self.assertRaises(ValueError):
+                self.run_comparison()
+        self.assertEqual(json.loads(self.report.read_text())["status"], "failed")
+
+    def test_existing_report_is_preserved_and_no_commands_run(self):
+        self.report.write_text("existing evidence")
+        with mock.patch.object(comparison, "execute_command", self.execute, create=True):
+            with self.assertRaises(FileExistsError):
+                self.run_comparison()
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.report.read_text(), "existing evidence")
 
 
 if __name__ == "__main__":

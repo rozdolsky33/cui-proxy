@@ -76,3 +76,8 @@ def compare_samples(base, candidate):
     return dict(report_only=True, sample_count=REPETITIONS, base=before,
                 candidate=after, relative_change_percent=relative,
                 absolute_change=absolute)
+
+
+def run_comparison(base_binary, candidate_binary, base_commit, candidate_commit,
+                   report_path, capture_directory):
+    return None
