@@ -13,18 +13,18 @@ Preserve fail-closed policies, metadata-only reports, existing CI/security gates
 
 ## Review Focus
 
-1. Unsupported future vault formats must not encourage data loss or unsafe history reuse.
+1. Unsupported future vault formats and rollback must preserve mapping state and prevent unsafe history reuse.
 2. Missing, duplicate, malformed or non-finite benchmark samples must not produce a passing comparison.
 3. CI must not expose raw fixture output, credentials or untrusted branch code to privileged tokens.
 4. Source/build mismatches and missing long-run evidence must remain visibly unqualified.
-5. Rollback instructions must preserve mappings and distinguish compatible restart from destructive retirement.
+5. Zombie-only signal groups must not replace interruption with permission errors; live or unverifiable groups must still fail cleanup.
 
 ## Task 1: Safe recovery diagnostics
 
 Files: internal/vault/file.go, existing TestOpenOldVersionClearError in internal/vault/vault_test.go, docs/vault-recovery.md.
 - [x] Update unsupported-format recovery wording to preserve vault/key and require a compatible binary; startup behavior remains unchanged.
-- [ ] Verify existing format-refusal and vault tests in CI. No new exact-copy test for this wording-only change; such a test would mirror implementation rather than verify new behavior.
-- [ ] Commit recovery guidance and evidence.
+- [x] Verify existing format-refusal and vault tests in CI. No new exact-copy test for this wording-only change; such a test would mirror implementation rather than verify new behavior.
+- [x] Commit recovery guidance and evidence.
 
 ## Task 2: Bounded benchmark comparison reporting
 
@@ -33,7 +33,7 @@ Interfaces: parser consumes captured Go benchmark lines; comparator consumes fiv
 - [x] Test malformed/duplicate/missing samples, unequal repetition counts, zero/non-finite baselines, preserved negative improvements, and allocation regressions.
 - [x] Observe RED, implement strict parsing/comparison, GREEN.
 - [x] Integrate a bounded base/candidate comparison after correctness gates, using `BenchmarkRequestWalk` with 10 iterations per invocation and five alternating base/candidate pairs; capture raw logs privately and upload safe aggregate artifact only. Keep timings report-only.
-- [ ] Verify command failure and cancellation retain evidence and do not launch later work; unit tests and full workflow suite pass.
+- [x] Verify command failure and cancellation retain evidence and do not launch later work; unit tests and full workflow suite pass.
 
 ## Task 3: Operator release evidence
 
@@ -50,3 +50,7 @@ While Task 11 timing runs, only plan/design and lightweight source inspection pr
 ## Infrastructure integration boundary
 
 This branch delivers report-only CI comparison, safer recovery wording and release-evidence documentation. Final measured operating-envelope publication and the roadmap Task12 completion claim remain dependent on Task08/11 acceptance. They are explicitly deferred to the final evidence update, not waived by this infrastructure PR.
+
+## Confirmed cleanup follow-up
+
+Files: scripts/workflow/performance_campaign.py, test_campaign_signal_groups.py, test_performance_campaign.py. A real Darwin zombie-only process group reproduces the old PermissionError; the candidate passes. Successful nonempty, well-formed process-table evidence is required before treating a denied group as stopped. Live or unknown states retain failure. Tests cover signal/exit races, malformed/unavailable observations, exact interruption propagation, and the real kernel condition. Ten repeated real interruption trials passed; the temporary repeated loop was removed to preserve routine CI cost.

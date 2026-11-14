@@ -12,6 +12,7 @@ Considered alternatives: a hard shared-runner latency threshold would confuse ma
 
 - Unsupported vault-format errors preserve the existing vault and key, explain use of a compatible version, and forbid resuming histories after intentionally abandoning mappings. Startup still fails closed.
 - Short benchmark comparisons use the same named benchmarks, equal iteration counts, alternating order and multiple samples. Preserve both latency and allocation changes, including regressions. Source revisions and build identities are attached. Raw benchmark output remains captured; publish numeric aggregates and test names only.
+- Cleanup must distinguish a confirmed zombie-only process group from a live or unverifiable group; genuine permission denials remain failures, and interruptions retain their identity.
 - Deterministic tests must pass before optional benchmark work. Failure cancels later jobs; diagnostic timing never overrides a failed correctness/security gate.
 - Document on-demand and pre-release long qualification, precise version/source/configuration identity, protected local detailed artifacts, safe published summaries, and retention of rejected runs.
 - Publish an honest compatibility/support matrix and operating envelope: unmeasured or failing cells stay open. Record upgrade/rollback verification using the same vault/key and historical restoration oracles. A health check cannot establish historical correctness.

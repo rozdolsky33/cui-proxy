@@ -13,6 +13,7 @@ CI adds a bounded, report-only comparison after correctness and packaging checks
 - 23 Go race-test packages, vet, staticcheck and the isolated HTTP corpus passed. The embedded manual was regenerated and built successfully.
 - The final local workflow suite passed 323 tests with four opt-in skips. Parser, sample-count, finite-number, equal-work, interruption, immutable-binary and evidence-preservation regressions are included.
 - Real runner verification completed all ten benchmark invocations. An earlier missing-fixture attempt was correctly rejected when Go skipped the benchmark; explicit shared fixture setup resolved it. A regression covers Go's optional throughput column.
+- An isolated old/new/old binary transition passed three historical-restoration operations against the same vault and key. Each running executable path was verified; no user installation was changed.
 - Detailed logs and generated inputs remain private under the Task 12 verification prefixes in the local temporary evidence directory. These short diagnostic results are not reference-machine performance acceptance.
 
 ## macOS interruption cleanup
