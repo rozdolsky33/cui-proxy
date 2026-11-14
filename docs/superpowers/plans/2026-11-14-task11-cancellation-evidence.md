@@ -39,7 +39,7 @@
 
 ### Task 2: Isolated native diagnostic runner
 
-**Files:** Create scripts/workflow/cancellation_probe.py and test_cancellation_probe.py; reuse existing soak and request helpers without changing production defaults.
+**Files:** Create scripts/workflow/cancellation_probe.py and test_cancellation_probe.py, with cancellation_audit.py and test_cancellation_audit.py for pure audit attribution; reuse existing soak and request helpers without changing production defaults.
 
 **Interfaces:** run_probe(options) owns setup/identity, thread-local connection tracking, original warmup, three trial sequences, evidence binding and cleanup. evaluate_cancellation(report, expected_identity) combines all three trial bounds with the existing provenance/warmup oracles and receipt/audit, privacy and cleanup evidence; only that fully bound result may set cancellation_qualified=true, while performance_qualified remains false. CLI accepts the existing runtime/source/seed/corpus identity options and a fresh output root; no paid/live service or installation changes.
 
