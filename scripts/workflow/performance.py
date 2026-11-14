@@ -98,6 +98,8 @@ def relay_timings(started_s, prefix_ms, send_started_s, send_finished_s):
 def values_from_body(body, *, allow_attachments=False):
     values = []
     for item in body["input"]:
+        if item.get("type") == "function_call":
+            continue
         if allow_attachments and item.get("type") != "function_call_output":
             content = item.get("content", [])
             if content and content[0].get("type") in ("input_image", "input_file"):
