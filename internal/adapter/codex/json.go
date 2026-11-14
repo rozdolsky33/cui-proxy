@@ -186,7 +186,7 @@ func (n *node) write(b *bytes.Buffer, canonical bool) {
 				b.WriteByte(',')
 			}
 			if n.kind == '{' {
-				b.Write(quote(n.keys[i]))
+				writeQuote(b, n.keys[i])
 				b.WriteByte(':')
 			}
 			kid.write(b, canonical)
@@ -197,15 +197,23 @@ func (n *node) write(b *bytes.Buffer, canonical bool) {
 			b.WriteByte(']')
 		}
 	default:
-		b.Write(quote(n.str))
+		writeQuote(b, n.str)
 	}
 }
 
 // quote encodes s as a JSON string without HTML escaping.
 func quote(s string) []byte {
 	var b bytes.Buffer
-	enc := json.NewEncoder(&b)
+	writeQuote(&b, s)
+	return b.Bytes()
+}
+
+// writeQuote avoids an intermediate string buffer while retaining the standard
+// encoder's escaping and invalid-UTF-8 behavior. A string always encodes, and a
+// bytes.Buffer write cannot fail; remove only Encode's final newline.
+func writeQuote(b *bytes.Buffer, s string) {
+	enc := json.NewEncoder(b)
 	enc.SetEscapeHTML(false)
-	_ = enc.Encode(s) // a string always encodes
-	return bytes.TrimSuffix(b.Bytes(), []byte("\n"))
+	_ = enc.Encode(s)
+	b.Truncate(b.Len() - 1)
 }

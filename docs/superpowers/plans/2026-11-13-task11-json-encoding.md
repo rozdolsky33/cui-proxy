@@ -14,9 +14,9 @@
 5. This allocation optimization does not waive the original performance or sustained-soak criteria.
 
 ### Task 1: Direct string writer
-- [ ] Add exact differential prefix/suffix, Unicode/control/invalid-input tests and fuzz target; observe RED.
-- [ ] Add writeQuote using the existing standard encoder on the destination buffer; use it for keys/values and quote wrapper.
-- [ ] Affected adapter/transform/proxy race tests and20second differential fuzz pass; commit.
+- [x] Add exact differential prefix/suffix, Unicode/control/invalid-input tests and fuzz target; observe RED.
+- [x] Add writeQuote using the existing standard encoder on the destination buffer; use it for keys/values and quote wrapper.
+- [x] Affected adapter/transform/proxy race tests and20second differential fuzz pass; commit.
 
 ### Task 2: Performance acceptance
 - [ ] Build identical private benchmark harnesses against reference/candidate; eight alternating equal-work pairs plus existing controls.
