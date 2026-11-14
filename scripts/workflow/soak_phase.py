@@ -109,7 +109,7 @@ def _execute_clients(execute, phase, duration, clock, record, stop, started,
     report = dict(phase=phase, duration_s=duration, elapsed_s=elapsed,
                   completed=not executor_stop and not failures and len(exhausted) == 4
                   and (replay or elapsed >= duration), replay=replay,
-                  schedule=snapshot(), results=results, failures=failures)
+                  schedule=snapshot(), results=results, failures=failures, started_s=started)
     if drain_seconds:
         due = math.ceil(Fraction(str(duration)) * 100 / 60)
         assigned = sum(len(row["churn_indices"]) for row in report["schedule"])

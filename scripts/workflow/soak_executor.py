@@ -36,7 +36,7 @@ def _failure(row, reason):
 
 
 class ScenarioExecutor:
-    def __init__(self, url, upstream_url, workload, mappings, fixtures, directory, *, bypass=False):
+    def __init__(self, url, upstream_url, workload, mappings, fixtures, directory, *, bypass=False, corpus=None, warmup=False):
         self.url, self.upstream_url = url, upstream_url
         self.workload, self.mappings = workload, mappings
         self.fixtures, self.directory = fixtures, directory
@@ -45,6 +45,10 @@ class ScenarioExecutor:
         self.lock = threading.Lock()
         self.rejections = []
         self.forbidden_values = set()
+        self.corpus = corpus
+        if type(warmup) is not bool:
+            raise ValueError("corpus_warmup_flag")
+        self.warmup = warmup
 
     def _receipt(self, row):
         digest = row.get("boundary_sha256")
@@ -58,24 +62,35 @@ class ScenarioExecutor:
         return row
 
     def __call__(self, plan):
+        prefix = "soak-warmup" if self.warmup else "soak"
+        if self.warmup and plan.get("category") not in ("text", "image"):
+            raise ValueError("warmup_scenario")
         phase, client, serial = plan["identity"]
         expected = plan_request(client, serial, phase)
         if any(plan.get(key) != value for key, value in expected.items()):
             raise ValueError("inconsistent scenario plan")
         if plan["category"] != "text" and plan.get("churn_indices") != []:
             raise ValueError("nontext churn assignment")
-        operation = f"soak-{phase}-{client}-{serial}"
+        operation = f"{prefix}-{phase}-{client}-{serial}"
         if plan["category"] == "text":
-            row = execute_text(self.url, self.workload, plan, bypass=self.bypass)
+            row = execute_text(self.url, self.workload, plan, bypass=self.bypass, warmup=self.warmup)
             if not self.bypass:
-                case = build_text_case(self.workload, plan)
+                case = build_text_case(self.workload, plan, warmup=self.warmup)
                 if all(value in self.mappings for value in case["occurrences"]):
                     row = verify_deferred_boundary(case, row, self.mappings)
             row = self._receipt(row)
         elif plan["category"] == "image":
-            row = execute_image(self.url, self.workload, serial * 4 + client, plan["size_bytes"], self.fixtures,
-                                self.directory, self.mappings, f"soak-{phase}-client-{client}", plan["scenario"],
+            if "fixture_evidence" in plan:
+                if self.corpus is None:
+                    raise ValueError("corpus_replay_unavailable")
+                selected_fixtures = self.corpus.resolve(plan, plan["fixture_evidence"], warmup=self.warmup)
+            else:
+                selected_fixtures = self.corpus.select(plan, warmup=self.warmup) if self.corpus is not None else self.fixtures
+            row = execute_image(self.url, self.workload, serial * 4 + client, plan["size_bytes"], selected_fixtures,
+                                self.directory, self.mappings, f"{prefix}-{phase}-client-{client}", plan["scenario"],
                                 bypass=self.bypass, operation_id=operation)
+            if self.corpus is not None:
+                row["fixture_evidence"] = self.corpus.evidence(plan, warmup=self.warmup)
             row = self._receipt(row)
         elif plan["scenario"] in {"W07", "W09", "W10"}:
             row = execute_continuation(self.url, self.workload, plan, self.mappings, self.state, bypass=self.bypass)
@@ -107,10 +122,11 @@ class ScenarioExecutor:
         return row
 
     def _fault(self, plan, operation):
+        prefix = "soak-warmup" if self.warmup else "soak"
         phase, client, serial = plan["identity"]
         stage = lifecycle_step(plan)["stage"]
         case = self.workload.case(serial * 4 + client, plan["size_bytes"])
-        case.update(operation_id=operation, benchmark_session=f"soak-{phase}-client-{client}", benchmark_fault=stage)
+        case.update(operation_id=operation, benchmark_session=f"{prefix}-{phase}-client-{client}", benchmark_fault=stage)
         digest = _digest(case, self.mappings, self.bypass)
         if stage == "cancel":
             return cancel_request(self.url, case, digest, self.upstream_url)

@@ -8,7 +8,8 @@ from soak_operations import run_tool_operation
 from soak_schedule import plan_request
 
 
-def build_text_case(workload, plan):
+def build_text_case(workload, plan, *, warmup=False):
+    prefix = "soak-warmup" if warmup else "soak"
     phase, client, serial = plan["identity"]
     expected = plan_request(client, serial, phase)
     if expected["category"] != "text" or any(plan.get(key) != value for key, value in expected.items() if key != "identity"):
@@ -20,14 +21,14 @@ def build_text_case(workload, plan):
     case = workload.case(serial * 4 + client, size)
     if indices:
         case = inject_churn(case, workload, indices, size)
-    identity = f"soak-{phase}-{client}-{serial}"
+    identity = f"{prefix}-{phase}-{client}-{serial}"
     if expected["scenario"] in ("W02", "W03", "W04"):
         case = build_tool_case(case, expected["scenario"], identity, size)
-    return dict(case, operation_id=identity, benchmark_session=f"soak-client-{client}")
+    return dict(case, operation_id=identity, benchmark_session=f"{prefix}-client-{client}")
 
 
-def execute_text(url, workload, plan, *, bypass=False):
-    case = build_text_case(workload, plan)
+def execute_text(url, workload, plan, *, bypass=False, warmup=False):
+    case = build_text_case(workload, plan, warmup=warmup)
     expected_hash = hashlib.sha256(case["body"]).hexdigest() if bypass else None
     if plan["scenario"] in ("W02", "W03", "W04"):
         row = run_tool_operation(url, case, expected_hash, defer_boundary=not bypass)

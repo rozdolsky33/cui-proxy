@@ -115,6 +115,7 @@ class ResourceMonitor:
             row = resource_metadata({})
             error_kind = type(error).__name__
         row.update(event="resource", slot=slot, elapsed_s=self.clock() - self.started)
+        row["observed_s"] = self.started + row["elapsed_s"]
         if error_kind is not None: row["sample_error"] = error_kind
         try:
             self.record(row)

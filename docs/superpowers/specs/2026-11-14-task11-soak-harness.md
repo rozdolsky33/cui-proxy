@@ -206,3 +206,226 @@ all seed/churn originals plus negative canaries. Root metadata includes only
 counts, hashes, rule names and bounded diagnostic codes. Check cleanup results;
 a failed cleanup or absent evidence prevents acceptance rather than producing
 an apparently successful partial report.
+
+### Corpus selector interface and partitions
+
+`CorpusSelection(images).select(plan, warmup=False)` consumes the existing
+`plan_request` identity tuple (or its JSON list representation), validates an
+image slot, and returns defensive copies of two descriptors. Metadata validation
+requires the existing four format/dimension groups, 100 measured indices 0–99
+and 100 warmup indices 100000–100099 per group. The 800 descriptors are validated
+together, but measured requests cycle only the 400 measured images; warmup uses
+only its disjoint 400-image partition. This preserves the original OCR corpus
+contract. Coverage reports distinguish partition and template.
+
+Selection uses image ordinal `((serial // 10) * 2 + serial % 10 - 7) * 4 + client`.
+The first template is ordinal modulo four; the second is its next template.
+Index is ordinal divided by four modulo 100, offset by 50 in the churn phase,
+and by 100000 for warmup. Selection therefore depends only on stable identity,
+not request completion order. File containment, actual bytes/hash and image
+validation remain separate preflight requirements; metadata validation alone
+does not attest fixture contents.
+
+`CorpusSelection.evidence(plan, warmup=False)` returns only ordered ID/hash
+pairs. `resolve(plan, evidence, warmup=False)` rejects changed order, cardinality,
+hashes, extra fields, partition or request identity before returning private
+descriptors. `ScenarioExecutor(..., corpus=selector)` uses that selection for
+image requests and emits `fixture_evidence` in the observed result. When a replay
+plan carries `fixture_evidence`, the executor resolves it before extraction and
+rejects replay evidence without a selector. The campaign replay assembler must
+join these result identities to the sealed schedule; this does not change the
+strict existing journal schema. Physical file verification remains required
+before any campaign declares the corpus attested.
+
+The executor's `warmup=True` option forwards the partition choice through
+selection, replay resolution and recorded fixture evidence. Campaign warmup
+must still use distinct request identities and audit reconciliation; choosing
+the image partition alone does not establish that separation.
+
+`verify_image_file(root, descriptor)` performs bounded per-file preflight. It
+walks relative components through directory descriptors with no-follow flags,
+opens the leaf nonblocking, requires a regular file of the declared size, hashes
+at most that size plus an EOF check, and rejects changed file identity/times or
+a mismatched digest. It returns only ID, byte count and hash. This attests the
+bytes observed during the check; campaign identity checks must bracket use, and
+the corpus remains private and owned throughout execution. Full corpus hashing
+and real extraction verification run outside active reference timing.
+
+### Root evidence collector
+
+`CampaignEvidence(root, identity, settings)` creates a new private directory
+and hash-chained root event stream. `link_phase(name)` accepts the four ordered
+phase names `proxy-fixed`, `proxy-churn`, `bypass-fixed`, `bypass-churn`; it verifies
+the existing child seal and framing, retains event/seal hashes and event count,
+and rejects incomplete children. `finish()` requests completion after checking
+all linked identities. Only a clean context exit writes a completed root seal;
+exceptions after that request retain an incomplete seal. Child hashes are checked
+again on exit so post-link changes cannot silently pass.
+
+This collector proves structural links and recorded completion states only. It
+does not validate host/workload identity semantics, phase durations, schedule
+correspondence, latency/resource gates or the full acceptance contract. It always
+records `performance_qualified=False`; Task 4's evaluator must independently
+prove every original requirement. The campaign driver must perform cleanup
+inside this context before its clean exit.
+
+`attest_corpus(root, manifest)` validates the version-2 corpus structure, creates
+a defensive selector snapshot, verifies all 800 image files and both two-page
+PDF files, and returns the selector plus counts and identity hashes. The manifest
+hash includes the independent OCR expectations and rendering provenance; the
+file-set hash includes sorted observed file IDs, sizes and digests. PDF kinds
+must include both text-layer and scanned cases, and identities, paths and hashes
+are unique across images and PDFs. A failure anywhere prevents an attestation.
+This byte/metadata attestation does not establish OCR accuracy or qualification.
+
+The root evidence collector synchronizes its new directory entry in the parent
+after writing its start record. A parent-sync failure closes the writer and
+retains an incomplete seal when storage remains writable. This is best-effort
+evidence retention on a filesystem failure, not a promise that failed storage
+can provide durability.
+
+`load_manifest(root)` reads a regular `manifest.json` without following symlinks,
+with a 4 MiB metadata limit, bounded reads and file-change checks. It rejects
+invalid UTF-8/JSON, duplicate keys at any depth, non-finite numbers (including
+finite-looking exponent overflow), and non-object roots. Descriptor/schema and
+physical fixture checks remain the subsequent attestation step.
+
+### Warmup identity separation
+
+Warmup executors use the explicit `soak-warmup` operation/session namespace,
+while measured requests retain the original `soak` namespace. Text construction
+and sending forward the warmup flag; image operation IDs and sessions follow
+the same separation. Identical phase/client/serial coordinates therefore cannot
+collide across warmup and measurement. No guessed high-serial offset is needed.
+Warmup accepts only supported text/image schedule slots and rejects lifecycle or
+negative scenarios before sending a request. Its elapsed-time and completion
+minimums still require the campaign warmup driver; namespace separation alone
+does not satisfy them.
+
+`run_warmup(execute, minimum_seconds=60, minimum_count=100, ...)` drives four
+closed-loop clients using supported text/image schedule slots. The supplied
+executor must have warmup identity/partition enabled. It requires both minimums
+and at least one verified success from each client, records starts before send
+and every observed result, and counts only completed, semantic-, boundary- and
+receipt-verified supported successes. An explicit operation exception remains a
+failure even if its retained fields resemble success. Cancellation, recording
+failure or worker failure stops new admissions; in-flight requests retain their
+existing bounded executor deadlines. Failed warmup raises `WarmupFailure` with
+its partial report. Warmup time and outcomes remain outside measured windows.
+
+### Owned environment retention
+
+`performance.Environment(..., retained_directory=path)` uses a new explicit
+0700 evidence directory whose lifecycle survives environment cleanup. Child
+process termination and log closure still use the existing environment cleanup;
+only directory deletion is disabled for this explicitly selected owner. Parent
+directory metadata is synchronized at creation. Existing paths are rejected,
+and there is no temporary-directory finalizer that later deletes retained data.
+The default remains an ordinary auto-cleaned temporary directory.
+
+The campaign creates one retained directory for its persistent proxy environment
+and a separate retained directory for bypass. This preserves final shutdown logs,
+vault snapshots, private configuration and setup failures without copying files
+while processes still write them. The root collector can finish only after the
+environment exits and owned child/log cleanup is verified. These private
+artifacts must never be committed or printed in the assistant session.
+
+`bind_fixture_replay(execute, report, corpus)` requires a completed proxy phase
+and an exact schedule/outcome identity bijection. It resolves all image proofs
+against the attested selector before returning an executor wrapper, then adds
+the recorded fixture evidence to each matching replay call. Changed request
+coordinates, scenario, size, churn indices or supplied fixture evidence are
+rejected. It leaves the strict journal format unchanged; the recorded replay
+runner still validates original timing, ordering and drain markers. The report
+must itself come from sealed, identity-checked campaign artifacts.
+
+### Persistent mode orchestration
+
+`run_proxy_phases` warms up in a distinct namespace, observes idle/GC baselines,
+then executes fixed and churn phases against one persistent environment and one
+restart/reload controller. The fixed-phase final persisted mappings become the
+churn baseline. An incomplete phase or unmet mapping requirement prevents the
+next phase; partial reports are retained. Idle/GC, negative-arrival and lifecycle
+checks follow both phases. Returned summaries remain pending finalization.
+
+`run_bypass_phases` requires both completed proxy reports before warmup, resolves
+all measured image proofs through the attested corpus, and replays the original
+fixed/churn schedules with their original durations and churn drain setting.
+Its warmup uses the separate warmup namespace and corpus partition. A warmup or
+phase failure retains its report and prevents subsequent phases. The caller must
+authenticate source reports against linked campaign artifacts before calling.
+Neither mode runner asserts qualification: environment cleanup, final source and
+corpus identity, audit reconciliation, privacy checks and the original acceptance
+evaluator remain mandatory campaign-level work.
+
+`CampaignEvidence.load_report(name)` reads only an artifact registered by the
+active collector. It uses the originally saved byte count as its read bound,
+rejects symlinks and nonregular files, checks file metadata stability, and verifies
+the original SHA-256 before parsing JSON. Replay assembly uses this authenticated
+readback instead of trusting a mutable in-memory or independently loaded report.
+The child phase seals remain separately bound by the campaign link checks.
+
+### Campaign command and finalization boundary
+
+`scripts/workflow/soak.py` composes the normal workload plus its declared negative
+rule, stable identity probe, retained campaign coordinator and concrete audit/log
+finalizer. Default fixed/churn durations are 7,200 seconds each, warmup is both
+60 seconds and 100 successes, controls are ten restarts and ten reloads, and
+churn drain is bounded at 45 seconds. Explicit shorter settings support diagnostic
+smokes only; command completion never claims performance qualification.
+
+The command requires `--binary`, `--seed-binary`, `--fixtures`, `--build-manifest`,
+`--binary-commit` (full commit ID), and a new `--output` directory. The identity
+probe binds the manifest hash, declared clean binary source commit, binary bytes,
+embedded Go VCS revision/clean bit, clean harness source identity, policy hash,
+fixture manifest and validated reference host. Current load is checked by the
+reference preflight but excluded from immutable host identity. Harness and proxy
+source revisions are recorded separately, since qualification tooling may be
+maintained independently of the frozen proxy candidate.
+
+The coordinator authenticates both proxy summaries before creating the bypass
+environment. It checks every owned child has exited and every owned log handle
+is closed, then invokes audit/privacy finalization, then rechecks source/build/host
+and physical corpus identity before the next mode or root completion. Failures
+leave the root incomplete and prevent later expensive work. Bypass executors
+send directly to the backend URL; a dedicated routing regression distinguishes
+it from the proxy endpoint.
+
+Audit finalization includes warmup plus fixed and churn outcomes. Proxy audit
+coverage must reconcile all request identities and every completed reload
+generation. Bypass must leave the unused proxy audit empty. Audit input must be
+regular, stable, newline-framed JSON objects with unique keys and finite numbers;
+individual records are bounded at 1 MiB. All retained log files and any audit file
+are checked against the initial pair set, negative canary and final persisted
+mappings. Missing required logs, incomplete reports, malformed audit evidence or
+privacy failure prevents finalization. This verifies collection integrity, not
+original duration/window/resource acceptance; the separate evaluator remains
+required before full qualification.
+
+### Shared timing and retained stage observations
+
+Phase reports retain their actual monotonic `started_s`; resource samples retain
+`observed_s` on that same clock, in addition to monitor-relative elapsed time.
+This makes phase-window resource comparisons possible without inferring starts
+from file creation time or rounded durations.
+
+The campaign stage collector preserves the existing per-request stage metadata,
+filters distinct warmup session pseudonyms, and writes each first observation to
+the root hash chain with its monotonic observation time. Repeated polls retain
+the first observation time; polling errors are counted and recorded without raw
+exception details. Evidence-write failure stops further phase admissions.
+A final stage report is retained even if a measured phase raises. Stage first-seen
+time is the collection time, not the original request start; the acceptance
+evaluator must explicitly reconcile window attribution and sampling gaps rather
+than silently treating those as identical timestamps.
+
+The measured frozen binary may lack embedded VCS metadata. In that case the
+command requires `--binary-source` pointing at the original clean source snapshot.
+Preflight verifies its exact Git revision, rejects tracked/untracked changes and
+ignored build inputs (Python bytecode caches are allowed), reproduces the recorded
+restricted Go build into a separate temporary output, and requires a byte-for-byte
+SHA-256 match with the measured binary. It rechecks source cleanliness after the
+build. Subsequent identity probes may reuse that build proof only for the same
+source/commit/binary/command identity and recheck source cleanliness each time.
+Present but incorrect embedded VCS metadata remains a hard failure. The measured
+binary is never replaced by the verification build.

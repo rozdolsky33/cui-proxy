@@ -39,6 +39,7 @@ from urllib.parse import urlsplit
 import harness
 from performance_stats import OUTCOMES, summarize_outcomes, summarize_pairs
 from performance_workload import Workload, PROSE, encode
+from retained_directory import run_directory
 
 backend_stage("imports")
 
@@ -613,13 +614,14 @@ def prepare(directory, workload, seed_binary, proxy_port, ui_port, upstream_url,
 
 
 class Environment(harness.Environment):
-    def __init__(self, binary, seed_binary, workload, size, correlate=False):
+    def __init__(self, binary, seed_binary, workload, size, correlate=False, retained_directory=None):
         self.correlate = correlate
         super().__init__(binary)
         self.seed_binary, self.workload, self.size = seed_binary, workload, size
+        self.retained_directory = retained_directory
 
     def __enter__(self):
-        self.temp = tempfile.TemporaryDirectory(prefix="cui-performance-")
+        self.temp = run_directory(self.retained_directory)
         self.directory = Path(self.temp.name)
         try:
             backend_dir = self.directory / "backend"
