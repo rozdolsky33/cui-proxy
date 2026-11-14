@@ -325,7 +325,7 @@ crash behavior matches the documented contract; multi-process locking holds;
 no mapping silently resolves to another original. Resource growth and recovery
 limits are recorded, not hidden behind a successful health endpoint.
 
-Local recovery and growth acceptance is implemented; final review and remote integration remain pending. See [Task 10 recovery evidence](../../verification-results/2026-11-13-task10-vault-recovery.md) and [ADR 0004](../../adr/0004-mapping-durability.md).
+Recovery and growth acceptance is integrated in [PR #44](https://github.com/rozdolsky33/cui-proxy/pull/44), squash `62445ed`, following independent review and all required remote checks. See [Task 10 recovery evidence](../../verification-results/2026-11-13-task10-vault-recovery.md) and [ADR 0004](../../adr/0004-mapping-durability.md).
 
 ## Task 11 — Run sustained four-agent acceptance and tune
 
@@ -343,6 +343,8 @@ Local recovery and growth acceptance is implemented; final review and remote int
 partial pass remains partial; successful unit tests alone do not close this task.
 
 ## Task 12 — Establish release and regression gates
+
+Carry forward Task 10 follow-ups: preserve-key/vault guidance for unsupported file formats, and investigate any recurrence of the macOS Python 3.15.2 interruption-cleanup failure using the new value-free exception/errno diagnostic. Its intermittent root cause is unconfirmed; final exact-head CI passed without relaxing cleanup checks.
 
 - [ ] Put a short deterministic workflow suite and stable benchmark comparison
       in CI. Use a controlled performance runner or report-only thresholds
@@ -433,4 +435,4 @@ Next ready task:
 
 ## Next action
 
-Finish **Task 10** review and integration using its [implementation plan](2026-11-13-task10-vault-recovery.md), then run **Task 11** sustained acceptance. **Task 08** remains open for the original mixed-text latency target; **Task 12** still requires release/regression evidence. Task 09 is integrated in PR #43.
+Task 10 is integrated in PR #44. The [Task 11 regexp preflight](../../verification-results/2026-11-13-task11-regexp-preflight.md) rejected the bounded-search runtime change after mixed-load latency failed acceptance. Continue profiling the mixed-load bottleneck, then sustained acceptance. **Task 08** remains open for the original mixed-text latency target; **Task 12** still requires release/regression evidence. Task 09 is integrated in PR #43.
