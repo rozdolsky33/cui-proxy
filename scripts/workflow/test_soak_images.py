@@ -67,6 +67,7 @@ class ImageCaseTests(unittest.TestCase):
                 for bypass in (False, True):
                     with self.subTest(scenario=scenario, bypass=bypass), patch("soak_images.performance.request", return_value={"outcome": "supported_success", "completed": True}) as request:
                         row = execute_image("http://unused", workload, 0, 262144, [fixture, fixture], directory, mappings, "client-0", scenario, bypass=bypass)
+                        self.assertTrue(row["boundary_verified"])
                         actual_case = request.call_args.args[1]
                         if bypass:
                             self.assertEqual(request.call_args.kwargs["expected_hash"], hashlib.sha256(case["body"]).hexdigest())

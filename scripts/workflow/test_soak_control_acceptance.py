@@ -109,3 +109,18 @@ class ControlAcceptanceTests(unittest.TestCase):
             mutate(*data)
             with self.assertRaises(ValueError):
                 self.check(data)
+
+    def test_reload_can_preserve_a_verified_expected_rejection(self):
+        data = self.evidence()
+        control = data[0]["reloads"][0]
+        outcome = next(row for row in data[1]["fixed"]["results"] if row["identity"] == control["identity"])
+        serial = next(i for i in range(1000) if plan_request(client=2, serial=i, phase="fixed")["scenario"] == "W11")
+        identity = ["fixed", 2, serial]
+        control["identity"] = identity
+        outcome["identity"] = identity
+        outcome["request"].update(outcome="expected_rejection", completed=False, semantic_verified=False,
+                                  expected_failure_verified=True, boundary_verified=True, upstream_arrivals=0)
+        self.assertEqual(self.check(data)["state"], "pass")
+        outcome["request"]["upstream_arrivals"] = 1
+        with self.assertRaises(ValueError):
+            self.check(data)

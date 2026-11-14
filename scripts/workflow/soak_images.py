@@ -55,4 +55,5 @@ def execute_image(url, workload, serial, size, fixtures, directory, mappings,
         row = performance.request(url, case, expected_layout_hash=performance.text_layout_hash(expected))
     row.update(scenario=scenario, category="image", image_count=2,
                semantic_verified=row.get("completed") is True and row.get("outcome") == "supported_success")
+    row["boundary_verified"] = row.get("outcome") == "supported_success"
     return row

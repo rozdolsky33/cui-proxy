@@ -4,6 +4,7 @@ import math
 from soak_controls import control_times
 from soak_lifecycle import lifecycle_step
 from soak_schedule import plan_request
+from soak_trace_acceptance import verify_semantic_outcome
 
 
 def _number(value):
@@ -66,9 +67,10 @@ def evaluate_controls(report, *, phase_reports, snapshots, expected_rule_count):
                 raise ValueError("control_under_load")
             identity = _identity(row.get("identity"))
             outcome = outcomes.get(identity)
-            if (identity in identities or not isinstance(outcome, dict)
-                    or any(outcome.get(key) is not True for key in ("completed", "semantic_verified"))):
+            if identity in identities or not isinstance(outcome, dict):
                 raise ValueError("control_semantic_outcome")
+            plan = plan_request(client=identity[1], serial=identity[2], phase=identity[0])
+            verify_semantic_outcome(plan, outcome, "proxy")
             identities.add(identity)
             start, end = row.get("started_s"), row.get("elapsed_s")
             if (not _number(start) or not _number(end) or start < deadlines[index-1]
