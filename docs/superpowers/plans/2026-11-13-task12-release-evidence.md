@@ -21,9 +21,9 @@ Preserve fail-closed policies, metadata-only reports, existing CI/security gates
 
 ## Task 1: Safe recovery diagnostics
 
-Files: internal/vault/file.go, internal/vault/recovery_guidance_test.go, docs/vault-recovery.md.
-- [ ] Add a regression for unsupported format guidance: startup refuses, no vault/key removal advice, preserves file bytes, recommends compatible binary and retained state.
-- [ ] Run targeted test, observe actual RED; update wording only; targeted vault tests GREEN.
+Files: internal/vault/file.go, existing TestOpenOldVersionClearError in internal/vault/vault_test.go, docs/vault-recovery.md.
+- [x] Update unsupported-format recovery wording to preserve vault/key and require a compatible binary; startup behavior remains unchanged.
+- [ ] Verify existing format-refusal and vault tests in CI. No new exact-copy test for this wording-only change; such a test would mirror implementation rather than verify new behavior.
 - [ ] Commit recovery guidance and evidence.
 
 ## Task 2: Bounded benchmark comparison reporting

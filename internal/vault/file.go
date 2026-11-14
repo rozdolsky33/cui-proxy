@@ -134,7 +134,7 @@ func Open(path string, key []byte) (*Vault, error) {
 		return nil, fmt.Errorf("vault: read: %w", err)
 	}
 	if len(blob) >= len(fileMagic) && string(blob[:4]) == "CUIV" && string(blob[:len(fileMagic)]) != string(fileMagic) {
-		return nil, fmt.Errorf("vault: unsupported vault file version %q (want %q); remove the file to start a new vault", blob[:len(fileMagic)], fileMagic)
+		return nil, fmt.Errorf("vault: unsupported vault file version %q (want %q); preserve the vault and key and use a compatible binary; do not resume existing histories with a new vault", blob[:len(fileMagic)], fileMagic)
 	}
 	hdr := len(fileMagic) + gcm.NonceSize()
 	if len(blob) < hdr+gcm.Overhead() || string(blob[:len(fileMagic)]) != string(fileMagic) {
