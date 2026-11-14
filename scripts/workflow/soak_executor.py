@@ -59,6 +59,8 @@ class ScenarioExecutor:
         except Exception as error:
             raise _failure(row, "upstream_receipt_mismatch") from error
         row["upstream_receipt_verified"] = True
+        if self.bypass:
+            row["boundary_verified"] = True
         return row
 
     def __call__(self, plan):

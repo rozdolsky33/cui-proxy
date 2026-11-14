@@ -101,3 +101,43 @@ class ControlTests(unittest.TestCase):
         for values in [[True], [float("nan")], [-1], [1, 1], [2, 1]]:
             with self.assertRaises(ValueError):
                 controls.ControlledExecutor(Mock(), Mock(), Mock(), Mock(), restart_times=values, reload_times=[])
+
+    def test_restart_snapshots_completed_stages_before_stopping_proxy(self):
+        from unittest.mock import Mock, patch
+        from soak_controls import ControlledExecutor
+        from soak_schedule import plan_request
+        order = []
+        now = [100.0]
+        env = Mock()
+        env.metrics.return_value = {"active_requests": 1}
+        controlled = ControlledExecutor(lambda item: success(), env, Mock(), lambda row: None,
+                                        restart_times=[1], reload_times=[], clock=lambda: now[0],
+                                        before_restart=lambda: order.append("snapshot"))
+        controlled.active = 1
+        now[0] = 101.0
+        def restart(env, index, *, continuation):
+            order.append("restart")
+            continuation()
+            return dict(graceful_exit=True, ready=True, continuation_verified=True)
+        with patch("soak_controls.restart_proxy", side_effect=restart):
+            controlled(plan_request(client=2, serial=59, phase="fixed"))
+        self.assertEqual(order, ["snapshot", "restart"])
+        self.assertEqual(controlled.summary()["clock_origin_s"], 100.0)
+
+    def test_failed_restart_snapshot_prevents_process_mutation(self):
+        from unittest.mock import Mock, patch
+        from soak_controls import ControlledExecutor
+        from soak_schedule import plan_request
+        now = [0.0]
+        env = Mock()
+        env.metrics.return_value = {"active_requests": 1}
+        controlled = ControlledExecutor(lambda item: success(), env, Mock(), lambda row: None,
+                                        restart_times=[1], reload_times=[], clock=lambda: now[0],
+                                        before_restart=Mock(side_effect=RuntimeError("snapshot")))
+        controlled.active = 1
+        now[0] = 1.0
+        with patch("soak_controls.restart_proxy") as restart:
+            with self.assertRaises(RuntimeError):
+                controlled(plan_request(client=2, serial=59, phase="fixed"))
+            restart.assert_not_called()
+        self.assertTrue(controlled.summary()["failed"])

@@ -137,3 +137,23 @@ class ExecutorTests(unittest.TestCase):
 
     def churn_plan(self):
         plan = plan_request(0, 0, "churn"); plan["churn_indices"] = [0]; return plan
+
+    def test_verified_direct_boundary_satisfies_bypass_warmup(self):
+        from soak_warmup import run_warmup
+        runner = self.runner(bypass=True)
+        digest = hashlib.sha256(b"direct-boundary").hexdigest()
+        def execute(plan):
+            row = dict(boundary_sha256=digest, operation_id=str(plan["identity"]),
+                       outcome="supported_success", completed=True, semantic_verified=True)
+            return runner._receipt(row)
+        with patch.object(executor, "verify_receipt", return_value=True), patch.object(executor, "backend_evidence", return_value={}):
+            report = run_warmup(execute, minimum_seconds=.001, minimum_count=4)
+        self.assertTrue(report["completed"])
+
+    def test_proxy_receipt_does_not_promote_pending_sanitization_boundary(self):
+        runner = self.runner()
+        row = dict(boundary_sha256=hashlib.sha256(b"proxy-boundary").hexdigest(),
+                   operation_id="pending", boundary_pending=True)
+        with patch.object(executor, "verify_receipt", return_value=True), patch.object(executor, "backend_evidence", return_value={}):
+            result = runner._receipt(row)
+        self.assertIsNot(result.get("boundary_verified"), True)

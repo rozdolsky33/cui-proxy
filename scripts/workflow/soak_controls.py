@@ -21,10 +21,11 @@ def _times(values):
 
 
 class ControlledExecutor:
-    def __init__(self, execute, env, reloader, record, *, restart_times, reload_times, clock=time.monotonic):
+    def __init__(self, execute, env, reloader, record, *, restart_times, reload_times, clock=time.monotonic, before_restart=lambda: None):
         self.execute, self.env, self.reloader, self.record = execute, env, reloader, record
         self.restart_times, self.reload_times = _times(restart_times), _times(reload_times)
         self.clock = clock
+        self.before_restart = before_restart
         self.started = clock()
         self.condition = threading.Condition()
         self.active = 0
@@ -85,6 +86,7 @@ class ControlledExecutor:
                     row = self._invoke(plan)
                     rows.append(row)
                     return row
+                self.before_restart()
                 evidence = restart_proxy(self.env, index, continuation=continuation)
                 if len(rows) != 1 or any(evidence.get(key) is not True for key in ("graceful_exit", "ready", "continuation_verified")):
                     raise ValueError("restart continuation evidence missing")
@@ -119,6 +121,6 @@ class ControlledExecutor:
 
     def summary(self):
         with self.condition:
-            return {"failed": self.failed, "restarts_planned": len(self.restart_times), "reloads_planned": len(self.reload_times),
+            return {"clock_origin_s": self.started, "failed": self.failed, "restarts_planned": len(self.restart_times), "reloads_planned": len(self.reload_times),
                     "restarts_completed": len(self.restarts), "reloads_completed": len(self.reloads),
                     "restarts": list(self.restarts), "reloads": list(self.reloads)}

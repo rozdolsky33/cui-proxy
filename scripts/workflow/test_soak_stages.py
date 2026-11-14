@@ -80,3 +80,67 @@ class SoakStagesTests(unittest.TestCase):
         collector.sample()
         self.assertTrue(stop.is_set())
         self.assertIsNotNone(collector.failure)
+
+    def test_restart_snapshot_persists_last_completed_stage(self):
+        import threading
+        from unittest.mock import Mock
+        from soak_stages import SoakStageCollector
+        env = Mock()
+        env.metrics.return_value = {"recent_requests": [dict(time="completed-before-restart",
+            identity=dict(session="test-session"), stages_ms=dict(extraction_run=12))]}
+        events = []
+        collector = SoakStageCollector(env, set(), record=events.append,
+                                      phase_stop=threading.Event(), clock=lambda: 10.0)
+        collector.before_restart()
+        self.assertEqual(len(collector.records), 1)
+        self.assertTrue(any(row.get("event") == "stage_restart_snapshot" for row in events))
+        self.assertIsNone(collector.failure)
+
+    def test_restart_snapshot_poll_failure_is_fatal(self):
+        import threading
+        from unittest.mock import Mock
+        from soak_stages import SoakStageCollector
+        stop = threading.Event()
+        collector = SoakStageCollector(Mock(metrics=Mock(side_effect=OSError("offline"))), set(),
+                                      record=lambda row: None, phase_stop=stop, clock=lambda: 10.0)
+        with self.assertRaises(RuntimeError):
+            collector.before_restart()
+        self.assertTrue(stop.is_set())
+
+    def test_restart_snapshot_waits_for_background_poll(self):
+        import threading
+        from unittest.mock import Mock
+        from soak_stages import SoakStageCollector
+        entered, release, snapshot_started, snapshot_done = [threading.Event() for _ in range(4)]
+        calls = []
+        def metrics(**kwargs):
+            calls.append(1)
+            if len(calls) == 1:
+                entered.set()
+                if not release.wait(2):
+                    raise RuntimeError("test synchronization timeout")
+            return {"recent_requests": []}
+        collector = SoakStageCollector(Mock(metrics=metrics), set(), record=lambda row: None,
+                                      phase_stop=threading.Event(), clock=lambda: 10.0)
+        poll = threading.Thread(target=collector.sample)
+        def snapshot():
+            snapshot_started.set()
+            collector.before_restart()
+            snapshot_done.set()
+        restart = threading.Thread(target=snapshot)
+        try:
+            poll.start()
+            self.assertTrue(entered.wait(1))
+            restart.start()
+            self.assertTrue(snapshot_started.wait(1))
+            self.assertFalse(snapshot_done.wait(.02))
+            self.assertEqual(len(calls), 1)
+        finally:
+            release.set()
+            poll.join(2)
+            if restart.ident is not None:
+                restart.join(2)
+        self.assertFalse(poll.is_alive())
+        self.assertFalse(restart.is_alive())
+        self.assertTrue(snapshot_done.is_set())
+        self.assertEqual(len(calls), 2)
