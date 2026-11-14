@@ -157,6 +157,14 @@ class FakeBackend:
                     if self.headers.get("X-Benchmark-Text-Only-Reply") == "1":
                         values = values[:40]
                     if len(values) < 2: values *= 2
+                    tool_call = None
+                    scenario = self.headers.get("X-Benchmark-Tool-Scenario")
+                    if scenario is not None:
+                        call_id = self.headers.get("X-Benchmark-Tool-Call-ID")
+                        if scenario not in ("W02", "W04") or not call_id or len(call_id) > 128:
+                            raise ValueError("soak_tool_selection")
+                        from soak_semantics import build_tool_call
+                        tool_call = build_tool_call(scenario, values, call_id)
                     chunks = stream_chunks(values)
                     time.sleep(outer.delay)
                     self.send_response(200)
@@ -165,17 +173,21 @@ class FakeBackend:
                     if self.headers.get("X-Benchmark-Text-Layout") == "1":
                         self.send_header("X-Benchmark-Text-Layout-SHA256", text_layout_hash(raw))
                     self.end_headers()
-                    send_started = []
-                    send_finished = []
-                    for chunk in chunks:
-                        event = dict(type="response.output_text.delta", delta=chunk)
-                        send_started.append(time.monotonic())
-                        self.wfile.write(b"data: " + encode(event) + b"\n\n")
+                    if tool_call is not None:
+                        from soak_sender import send_tool_stream
+                        send_tool_stream(self.wfile, tool_call, outer.interval)
+                    else:
+                        send_started = []
+                        send_finished = []
+                        for chunk in chunks:
+                            event = dict(type="response.output_text.delta", delta=chunk)
+                            send_started.append(time.monotonic())
+                            self.wfile.write(b"data: " + encode(event) + b"\n\n")
+                            self.wfile.flush()
+                            send_finished.append(time.monotonic())
+                            time.sleep(outer.interval)
+                        self.wfile.write(b"data: " + encode(dict(type="response.completed", benchmark_send_started_s=send_started, benchmark_send_finished_s=send_finished)) + b"\n\n")
                         self.wfile.flush()
-                        send_finished.append(time.monotonic())
-                        time.sleep(outer.interval)
-                    self.wfile.write(b"data: " + encode(dict(type="response.completed", benchmark_send_started_s=send_started, benchmark_send_finished_s=send_finished)) + b"\n\n")
-                    self.wfile.flush()
                 except (BrokenPipeError, ConnectionResetError, OSError): pass
                 except (KeyError, ValueError, TypeError):
                     self.close_connection = True
@@ -300,7 +312,7 @@ def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None
         remaining = deadline - time.monotonic()
         if remaining <= 0: raise TimeoutError()
         conn.sock.settimeout(remaining)
-        conn.request("POST", "/v1/responses", body=case["body"], headers={'Content-Type': 'application/json', 'Authorization': 'Bearer benchmark-only', 'X-Benchmark-Text-Layout': '1' if expected_layout_hash is not None else '0', 'session_id': case.get('benchmark_session', ''), 'X-Benchmark-Text-Only-Reply': '1' if case.get('benchmark_text_only') else '0'})
+        conn.request("POST", "/v1/responses", body=case["body"], headers={'Content-Type': 'application/json', 'Authorization': 'Bearer benchmark-only', 'X-Benchmark-Text-Layout': '1' if expected_layout_hash is not None else '0', 'session_id': case.get('benchmark_session', ''), 'X-Benchmark-Text-Only-Reply': '1' if case.get('benchmark_text_only') else '0', **({"X-Benchmark-Tool-Scenario": case["benchmark_tool_scenario"], "X-Benchmark-Tool-Call-ID": case.get("benchmark_tool_call_id", "")} if "benchmark_tool_scenario" in case else {})})
         response = conn.getresponse()
         row["status"] = response.status
         boundary_ok = expected_hash is None or response.getheader("X-Benchmark-Body-SHA256") == expected_hash

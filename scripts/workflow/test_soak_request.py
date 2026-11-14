@@ -39,6 +39,7 @@ class MemoryConnection:
         pass
 
     def request(self, method, url, body=None, headers=None):
+        self.headers = headers
         self.method, self.body = method, body
 
     def getresponse(self):
@@ -100,3 +101,19 @@ class SoakRequestTests(unittest.TestCase):
         result = self.request(events)
         self.assertEqual(result["outcome"], "supported_success")
         self.assertEqual(len(result["prefix_ms"]), 32)
+
+    def test_structured_selection_is_forwarded_with_call_association(self):
+        from soak_tool_stream import tool_events
+        self.case["benchmark_tool_scenario"] = "W02"
+        self.case["benchmark_tool_call_id"] = self.expected["call_id"]
+        self.request(tool_events(self.expected))
+        headers = MemoryConnection.instances[-1].headers
+        self.assertEqual(headers["X-Benchmark-Tool-Scenario"], "W02")
+        self.assertEqual(headers["X-Benchmark-Tool-Call-ID"], self.expected["call_id"])
+
+    def test_default_requests_do_not_select_tool_streams(self):
+        from soak_tool_stream import tool_events
+        self.request(tool_events(self.expected))
+        headers = MemoryConnection.instances[-1].headers
+        self.assertNotIn("X-Benchmark-Tool-Scenario", headers)
+        self.assertNotIn("X-Benchmark-Tool-Call-ID", headers)
