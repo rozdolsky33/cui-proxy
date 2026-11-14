@@ -10,6 +10,7 @@ from soak_finalization import finalize_evidence
 from soak_identity import make_identity_probe
 from soak_rejections import BLOCK_CANARY, negative_policy
 from soak_run import run_campaign
+from soak_reload import renamed_policy
 
 
 def _positive_seconds(value):
@@ -58,12 +59,13 @@ def main(argv=None):
                  "control_count", "drain_seconds")}
     try:
         workload = Workload("normal")
-        workload.rules = negative_policy({"rules": workload.rules})["rules"]
+        workload.rules = renamed_policy(negative_policy({"rules": workload.rules}), 0)["rules"]
         forbidden = {BLOCK_CANARY}
         for pair in workload.pairs:
             if len(pair) != 2 or any(not isinstance(value, str) or not value for value in pair):
                 raise ValueError("invalid workload privacy oracle")
-            forbidden.update(pair)
+            # Seed pairs are (class, original), not (original, replacement).
+            forbidden.add(pair[1])
 
         def finalize(env, mode, result):
             mappings = result.get("final_mappings", {})

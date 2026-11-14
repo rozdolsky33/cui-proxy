@@ -38,3 +38,28 @@ and passed afterward. A fresh complete live smoke is still required.
 The full duration/window/resource acceptance evaluator, complete live campaign
 and deliberate setup/mid-phase failure smokes, independent final branch review,
 remaining reference matrix, long soak and final envelope publication remain open.
+
+## Subsequent diagnostics
+
+The second 45-second smoke completed both phases without request failures, but
+correctly failed the control gate: the deterministic W10 continuation first
+appears at client serial59, too late for this short phase to exercise a restart.
+The restart requirement was retained and the next smoke used150-second phases.
+
+That third smoke completed316 fixed and308 churn outcomes with no unmet mapping
+requirements and exercised one restart and one reload. Finalization then exposed
+three harness integration defects: resource samples are an integer counter rather
+than a collection; initial policy names had not been tagged generation0 for the
+reload evidence verifier; and seed pairs are(class,original), so adding both pair
+fields to the privacy oracle incorrectly treated the class label as protected
+text. Each defect received a failing regression before correction. Rule patterns
+and the actual protected-value set remain unchanged.
+
+A separate offline diagnostic normalized only the missing initial labels in
+memory and reconciled all635 audit records. The original retained logs passed
+the corrected privacy oracle. Original audit files and the incomplete campaign
+seal were not rewritten, and this diagnostic does not complete that campaign.
+
+Deliberate live setup and mid-phase failure checks also passed: spawned children
+stopped, owned logs closed, roots remained incomplete, and no later phase began.
+The checks retained their private evidence and remain duration-unqualified.

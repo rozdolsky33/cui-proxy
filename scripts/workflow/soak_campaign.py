@@ -93,7 +93,7 @@ def run_proxy_phases(env,workload,corpus,fixtures,campaign,*,fixed_seconds=7200,
                                  {"records": stages.records, "poll_errors": stages.errors})
     summary=dict(phases_completed=list(reports),baseline_idle=baseline_idle,
                  baseline_gc=baseline_gc,after_idle=after_idle,after_gc=after_gc,
-                 resource_samples=len(resources.samples),final_absence=absence,
+                 resource_samples=resources.samples,final_absence=absence,
                  lifecycle={phase:executor.state.summary() for phase,executor in executors.items()},
                  finalization_pending=True,performance_qualified=False)
     campaign.save_report("proxy-mode-summary.json",summary)

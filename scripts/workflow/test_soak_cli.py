@@ -38,6 +38,7 @@ class SoakCommandTests(unittest.TestCase):
             self.assertEqual(metadata["dictionary_entries"], 1000)
             self.assertEqual(metadata["regex_declarations"], 50)
             self.assertEqual(len(workload.rules), len(soak.Workload("normal").rules) + 1)
+            self.assertTrue(all(rule["name"].startswith("soak-g0-") for rule in workload.rules))
 
     def test_finalizer_keeps_new_mapping_values_for_later_bypass_privacy_check(self):
         with contextlib.ExitStack() as stack:
@@ -49,6 +50,9 @@ class SoakCommandTests(unittest.TestCase):
             values = mocks["finalize_evidence"].call_args.kwargs["forbidden_values"]
             self.assertIn("new-original", values)
             self.assertIn("new-token", values)
+            self.assertNotIn("secret", values)
+            workload = mocks["run_campaign"].call_args.args[3]
+            self.assertTrue(all(pair[1] in values for pair in workload.pairs))
 
     def test_failure_returns_nonzero_without_exposing_exception_content(self):
         with contextlib.ExitStack() as stack:

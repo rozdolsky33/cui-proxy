@@ -33,7 +33,7 @@ class CampaignSequenceTests(unittest.TestCase):
         controls = mocks["ControlledExecutor"].return_value
         controls.summary.return_value = {"failed": False, "restarts_completed": 10,
                                          "reloads_completed": 10}
-        mocks["ResourceMonitor"].return_value.__enter__.return_value.samples = [{}]
+        mocks["ResourceMonitor"].return_value.__enter__.return_value.samples = 1
         mocks["run_recorded_phase"].side_effect = [
             {"phase": phase, "completed": True} for phase in ("fixed", "churn")]
         mocks["finalize_mapping_evidence"].side_effect = lambda report, *args: {
@@ -59,6 +59,7 @@ class CampaignSequenceTests(unittest.TestCase):
                              ["proxy-fixed", "proxy-churn"])
             self.assertTrue(result["summary"]["finalization_pending"])
             self.assertFalse(result["summary"]["performance_qualified"])
+            self.assertEqual(result["summary"]["resource_samples"], 1)
             self.assertEqual(result["final_mappings"], {"initial": "a", "fixed": "b", "churn": "c"})
             for executor in executors[1:]:
                 executor.verify_final_absence.assert_called_once()

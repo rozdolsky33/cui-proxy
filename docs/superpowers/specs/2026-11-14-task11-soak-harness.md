@@ -456,3 +456,17 @@ never declares full performance qualification. Exact replay timing, deterministi
 mix/churn accounting, fault/control intervals, extraction and resource windows,
 warmup, identities and retained-evidence authentication remain campaign-level
 requirements.
+
+Initial policy rule names are tagged generation0 before warmup so both warmup and
+measured audit observations participate in the same explicit generation proof.
+This changes observation labels only. The seed workload pairs are(class,original):
+the privacy oracle includes originals, actual final mappings and the negative
+canary, while ordinary class labels remain metadata. Resource sample totals use
+the monitor's integer counter directly.
+
+Stage observations now also retain a conservative completion interval: the start
+of the previous successful metrics poll through the end of the poll that first
+sees the record. Failed polls do not move the lower bound forward. An initial
+snapshot has an unknown lower bound, represented explicitly rather than invented.
+Backward or non-finite clock observations stop admissions. These intervals enable
+conservative window attribution; they do not identify exact request start times.
