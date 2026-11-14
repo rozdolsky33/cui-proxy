@@ -438,3 +438,21 @@ A live smoke case reproduced a header-policy rejection from the former encoding;
 the same reconstructed metadata with the new encoding passes the unchanged
 normal-policy detectors. No runtime detection rule or credential exemption was
 added or removed.
+
+### Original-window text evaluator
+
+`evaluate_text_windows(proxy, bypass)` requires complete original 7,200-second
+phases and an exact logical request identity/outcome bijection. It checks the
+canonical deterministic category, scenario and size, complete correctness evidence
+for every text outcome, finite timing records and matching operation IDs. Every
+one of eight 900-second admission windows evaluates all three normal sizes
+separately, with all four clients represented. It uses individual matched
+proxy-minus-bypass differences, preserving negative jitter, and enforces the
+original first-byte p95/p99, logical-prefix relay p99 and request-duration limits.
+
+Window membership follows proxy trace admission time. Explicit churn-drain text
+remains counted separately; it cannot fill a measured-window hole. This helper
+never declares full performance qualification. Exact replay timing, deterministic
+mix/churn accounting, fault/control intervals, extraction and resource windows,
+warmup, identities and retained-evidence authentication remain campaign-level
+requirements.
