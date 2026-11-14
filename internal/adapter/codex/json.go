@@ -166,46 +166,150 @@ func (n *node) setString(s string) {
 // encode returns n as JSON: original bytes where nothing changed. With
 // canonical, every container and string is re-encoded from decoded values.
 func (n *node) encode(canonical bool) []byte {
+	if !n.dirty && !canonical {
+		return bytes.Clone(n.raw)
+	}
+	// Larger rewritten containers can avoid repeated final-buffer growth by
+	// preparing their already-standard-encoded fragments. Bound metadata work;
+	// raw, small, very large and unusually fragmented trees use direct output.
+	if (n.dirty || canonical) && (n.kind == '{' || n.kind == '[') && len(n.raw) >= 4096 && len(n.raw) <= 1<<20 {
+		if count := n.outputPartCount(canonical, maxOutputParts); count >= 16 && count < maxOutputParts {
+			plan := &jsonOutputPlan{parts: make([]jsonOutputPart, 0, count)}
+			n.emit(plan, canonical)
+			return plan.bytes()
+		}
+	}
 	var b bytes.Buffer
 	n.write(&b, canonical)
 	return b.Bytes()
 }
 
+const maxOutputParts = 4096
+
+// outputPartCount bounds planning metadata without scanning string contents.
+func (n *node) outputPartCount(canonical bool, limit int) int {
+	if limit <= 0 {
+		return 0
+	}
+	if !n.dirty && !canonical || n.kind != '{' && n.kind != '[' {
+		return 1
+	}
+	count := min(2, limit)
+	add := func(value int) { count += min(value, limit-count) }
+	for i, kid := range n.kids {
+		if count == limit {
+			break
+		}
+		if i > 0 {
+			add(1)
+		}
+		if n.kind == '{' {
+			add(2)
+		}
+		add(kid.outputPartCount(canonical, limit-count))
+	}
+	return count
+}
+
+type jsonOutput interface {
+	raw([]byte)
+	quoted(string)
+	token(byte)
+}
+
+type directJSONOutput struct{ buffer *bytes.Buffer }
+
+func (o directJSONOutput) raw(p []byte)    { o.buffer.Write(p) }
+func (o directJSONOutput) quoted(s string) { writeQuote(o.buffer, s) }
+func (o directJSONOutput) token(b byte)    { o.buffer.WriteByte(b) }
+
+type jsonOutputPart struct {
+	raw   []byte
+	token byte // structural JSON tokens are always nonzero
+}
+
+type jsonOutputPlan struct {
+	parts []jsonOutputPart
+	size  int
+}
+
+func (p *jsonOutputPlan) addSize(size int) {
+	if size > int(^uint(0)>>1)-p.size {
+		panic("codex: JSON output too large")
+	}
+	p.size += size
+}
+
+func (p *jsonOutputPlan) raw(raw []byte) {
+	p.addSize(len(raw))
+	p.parts = append(p.parts, jsonOutputPart{raw: raw})
+}
+func (p *jsonOutputPlan) quoted(s string) { p.raw(quote(s)) }
+func (p *jsonOutputPlan) token(b byte) {
+	p.addSize(1)
+	p.parts = append(p.parts, jsonOutputPart{token: b})
+}
+func (p *jsonOutputPlan) bytes() []byte {
+	out := make([]byte, p.size)
+	position := 0
+	for _, part := range p.parts {
+		if part.token != 0 {
+			out[position] = part.token
+			position++
+		} else {
+			position += copy(out[position:], part.raw)
+		}
+	}
+	return out
+}
+
 func (n *node) write(b *bytes.Buffer, canonical bool) {
+	n.emit(directJSONOutput{b}, canonical)
+}
+
+func (n *node) emit(out jsonOutput, canonical bool) {
 	if !n.dirty && !canonical || n.kind == '0' && !n.dirty || n.kind == 'l' {
-		b.Write(n.raw)
+		out.raw(n.raw)
 		return
 	}
 	switch n.kind {
 	case '0', 'l':
-		b.Write(n.raw)
+		out.raw(n.raw)
 	case '{', '[':
-		b.WriteByte(n.kind)
+		out.token(n.kind)
 		for i, kid := range n.kids {
 			if i > 0 {
-				b.WriteByte(',')
+				out.token(',')
 			}
 			if n.kind == '{' {
-				b.Write(quote(n.keys[i]))
-				b.WriteByte(':')
+				out.quoted(n.keys[i])
+				out.token(':')
 			}
-			kid.write(b, canonical)
+			kid.emit(out, canonical)
 		}
 		if n.kind == '{' {
-			b.WriteByte('}')
+			out.token('}')
 		} else {
-			b.WriteByte(']')
+			out.token(']')
 		}
 	default:
-		b.Write(quote(n.str))
+		out.quoted(n.str)
 	}
 }
 
 // quote encodes s as a JSON string without HTML escaping.
 func quote(s string) []byte {
 	var b bytes.Buffer
-	enc := json.NewEncoder(&b)
+	writeQuote(&b, s)
+	return b.Bytes()
+}
+
+// writeQuote avoids an intermediate string buffer while retaining the standard
+// encoder's escaping and invalid-UTF-8 behavior. A string always encodes, and a
+// bytes.Buffer write cannot fail; remove only Encode's final newline.
+func writeQuote(b *bytes.Buffer, s string) {
+	enc := json.NewEncoder(b)
 	enc.SetEscapeHTML(false)
-	_ = enc.Encode(s) // a string always encodes
-	return bytes.TrimSuffix(b.Bytes(), []byte("\n"))
+	_ = enc.Encode(s)
+	b.Truncate(b.Len() - 1)
 }

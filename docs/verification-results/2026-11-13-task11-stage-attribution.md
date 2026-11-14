@@ -1,6 +1,6 @@
 # Task 11 stage attribution — 2026-11-13
 
-Status: implementation and short diagnostic complete; all local gates passed; final review and integration pending. Task 08/11 qualification remains open.
+Status: implementation and short diagnostic complete; integrated in [PR #46](https://github.com/rozdolsky33/cui-proxy/pull/46), squash `c4edb8d`, after all local/remote gates and a clean independent review. Task 08/11 qualification remains open.
 
 ## Measurement change
 
@@ -35,4 +35,4 @@ The checkpoint test initially used an invalid direct-handler request; after corr
 
 Live attribution tests exposed two incorrect assumptions, both fixed with regressions: sessions may repeat across completions, and new numeric report fields need registration in the existing closed schema. Malformed collections, nonfinite/negative/oversized durations, duplicate completions, missing coverage, unknown stages and raw-content output are covered. The live mixed proxy/bypass integration test passes with exact stage coverage assertions.
 
-Full local gates passed: 23 Go race-test packages, 298 Python workflow tests with four explicit opt-in skips, vet/staticcheck, all 125 HTTP corpus operations, and manual build/verification. The opt-in live mixed proxy/bypass integration test also passed separately. Independent review and exact-head remote checks remain pending. Private captured evidence is under `/private/tmp/cui-task11-stage-*`, including the diagnostic report, numeric summary, RED/GREEN logs and gate manifest. Only aggregate metadata is published here.
+Full local gates passed: 23 Go race-test packages, 298 Python workflow tests with four explicit opt-in skips, vet/staticcheck, all 125 HTTP corpus operations, and manual build/verification. The opt-in live mixed proxy/bypass integration test also passed separately. Independent review found no issues and independently passed affected race tests, all 298 workflow tests and randomized accounting checks. Exact-head Linux/macOS, packaging, documentation and security checks passed before merge. Private captured evidence is under `/private/tmp/cui-task11-stage-*`, including the diagnostic report, numeric summary, RED/GREEN logs and gate manifest. Only aggregate metadata is published here.
