@@ -1,6 +1,6 @@
 # Task 11 JSON output allocation experiment
 
-Status: focused performance and local regression checks passed; independent review and integration pending.
+Status: integrated in PR47 after independent review found no actionable issues and all exact-head Linux/macOS, security, documentation and packaging checks passed. Squash commit40e312227e368bc085cce69c29b4f78a65f8a726.
 
 ## Why this path
 
@@ -44,6 +44,6 @@ Private mixed-load evidence: `/private/tmp/cui-task11-json-v4-mixed-{reference,c
 
 ## Remaining gates
 
-Local gates passed: 23 Go race-test packages, 298 Python workflow tests (four opt-in skips), go vet, staticcheck with all checks, the HTTP regression corpus and manual build. Independent review and exact-head CI remain required before integration.
+Local gates passed: 23 Go race-test packages, 298 Python workflow tests (four opt-in skips), go vet, staticcheck with all checks, the HTTP regression corpus and manual build. Independent review found no actionable issues; all exact-head CI gates passed before merge.
 
 This experiment cannot close Task 08 or Task 11's original latency, throughput, cancellation, lifecycle or four-hour soak criteria. Short diagnostic percentiles are not qualification evidence.
