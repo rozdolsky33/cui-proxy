@@ -23,4 +23,8 @@ Text/tool smoke took 10.857 seconds. Image smoke took 8.926 seconds and used bot
 - `/private/tmp/cui-task11-soak-live-text-smoke.py`, `.json`, `.log`, and `-summary.json`
 - `/private/tmp/cui-task11-soak-live-image-smoke.py`, `.json`, `.log`, and `-summary.json`
 
-The lifecycle requests, restart/reload orchestration, sustained phases, all-window acceptance, and remaining original qualification gates are still required. The separately retained full fairness pair failed its unchanged first-byte p95 limit. None of these smoke results overrides that failure.
+The remaining rejection/cancellation scenarios, actual restart/reload orchestration, sustained phases, all-window acceptance, and original qualification gates are still required. The separately retained full fairness pair failed its unchanged first-byte p95 limit. None of these smoke results overrides that failure.
+
+## Continuation integration follow-up
+
+An additional isolated real-proxy smoke passed all 10 requests in 21.087 seconds: W07 parent dispatch, three distinct child sessions and result collection; W09 history, resume and opaque compaction representation; W10 establishment and restoration of previously issued substitutions sent without their originals. Every request passed complete-stream semantic and upstream-boundary checks. The lifecycle state recorded one complete W07 workflow, one complete W09 workflow and one continuation. No actual restart occurred, so this is not restart qualification. Evidence is retained under `/private/tmp/cui-task11-soak-live-continuation-smoke` (`.py`, `.json`, `.log`, `-summary.json`). The focused harness suite now has 87 passing tests.
