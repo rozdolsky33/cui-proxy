@@ -13,15 +13,23 @@ whole-entry dictionary behavior supplies every actual match.
 ## Full-request diagnostic
 
 Eight alternating baseline/candidate pairs, 32 full requests per workload per
-invocation, normal eight-CPU setting, same private changing fixture and
-benchmark source. Baseline is the verified retention-fix build from PR48;
-candidate is explicitly an experimental dirty build with frozen binary.
+invocation, normal eight-CPU setting. Exact baseline source is f3a6197 and
+candidate source eb17656. Both fresh builds had unchanged tracked source and
+one identical, explicitly recorded benchmark overlay. Executable, tracked
+build-source, benchmark-tree/overlay and complete fixture hashes were captured
+before and after all 16 invocations; every identity remained unchanged.
 The workload checks expected sanitization/restoration outside timing.
 
 | Workload | Baseline time | Candidate time | Time change | Allocated-byte change |
 |---|---:|---:|---:|---:|
-| fixed-8 | 53.258 ms | 47.059 ms | -11.639% | +13.662% |
-| rotating-8 | 53.354 ms | 45.954 ms | -13.869% | +13.637% |
+| fixed-8 | 53.204 ms | 46.893 ms | -11.862% | +14.570% |
+| rotating-8 | 52.875 ms | 45.674 ms | -13.618% | +12.105% |
+
+Independent review found no runtime correctness defect but identified missing
+contemporaneous identities in the original v3 microdiagnostic. Its numeric
+results remain retained as an unattested diagnostic; they are not substituted
+for the new table. The captured repeat above closes that evidence finding.
+No runtime changes were made during the review fix pass.
 
 Lowercasing adds temporary allocation; it does not retain request text or add a
 cache. Resource and tail-latency effects still require real mixed-load evidence.
@@ -57,8 +65,9 @@ latency/relay evidence incomplete. The p95 observation is marginal against the
 Do not treat it as a completed fairness gate, pool it with the earlier full
 failed result, or infer that all later sizes/repetitions will pass.
 
-Private evidence: cui-task11-folded-v3-summary.json and captured invocation
-logs; cui-task11-folded-mixed-768.json with provenance/evaluation companions;
+Private evidence: cui-task11-folded-attested-summary.json, exact-source build
+information and captured invocation logs; the original
+cui-task11-folded-v3-summary.json remains separately retained; cui-task11-folded-mixed-768.json with provenance/evaluation companions;
 cui-task11-folded-validation-status.json and captured gate logs. The code
 state used by the mixed diagnostic is the runtime source committed in 08caf28;
 its pre-commit dirty build remains explicitly labeled diagnostic-only.
