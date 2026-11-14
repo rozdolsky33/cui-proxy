@@ -40,3 +40,7 @@ Two earlier failed smoke attempts are retained with `-attempt1` and `-attempt2` 
 A live four-client smoke changed from policy generation 0 to 1 while requests were active. All six requests passed semantic and upstream-boundary checks. Audit records observed both generations, and each request contained only one generation. Only rule labels changed; matching patterns, dictionary configuration and fail-closed settings were preserved. The smoke took 6.467 seconds; 99 focused harness tests pass.
 
 Evidence is retained under `/private/tmp/cui-task11-soak-live-reload-smoke` and `/private/tmp/cui-task11-soak-live-reload-audit.jsonl`. The first failed attempt, retained as `-attempt1`, exposed a harness dashboard-URL mismatch and was corrected with a regression test. This establishes one under-load transition, not the required ten transitions over the full sustained run.
+
+## Upstream fault attribution follow-up
+
+Two isolated real-proxy requests verified explicit upstream failure and malformed successful-stream attribution. Their outcomes were `upstream_failure` and `transformation_error`; neither was counted as supported success. The smoke took 0.769 seconds, and 104 focused harness tests pass. Evidence is retained under `/private/tmp/cui-task11-soak-live-fault-smoke`. Cancellation/resource-release and independent upstream-boundary receipt checks remain required for complete fault-scenario qualification.

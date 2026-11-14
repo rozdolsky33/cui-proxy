@@ -8,7 +8,7 @@ from soak_tool_stream import ToolStreamObserver
 
 
 class StructuredBackendTests(unittest.TestCase):
-    def run_handler(self, scenario, call_id="call-1"):
+    def run_handler(self, scenario, call_id="call-1", fault=None):
         captured = []
         def server(address, handler):
             captured.append(handler)
@@ -17,6 +17,8 @@ class StructuredBackendTests(unittest.TestCase):
             backend = performance.FakeBackend(delay=0, interval=0).__enter__()
         handler = object.__new__(captured[0])
         handler.headers = {"Content-Length": "2", "X-Benchmark-Tool-Scenario": scenario, "X-Benchmark-Tool-Call-ID": call_id}
+        if fault is not None:
+            handler.headers["X-Benchmark-Fault"] = fault
         handler.rfile = io.BytesIO(b"{}")
         handler.wfile = io.BytesIO()
         handler.send_response = Mock()
@@ -47,6 +49,13 @@ class StructuredBackendTests(unittest.TestCase):
         handler = self.run_handler("W02", "")
         handler.send_response.assert_not_called()
         self.assertEqual(handler.wfile.getvalue(), b"")
+
+    def test_fault_selector_routes_explicit_failure_responses(self):
+        for fault, status in (("upstream_error", 503), ("malformed_success", 200)):
+            with self.subTest(fault=fault):
+                handler = self.run_handler("W02", fault=fault)
+                handler.send_response.assert_called_once_with(status)
+                self.assertNotIn(b"response.completed", handler.wfile.getvalue())
 
 
 if __name__ == "__main__":

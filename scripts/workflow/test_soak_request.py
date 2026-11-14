@@ -117,3 +117,9 @@ class SoakRequestTests(unittest.TestCase):
         headers = MemoryConnection.instances[-1].headers
         self.assertNotIn("X-Benchmark-Tool-Scenario", headers)
         self.assertNotIn("X-Benchmark-Tool-Call-ID", headers)
+
+    def test_explicit_fault_selector_is_forwarded(self):
+        from soak_tool_stream import tool_events
+        self.case["benchmark_fault"] = "upstream_error"
+        self.request(tool_events(self.expected))
+        self.assertEqual(MemoryConnection.instances[-1].headers["X-Benchmark-Fault"], "upstream_error")

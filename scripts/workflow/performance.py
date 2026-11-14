@@ -168,6 +168,11 @@ class FakeBackend:
                     if not 0 < length <= 12 * 1024 * 1024:
                         self.send_error(400); return
                     raw = self.rfile.read(length)
+                    fault = self.headers.get("X-Benchmark-Fault")
+                    if fault is not None:
+                        from soak_faults import send_fault_response
+                        if send_fault_response(self, fault, hashlib.sha256(raw).hexdigest()):
+                            return
                     values = values_from_body(json.loads(raw), allow_attachments=self.headers.get("X-Benchmark-Text-Only-Reply") == "1")
                     if self.headers.get("X-Benchmark-Text-Only-Reply") == "1":
                         values = values[:40]
@@ -327,7 +332,7 @@ def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None
         remaining = deadline - time.monotonic()
         if remaining <= 0: raise TimeoutError()
         conn.sock.settimeout(remaining)
-        conn.request("POST", "/v1/responses", body=case["body"], headers={'Content-Type': 'application/json', 'Authorization': 'Bearer benchmark-only', 'X-Benchmark-Text-Layout': '1' if expected_layout_hash is not None else '0', 'session_id': case.get('benchmark_session', ''), 'X-Benchmark-Text-Only-Reply': '1' if case.get('benchmark_text_only') else '0', **({"X-Benchmark-Tool-Scenario": case["benchmark_tool_scenario"], "X-Benchmark-Tool-Call-ID": case.get("benchmark_tool_call_id", "")} if "benchmark_tool_scenario" in case else {})})
+        conn.request("POST", "/v1/responses", body=case["body"], headers={'Content-Type': 'application/json', 'Authorization': 'Bearer benchmark-only', 'X-Benchmark-Text-Layout': '1' if expected_layout_hash is not None else '0', 'session_id': case.get('benchmark_session', ''), 'X-Benchmark-Text-Only-Reply': '1' if case.get('benchmark_text_only') else '0', **({"X-Benchmark-Tool-Scenario": case["benchmark_tool_scenario"], "X-Benchmark-Tool-Call-ID": case.get("benchmark_tool_call_id", "")} if "benchmark_tool_scenario" in case else {}), **({"X-Benchmark-Fault": case["benchmark_fault"]} if "benchmark_fault" in case else {})})
         response = conn.getresponse()
         row["status"] = response.status
         boundary_ok = expected_hash is None or response.getheader("X-Benchmark-Body-SHA256") == expected_hash
