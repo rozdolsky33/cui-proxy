@@ -1,6 +1,6 @@
 # Task 10 mapping recovery evidence — 2026-11-13
 
-Status: implementation and all local gates complete; independent review and remote integration pending.
+Status: integrated in [PR #44](https://github.com/rozdolsky33/cui-proxy/pull/44), squash `62445ed`, after independent review and exact-head CI/security/packaging passed.
 
 ## Recovery boundary
 
@@ -33,4 +33,6 @@ The current snapshot format remains readable by older versions, but rollback rem
 
 ## Final local gates
 
-All 23 Go packages passed race tests; 280 Python workflow tests passed with four explicit opt-in skips; go vet and staticcheck passed; all 125 HTTP corpus operations passed. The bundled manual was rebuilt and verified. An offline-link failure stopped the first full run; links to unbundled ADR/evidence pages were corrected to repository URLs before the successful rerun. The new closed storage-refusal outcome classifier was observed RED→GREEN and rejects unrelated or malformed 503 responses. Private exact-runtime/binary/manual hashes are retained in `/private/tmp/cui-task10-final-manifest.json`; aggregate gate statuses are in `/private/tmp/cui-task10-final-gates.json`.
+All 23 Go packages passed race tests; 281 Python workflow tests passed with four explicit opt-in skips; go vet and staticcheck passed; all 125 HTTP corpus operations passed. The bundled manual was rebuilt and verified. An offline-link failure stopped the first full run; links to unbundled ADR/evidence pages were corrected to repository URLs before the successful rerun. The new closed storage-refusal outcome classifier was observed RED→GREEN and rejects unrelated or malformed 503 responses. Private exact-runtime/binary/manual hashes are retained in `/private/tmp/cui-task10-final-manifest.json`; aggregate gate statuses are in `/private/tmp/cui-task10-final-gates.json`.
+
+Follow-ups for Task 12: improve the pre-existing unsupported-vault-format startup wording to preserve key/vault pairs and explicitly retire old histories. One macOS Python 3.15.2 interruption-cleanup test failed on the first CI head; ten local repetitions and both operating systems on the final head passed. Value-free exception-kind/errno diagnostics were added, but the intermittent root cause remains unconfirmed. No cleanup assertion or quality gate was relaxed.

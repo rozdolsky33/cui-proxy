@@ -28,14 +28,18 @@ Interfaces: newBoundedSearch(re *regexp.Regexp) *boundedSearch returns nil when 
 ### Task 2: Paired performance acceptance
 Files: benchmark controls, existing workflow runners; private evidence and aggregate report.
 Interfaces: reference binary/source main62445ed, candidate Task1; identical fixture and workload seeds.
-- [ ] Run alternating paired detection/request-walk benchmarks, eight repetitions, including dense/short/unsupported/non-ASCII controls; report variation and allocation.
-- [ ] Run three paired normal text/fairness diagnostics at256/768/1024KiB with four clients and20 measured text requests per arm/size/repetition. Preserve outcomes, stage/resource data and unmet gates.
-- [ ] Accept only evidence-backed improvement without material regression; otherwise retain reference implementation and record why. No full qualification claim from these sample counts.
-- [ ] Run semantic125-operation HTTP corpus and affected race tests; expected all zero. Commit safe evidence.
+- [x] Run alternating paired detection/request-walk benchmarks, eight repetitions, including dense/short/unsupported/non-ASCII controls; report variation and allocation.
+- [ ] (Stopped after first failed pair; see execution decision.) Run three paired normal text/fairness diagnostics at256/768/1024KiB with four clients and20 measured text requests per arm/size/repetition. Preserve outcomes, stage/resource data and unmet gates.
+- [x] Accept only evidence-backed improvement without material regression; otherwise retain reference implementation and record why. No full qualification claim from these sample counts.
+- [x] Run semantic125-operation HTTP corpus and affected race tests; expected all zero. Commit safe evidence.
 
 ### Task 3: Review, integration and next acceptance phase
 Files: roadmap, verification report, Task10 integration record and pending Task12 operator/CI follow-ups.
-- [ ] Record final behavior, measurements and limitations; update Task10 as integrated PR44, retain its deferred startup-message wording and unconfirmed CI interruption-cleanup incident for Task12.
-- [ ] Run full Go race, Python workflow, vet/staticcheck and manual checks with captured output; expected all zero.
+- [x] Record final behavior, measurements and limitations; update Task10 as integrated PR44, retain its deferred startup-message wording and unconfirmed CI interruption-cleanup incident for Task12.
+- [x] Run full Go race, Python workflow, vet/staticcheck and manual checks with captured output; expected all zero.
 - [ ] Fresh whole-branch review, one material-fix pass with RED/GREEN; archive rulings and defer minors.
 - [ ] Push/PR, require exact-head CI/security/packaging, merge and sync clean main. Continue with full Task11 workload/soak implementation and acceptance; do not mark Task11 done here.
+
+## Execution decision
+
+The candidate was rejected after the first complete mixed-load pair: 768 KiB p95 regressed about13.5%, both larger sizes still missed150ms, and initial detection allocations rose about12%. Remaining HTTP repetitions were intentionally stopped early; the equal-work allocation follow-up was not run. All original evidence and the interrupted partial repetition are retained privately. Runtime matcher changes were removed; the final branch contains only diagnostic benchmark and documentation changes. This follows Task2's reference-retention path and does not complete Task08 or full Task11.

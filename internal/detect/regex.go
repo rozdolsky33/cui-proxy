@@ -10,7 +10,6 @@ type regexDetector struct {
 	name, class string
 	required    string
 	costly      bool
-	bounded     *boundedSearch
 	re          *regexp.Regexp
 	refine      refiner // nil: accept every match
 	find        finder  // if set, replaces refine: may return several spans per candidate
@@ -25,7 +24,7 @@ func newRegex(name, class, pattern, validate string) (*regexDetector, error) {
 	if err != nil {
 		return nil, fmt.Errorf("detect: rule %q: bad pattern: %w", name, err)
 	}
-	d := &regexDetector{name: name, class: class, re: re, required: detectorLiteral(re), costly: regexCostly(re), bounded: newBoundedSearch(re)}
+	d := &regexDetector{name: name, class: class, re: re, required: detectorLiteral(re), costly: regexCostly(re)}
 	if validate != "" {
 		r, ok := refiners[validate]
 		if !ok {
@@ -80,11 +79,7 @@ func (d *regexDetector) Find(s string) []Span {
 	if d.group {
 		ms = d.groupMatches(s)
 	} else {
-		var used bool
-		ms, used = d.bounded.find(s)
-		if !used {
-			ms = d.re.FindAllStringSubmatchIndex(s, -1)
-		}
+		ms = d.re.FindAllStringSubmatchIndex(s, -1)
 	}
 	for _, m := range ms {
 		st, en := m[0], m[1]
