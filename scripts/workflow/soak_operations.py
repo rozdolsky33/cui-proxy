@@ -14,12 +14,15 @@ def run_tool_operation(url, case, expected_hash, *, timeout=45, expected_layout_
     scenario = case["benchmark_tool_scenario"]
     call_id = case["benchmark_tool_call_id"]
     originals = case["occurrences"][:2]
-    if scenario not in ("W02", "W04") or len(originals) != 2:
+    if scenario not in ("W02", "W03", "W04") or len(originals) != 2:
         raise ValueError("soak_tool_operation")
     # These are the client's required effects, not output supplied by the backend.
     if scenario == "W02":
         name = "apply_edit"
         arguments = {"path": "effect.txt", "old": originals[0], "new": originals[1]}
+    elif scenario == "W03":
+        name = "analyze_test_result"
+        arguments = {"output": originals[0], "reference": originals[1], "exit_code": 0}
     else:
         name = "plan_command"
         arguments = {"command": shlex.join([

@@ -161,7 +161,7 @@ class FakeBackend:
                     scenario = self.headers.get("X-Benchmark-Tool-Scenario")
                     if scenario is not None:
                         call_id = self.headers.get("X-Benchmark-Tool-Call-ID")
-                        if scenario not in ("W02", "W04") or not call_id or len(call_id) > 128:
+                        if scenario not in ("W02", "W03", "W04") or not call_id or len(call_id) > 128:
                             raise ValueError("soak_tool_selection")
                         from soak_semantics import build_tool_call
                         tool_call = build_tool_call(scenario, values, call_id)

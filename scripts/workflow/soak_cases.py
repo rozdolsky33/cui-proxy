@@ -4,7 +4,7 @@ import json
 
 
 def build_tool_case(case, scenario, call_id, target_size):
-    if (scenario not in ("W02", "W04") or not isinstance(call_id, str)
+    if (scenario not in ("W02", "W03", "W04") or not isinstance(call_id, str)
             or not call_id or len(call_id) > 128
             or type(target_size) is not int
             or target_size not in (262144, 786432, 1048576)):
@@ -14,13 +14,25 @@ def build_tool_case(case, scenario, call_id, target_size):
         raise ValueError("soak_tool_case")
     if scenario == "W02":
         name, fields = "apply_edit", ("path", "old", "new")
+    elif scenario == "W03":
+        name, fields = "analyze_test_result", ("output", "reference", "exit_code")
+        first = body["input"][0]
+        if first.get("type") == "function_call_output":
+            text = first["output"]
+        else:
+            text = first["content"][0]["text"]
+        association = "test-result-" + call_id
+        body["input"][0:1] = [
+            {"type": "function_call", "name": "run_tests", "call_id": association, "arguments": "{}"},
+            {"type": "function_call_output", "call_id": association, "output": text},
+        ]
     else:
         name, fields = "plan_command", ("command",)
     body["tools"] = [{
         "type": "function", "name": name, "strict": True,
         "parameters": {
             "type": "object",
-            "properties": {field: {"type": "string"} for field in fields},
+            "properties": {field: {"type": "integer" if field == "exit_code" else "string"} for field in fields},
             "required": list(fields), "additionalProperties": False,
         },
     }]

@@ -23,6 +23,9 @@ def build_tool_call(scenario, received_values, call_id):
     first, second = _values(received_values)
     if type(call_id) is not str or not call_id:
         _fail()
+    if scenario == "W03":
+        return {"type": "function_call", "name": "analyze_test_result", "call_id": call_id,
+                "arguments": json.dumps({"output": first, "reference": second, "exit_code": 0}, separators=(",", ":"))}
     if scenario == "W02":
         name = "apply_edit"
         arguments = {"path": "effect.txt", "old": first, "new": second}
@@ -69,6 +72,11 @@ def verify_tool_effect(scenario, call, originals, expected_call_id, workspace=No
                           parse_constant=_constant)
         if type(args) is not dict:
             _fail()
+        if scenario == "W03":
+            if (call["name"] != "analyze_test_result" or type(args.get("exit_code")) is not int
+                    or args != {"output": first, "reference": second, "exit_code": 0}):
+                _fail()
+            return "test_followup_verified"
         if scenario == "W02":
             if (call["name"] != "apply_edit"
                     or args != {"path": "effect.txt", "old": first, "new": second}

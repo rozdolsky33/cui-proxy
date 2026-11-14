@@ -28,7 +28,7 @@ class StructuredBackendTests(unittest.TestCase):
         return handler
 
     def test_supported_tool_scenarios_emit_verifiable_structured_streams(self):
-        for scenario in ("W02", "W04"):
+        for scenario in ("W02", "W03", "W04"):
             with self.subTest(scenario=scenario):
                 handler = self.run_handler(scenario)
                 observer = ToolStreamObserver(build_tool_call(scenario, ["first", "second"], "call-1"))

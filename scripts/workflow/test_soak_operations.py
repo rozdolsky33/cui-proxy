@@ -22,7 +22,7 @@ class ToolOperationTests(unittest.TestCase):
         return request
 
     def test_stream_and_effect_must_both_pass_for_supported_success(self):
-        for scenario in ("W02", "W04"):
+        for scenario in ("W02", "W03", "W04"):
             case = self.case(scenario)
             with self.subTest(scenario=scenario), patch("soak_operations.performance.request", side_effect=self.fake_request(scenario, case["occurrences"][:2])):
                 row = run_tool_operation("http://unused", case, "boundary")
