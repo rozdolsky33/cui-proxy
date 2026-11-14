@@ -7,6 +7,7 @@ import math
 import re
 
 from performance_workload import Workload
+from workflow_failure_metadata import failure_metadata
 
 
 class ChurnWorkload:
@@ -296,6 +297,8 @@ def run_phase(binary, seed_binary, workload, *, size=1048576, duration=600,
         raise ChurnPhaseFailure(report) from error
 
 
+
+
 def main(argv=None):
     import argparse
     import sys
@@ -349,7 +352,8 @@ def main(argv=None):
                 phase["repetition"] = repetition
                 report["measurements"].append(phase)
                 phase.update(summarize_outcomes(phase["records"]))
-    except BaseException:
+    except BaseException as error:
+        report['failure_metadata'] = failure_metadata(error)
         report["setup_failure"] = "churn_run_failed"
         code = 1
     try:

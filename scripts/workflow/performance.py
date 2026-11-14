@@ -482,6 +482,7 @@ REPORT_KEYS = frozenset("""
  os architecture hardware_model logical_cpus memory_bytes go_version load_average on_ac low_power
  before after runner_sha256 generator_sha256
 """.split()) | OUTCOMES | frozenset({"admission", "active", "queued", "reserved_input_bytes", "admission_wait"})
+REPORT_KEYS = REPORT_KEYS | {'failure_metadata', 'exception_types', 'workflow_lines'}
 
 # Closed numeric workload-stage aggregates; raw-content keys remain forbidden.
 REPORT_KEYS |= frozenset({"request_stage_samples", "text_requests", "image_requests", "requests", "samples_ms", "coverage", "mapping_checkpoint"})
@@ -511,6 +512,11 @@ REPORT_KEYS.add("fixture_manifest_sha256")
 def write_report(path, report):
     allowed_top = {"schema_version", "settings", "environment", "source", "executable_sha256",
                    "workload", "measurements", "comparison", "performance_qualified", "unmet_requirements", "setup_failure"}
+    allowed_top.add('failure_metadata')
+    if 'failure_metadata' in report:
+        from workflow_failure_metadata import valid_failure_metadata
+        if not valid_failure_metadata(report['failure_metadata']):
+            raise ValueError('invalid_failure_metadata')
     allowed_top.update({"completed", "error_kind"})
     if set(report) - allowed_top: raise ValueError("invalid report fields")
     forbidden = {"body", "input", "output", "originals", "occurrences", "near_misses", "oracle", "image", "credentials"}
