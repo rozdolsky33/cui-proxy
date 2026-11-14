@@ -97,7 +97,7 @@ def _collector(root):
 
 def expected_corpus_identity(base, fixtures):
     """Bind expected provenance to a fresh, independent corpus attestation."""
-    proof = attest_corpus(load_manifest(Path(fixtures)), Path(fixtures))
+    _, proof = attest_corpus(Path(fixtures), load_manifest(Path(fixtures)))
     if "corpus" in base and base["corpus"] != proof:
         raise ValueError("cancellation_expected_corpus_mismatch")
     return {**base, "corpus": proof}

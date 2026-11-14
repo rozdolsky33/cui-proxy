@@ -84,17 +84,18 @@ class WorkerFailureTests(unittest.TestCase):
         base = {"binary_sha256": "a" * 64}
         proof = {"verified": True}
         with patch("cancellation_campaign.load_manifest", return_value={}) as manifest, \
-             patch("cancellation_campaign.attest_corpus", return_value=proof) as attest:
+             patch("cancellation_campaign.attest_corpus", return_value=(None, proof)) as attest:
             result = expected_corpus_identity(base, "/fixture-root")
         self.assertEqual(result, {**base, "corpus": proof})
         self.assertNotIn("corpus", base)
         manifest.assert_called_once()
-        attest.assert_called_once()
+        from pathlib import Path
+        attest.assert_called_once_with(Path("/fixture-root"), {})
 
     def test_conflicting_expected_corpus_is_rejected(self):
         from unittest.mock import patch
         from cancellation_campaign import expected_corpus_identity
         with patch("cancellation_campaign.load_manifest", return_value={}), \
-             patch("cancellation_campaign.attest_corpus", return_value={"verified": True}):
+             patch("cancellation_campaign.attest_corpus", return_value=(None, {"verified": True})):
             with self.assertRaises(ValueError):
                 expected_corpus_identity({"corpus": {"verified": False}}, "/fixture-root")
