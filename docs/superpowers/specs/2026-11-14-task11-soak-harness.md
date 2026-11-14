@@ -75,3 +75,21 @@ The eight/sixteen-client stress envelope and all other original gates remain
 required. Optional paid live-backend tests remain outside execution without a
 user-supplied spend cap. Final release documentation must distinguish completed
 qualification from diagnostics and unavailable evidence.
+
+## Structured tool-effect boundary
+
+`soak_semantics.build_tool_call(scenario, received_values, call_id)` is a fake
+upstream helper for W02/W04. Its only data are the values received in the
+sanitized request; it has no vault or original-value oracle. It emits a minimal
+function-call item with JSON arguments. W02 specifies a fixed local effect file
+and replacement; W04 specifies a quoted local command plan, never execution.
+
+`verify_tool_effect(scenario, call, originals, expected_call_id, workspace=None)`
+is an independent client oracle. It checks call association, exact function and
+argument shape, duplicate JSON keys, exact restored values and semantic effect.
+W02 edits only an existing fixed file in a caller-owned workspace, refusing
+symlinks and incorrect initial contents. W04 parses tokens without executing a
+command. Failure messages and returned evidence contain only closed labels,
+never argument text or original values. These unit oracles do not establish
+streaming, upstream-boundary or end-to-end W02/W04 coverage until integrated
+with the real proxy and normal-policy fixture/backend path.
