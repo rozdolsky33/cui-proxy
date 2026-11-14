@@ -99,3 +99,15 @@ class ExecutorTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "nontext churn assignment"):
                 self.runner()(plan)
         execute.assert_not_called()
+
+    def test_proxy_request_id_is_retained_for_audit_reconciliation(self):
+        from unittest.mock import MagicMock
+        from performance import request
+        response = MagicMock(status=200)
+        response.getheader.side_effect = lambda name, *args: "a" * 16 if name == "X-Cui-Proxy-Request-Id" else None
+        response.read1.return_value = b""
+        connection = MagicMock(); connection.getresponse.return_value = response
+        observer = MagicMock(prefix_ms=[], send_started_s=[], send_finished_s=[]); observer.valid.return_value = True
+        with patch("performance.http.client.HTTPConnection", return_value=connection):
+            row = request("http://127.0.0.1:1", {"body": b"{}", "occurrences": [], "operation_id": "audit"}, observer_factory=lambda: observer)
+        self.assertEqual(row["server_request_id"], "a" * 16)

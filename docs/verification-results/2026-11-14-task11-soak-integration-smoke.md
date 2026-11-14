@@ -188,3 +188,55 @@ Private evidence prefix: `/private/tmp/cui-task11-soak-live-resources-smoke`,
 including the report, captured log, summary, sealed resource JSONL and recorded
 phase directory. Total wall time was 79.022 seconds. Duration qualification is
 explicitly false in the report.
+
+
+## Scheduled controls and complete policy audit coverage
+
+The controlled executor schedules reloads and restarts without adding hidden
+workload requests. A restart consumes an already-scheduled W10 continuation.
+It closes the admission gate, confirms that all already-admitted requests have
+reached the proxy, then performs graceful shutdown and the existing old-token
+continuation check. New clients wait at the gate. A reload requires observed
+active proxy requests and runs while other requests continue. Failed controls
+poison the executor so waiting clients cannot repeat a partially completed
+mutation. Control-start evidence must be persisted before mutation.
+
+Proxy request IDs are retained as metadata for ordinary and cancelled requests;
+rejections already retain the diagnostic request ID. Policy coverage now requires
+one audit record per observed request, with no duplicates, omissions or extras.
+Every matching record must use one allowed policy generation, and every expected
+generation must be observed. Empty rule sets are accepted only for a verified
+old-token-only continuation or a verified pre-detection shape rejection. Those
+records remain accounted for but do not claim rule-generation observations.
+
+An initial concurrent control smoke passed nine requests, one under-load reload,
+one graceful restart, old-token continuation and exact audit reconciliation in
+9.773 seconds. A repeated live test then passed ten reloads and ten restarts in
+72.513 seconds while three text clients ran alongside the continuation client.
+All 77 operations succeeded. Every restart observed at least three active proxy
+requests and verified the old-token continuation; vault entry counts were
+10,000 before and after every restart. Every reload observed at least one active
+proxy request. All 77 audit records reconciled: 67 matching-rule records covered
+generations 0 through 10, and ten verified old-token records had no rule matches.
+There were no failed controls.
+
+The repeated test intentionally makes the ten control deadlines immediately due
+and lets workload/readiness conditions govern execution. It verifies repeated
+control behavior under load, not the full-soak timing distribution or duration.
+The sustained runner must still place and record its controls over the original
+fixed/churn phases.
+
+A separate complete W01–W12 run verified audit coverage for all 23 requests in
+36.350 seconds: 20 matching-rule records, one verified old-token record and two
+verified shape rejections. Stream cancellation retained its request ID and was
+included in that reconciliation. The complete workflow suite passed 492 tests
+in 38.160 seconds after these changes.
+
+Private evidence prefixes:
+- `/private/tmp/cui-task11-soak-live-controls-smoke`;
+- `/private/tmp/cui-task11-soak-live-ten-controls`;
+- `/private/tmp/cui-task11-soak-live-policy-coverage`;
+- `/private/tmp/cui-task11-soak-controls-full-workflow`.
+
+Reports, captured logs, private audit copies and sealed control event files are
+retained alongside these prefixes. Full-duration qualification remains open.

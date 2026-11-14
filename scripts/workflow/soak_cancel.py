@@ -96,13 +96,17 @@ def cancel_request(url, case, expected_hash, upstream_url, *, timeout=45):
                 break
             time.sleep(min(.02, remaining()))
         finished = time.monotonic()
-        return {"outcome": "cancelled", "completed": False, "status": 200,
+        row = {"outcome": "cancelled", "completed": False, "status": 200,
                 "expected_failure_verified": True, "boundary_verified": True,
                 "upstream_released": True,
                 "upstream_release_observed_ms": (finished - cancelled) * 1000,
                 "started_s": started, "finished_s": finished,
                 "duration_ms": (finished - started) * 1000,
                 "first_byte_ms": (first_byte - started) * 1000}
+        server_id = response.getheader("X-Cui-Proxy-Request-Id")
+        if isinstance(server_id, str) and len(server_id) == 16 and all(c in "0123456789abcdef" for c in server_id):
+            row["server_request_id"] = server_id
+        return row
     finally:
         if response is not None:
             response.close()

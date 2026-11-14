@@ -369,6 +369,9 @@ def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None
         conn.request("POST", "/v1/responses", body=case["body"], headers=request_headers(case, expected_layout_hash))
         response = conn.getresponse()
         row["status"] = response.status
+        server_request_id = response.getheader("X-Cui-Proxy-Request-Id")
+        if isinstance(server_request_id, str) and len(server_request_id) == 16 and all(c in "0123456789abcdef" for c in server_request_id):
+            row["server_request_id"] = server_request_id
         observed_digest = response.getheader("X-Benchmark-Body-SHA256")
         if isinstance(observed_digest, str) and len(observed_digest) == 64 and all(c in "0123456789abcdef" for c in observed_digest):
             row["boundary_sha256"] = observed_digest

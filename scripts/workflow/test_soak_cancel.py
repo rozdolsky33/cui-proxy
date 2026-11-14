@@ -20,6 +20,7 @@ class CancelTests(unittest.TestCase):
 
     def test_cancel_requires_verified_boundary_and_upstream_disconnect(self):
         conn, response = self.connection()
+        response.getheader.side_effect = lambda name, *args: "a" * 16 if name == "X-Cui-Proxy-Request-Id" else "text/event-stream"
         receipt = {"complete": True, "count": 1, "body_sha256": "a" * 64}
         active = {"complete": True, "arrived": 1, "active": 1, "finished": 0, "disconnected": 0}
         released = dict(active, active=0, finished=1, disconnected=1)
@@ -35,6 +36,7 @@ class CancelTests(unittest.TestCase):
         conn.close.assert_called()
         response.close.assert_called()
         self.assertEqual(conn.request.call_args.kwargs["headers"]["X-Benchmark-Fault"], "cancel")
+        self.assertEqual(row["server_request_id"], "a" * 16)
 
     def test_normal_finish_without_disconnect_is_not_cancellation_proof(self):
         conn, _ = self.connection()
