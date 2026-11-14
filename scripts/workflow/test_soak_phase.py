@@ -73,3 +73,31 @@ class PhaseTests(unittest.TestCase):
         report = run_phase(lambda _: {"outcome": "supported_success"}, "fixed", duration=1, clock=self.clock(), stop=stop)
         self.assertTrue(report["completed"])
         self.assertFalse(stop.is_set())
+
+
+class ReplayPhaseTests(unittest.TestCase):
+    def test_replay_runs_exact_saved_requests_in_each_client_order(self):
+        from soak_journal import SoakJournal
+        from soak_phase import run_replay
+        journal = SoakJournal("churn")
+        for serial in range(3):
+            for client in range(4):
+                row = journal.claim(client, 60 + serial)
+                journal.complete(row["identity"])
+        saved = journal.snapshot()
+        seen = [[] for _ in range(4)]
+        def execute(plan):
+            seen[plan["identity"][1]].append(plan)
+            return {"outcome": "supported_success"}
+        report = run_replay(execute, saved, "churn")
+        self.assertTrue(report["completed"])
+        self.assertEqual(len(report["results"]), len(saved))
+        for client in range(4):
+            self.assertEqual(seen[client], [row for row in saved if row["identity"][1] == client])
+
+    def test_invalid_replay_is_rejected_before_execution(self):
+        from soak_phase import run_replay
+        calls = []
+        with self.assertRaises(ValueError):
+            run_replay(lambda plan: calls.append(plan), [{"scenario": "invalid"}], "fixed")
+        self.assertEqual(calls, [])

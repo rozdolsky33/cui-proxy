@@ -5,7 +5,7 @@ import copy
 import threading
 import time
 
-from soak_journal import SoakJournal
+from soak_journal import SoakJournal, replay_requests
 
 
 class PhaseFailure(RuntimeError):
@@ -17,10 +17,32 @@ class PhaseFailure(RuntimeError):
 def run_phase(execute, phase, *, duration=7200, clock=time.monotonic,
               record=lambda event: None, stop=None):
     journal = SoakJournal(phase, duration)
+    started = clock()
+    return _execute_clients(
+        execute, phase, duration, clock, record, stop, started,
+        lambda client: journal.claim(client, lambda: clock() - started),
+        journal.complete, journal.snapshot, replay=False)
+
+
+def run_replay(execute, records, phase, *, duration=7200, clock=time.monotonic,
+               record=lambda event: None, stop=None):
+    clients = replay_requests(records, phase, duration)
+    if any(not rows for rows in clients):
+        raise ValueError("soak_replay_missing_client")
+    pending = [iter(rows) for rows in clients]
+    schedule = copy.deepcopy(records)
+    return _execute_clients(
+        execute, phase, duration, clock, record, stop, clock(),
+        lambda client: next(pending[client], None), lambda identity: None,
+        lambda: schedule, replay=True)
+
+
+def _execute_clients(execute, phase, duration, clock, record, stop, started,
+                     next_plan, complete, snapshot, *, replay):
     external_stop = stop if stop is not None else threading.Event()
     stop = threading.Event()
-    started = clock()
     results, failures = [], []
+    exhausted = set()
     evidence_lock = threading.Lock()
 
     def emit(event):
@@ -29,8 +51,10 @@ def run_phase(execute, phase, *, duration=7200, clock=time.monotonic,
 
     def worker(client):
         while not stop.is_set() and not external_stop.is_set():
-            plan = journal.claim(client, lambda: clock() - started)
+            plan = next_plan(client)
             if plan is None:
+                with evidence_lock:
+                    exhausted.add(client)
                 return
             result = {"outcome": "harness_failure", "completed": False}
             failure = None
@@ -45,7 +69,7 @@ def run_phase(execute, phase, *, duration=7200, clock=time.monotonic,
                 failure = "execution_or_record_failure"
                 stop.set()
             finally:
-                journal.complete(plan["identity"])
+                complete(plan["identity"])
                 row = {"identity": plan["identity"], "request": result}
                 with evidence_lock:
                     results.append(row)
@@ -70,8 +94,9 @@ def run_phase(execute, phase, *, duration=7200, clock=time.monotonic,
         executor.shutdown(wait=True, cancel_futures=True)
     elapsed = clock() - started
     report = dict(phase=phase, duration_s=duration, elapsed_s=elapsed,
-                  completed=not executor_stop and not failures and elapsed >= duration,
-                  schedule=journal.snapshot(), results=results, failures=failures)
+                  completed=not executor_stop and not failures and len(exhausted) == 4
+                  and (replay or elapsed >= duration), replay=replay,
+                  schedule=snapshot(), results=results, failures=failures)
     if failures:
         raise PhaseFailure(report)
     return report
