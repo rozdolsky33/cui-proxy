@@ -96,3 +96,22 @@ class CampaignSequenceTests(unittest.TestCase):
                      if call.args[0] == "proxy-stage-records.json"]
             self.assertEqual(len(calls), 1)
             self.assertEqual(calls[0].args[1], {"records": [], "poll_errors": 0})
+
+    def test_resource_monitor_receives_real_sampler_observations(self):
+        from contextlib import ExitStack
+        from unittest.mock import patch
+        import soak_campaign
+        with ExitStack() as stack:
+            mocks, executors, env, campaign = self.setup_mocks(stack)
+            sampler_type = stack.enter_context(patch('performance.ResourceSampler'))
+            sampler = sampler_type.return_value
+            sampler.samples = []
+            expected = {'rss_available': True, 'proxy_rss_bytes': 12345}
+            sampler.sample.side_effect = lambda: sampler.samples.append(dict(expected))
+            soak_campaign.run_proxy_phases(env, object(), None, Path('unused'), campaign)
+            measure = mocks['ResourceMonitor'].call_args.args[0]
+            observed = measure()
+            self.assertIsInstance(observed, dict)
+            self.assertEqual(observed, expected)
+            sampler_type.assert_called_once_with(env)
+            self.assertEqual(sampler.samples, [])

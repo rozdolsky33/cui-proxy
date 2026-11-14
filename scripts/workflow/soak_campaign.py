@@ -58,7 +58,7 @@ def run_proxy_phases(env,workload,corpus,fixtures,campaign,*,fixed_seconds=7200,
     warm_sessions.discard(None)
     stages = None
     try:
-        with ResourceMonitor(lambda:measure_resources(env),record,phase_stop=stop,clock=clock) as resources, StageCollector(env, warm_sessions, record=record, phase_stop=stop, clock=clock) as stages:
+        with ResourceMonitor(measure_resources(env),record,phase_stop=stop,clock=clock) as resources, StageCollector(env, warm_sessions, record=record, phase_stop=stop, clock=clock) as stages:
             for phase,duration in (("fixed",fixed_seconds),("churn",churn_seconds)):
                 executors[phase].mappings=current_mappings
                 record({"type":"phase_start","phase":phase,"horizon_seconds":duration})
