@@ -64,3 +64,28 @@ Request denominators and replay identities must preserve the prescribed mix,
 churn rate and injected outcomes. Timing, warmup and resource gaps remain
 visible. Restart/reload checks must prove historical values and coherent policy,
 not merely healthy processes. Raw fixture material remains captured privately.
+
+## Remaining Task 3 assembly sequence
+
+1. Add a pure deterministic corpus selector (`soak_corpus.py`) with descriptor
+   validation and stable two-image selection; first prove malformed, duplicate,
+   missing, changed and path-escape descriptors fail, and all four template
+   groups are reached without depending on completion order. Keep expensive
+   file hashing outside reference-timing periods. Update ScenarioExecutor to
+   accept selected fixtures per request while preserving the two-item builder.
+2. Add root campaign evidence (`soak_campaign_evidence.py`): exclusive private
+   root creation, immutable identities/settings, phase seal references and
+   explicit incomplete/completed states. Tests cover partial writes, missing or
+   changed child seals, duplicate phase identity, and failure retention.
+3. Add `soak_campaign.py` to compose warmup, one persistent proxy Environment,
+   pre/post idle-GC observations, continuous resources, fixed/churn phases,
+   cross-phase controls, mapping/audit/privacy finalization and log archival.
+   Keep all raw fixture and mapping artifacts private. On failure, stop later
+   expensive phases and retain the failed root.
+4. Add exact replay from sealed schedule/fixture records in a fresh bypass
+   Environment. Validate every identity and selected fixture before sending;
+   preserve the original horizons and drain markers. Reconcile all outcomes.
+5. Run a short complete campaign smoke only in a quiet benchmark gap, including
+   forced setup and mid-phase failures. It must remain duration-unqualified.
+   Then implement Task 4's original-duration acceptance evaluator before any
+   four-hour qualification claim.

@@ -151,3 +151,58 @@ applies during the drain, so already-admitted work can require up to another
 45 seconds after the admission deadline. Both actual elapsed time and the
 original horizon are reported. A drain that exhausts its deadline with backlog,
 a missing persisted pair, or a failed semantic/boundary check cannot qualify.
+
+## Campaign assembly and corpus selection
+
+The full campaign must compose the existing executors rather than treating the
+short smoke scripts as its entry point. It owns one seeded proxy environment
+across fixed and churn phases: fixed completion does not recreate the vault,
+reset policy generation or discard historical mappings. It retains a separate
+fresh bypass environment for exact schedule replay. Warmup uses distinct request
+identities and is excluded from measured schedule counts, control deadlines and
+acceptance windows. Both proxy and bypass satisfy at least 60 seconds and 100
+completed supported warmup requests before measurement. Reconcile warmup audit
+records separately from measured requests.
+
+The image executor consumes two already-selected fixtures; it does not select
+from the whole corpus. The campaign therefore requires a deterministic corpus
+selector. Validate all 800 image descriptors and hashes before any measurement,
+including four template groups of 200, unique IDs and hashes, relative confined
+paths, and PNG/JPEG formats. Preserve the separate PDF corpus for its dedicated
+qualification; do not replace image slots with unsupported tool-result PDFs.
+Select two distinct template groups for every W05/W06 request, using its stable
+phase/client/serial identity. Cycle each group's image index independently of
+thread completion order. Persist only fixture IDs and hashes in schedule evidence;
+never expected OCR text or image bytes. Replay resolves those same IDs against
+the same attested manifest, rejecting missing, duplicate or changed descriptors.
+Report actual per-template and per-image coverage rather than assuming that
+elapsed duration implies coverage. Two-fixture smoke selections must never be
+reported as full-corpus execution.
+
+Root evidence must be created in a new private directory and durably record
+source commit, clean-state attestation, proxy/seed-helper hashes, compiler and
+host metadata, workload/corpus identity, declared negative-policy variant,
+settings and phase links. Preserve original measurement horizons and separately
+record bounded churn drain time. Each fixed/churn/replay phase keeps its existing
+hash-chained event file and completion seal. The root completion record refers
+to those seals and their hashes; a completed event chain is not qualification.
+Any setup, warmup, measurement, drain, snapshot, audit or cleanup failure retains
+an explicitly incomplete root record and all evidence already collected.
+
+Keep the resource monitor active across measured phases and drains. Record phase
+and control boundaries on the same monotonic clock. Collect idle/goroutine and
+equivalent observed-GC baselines after warmup, and post-drain observations without
+hiding unavailable samples. Schedule ten graceful restarts and ten reloads over
+the combined four-hour proxy horizon, retaining generation and restart counts
+across the phase boundary. Control scheduling begins after warmup; overdue
+controls cannot be silently counted as executed. Matched bypass replay preserves
+request identities, selected fixtures and original arrival/drain markers while
+recording its own observed timing and outcomes.
+
+Before deleting an owned environment, archive its audit and diagnostic logs,
+initial/final named vault snapshots and failure metadata privately. Reconcile
+all request IDs, recheck rejected upstream absence, and scan retained logs for
+all seed/churn originals plus negative canaries. Root metadata includes only
+counts, hashes, rule names and bounded diagnostic codes. Check cleanup results;
+a failed cleanup or absent evidence prevents acceptance rather than producing
+an apparently successful partial report.
