@@ -1,4 +1,5 @@
 """Metadata-only closed-loop assignment and exact bypass replay."""
+from fractions import Fraction
 
 import copy
 import math
@@ -14,11 +15,15 @@ def _time(value):
 
 
 class SoakJournal:
-    def __init__(self, phase, duration=7200):
+    def __init__(self, phase, duration=7200, *, drain_seconds=0):
         plan_request(0, 0, phase)
         if _time(duration) == 0:
             raise ValueError("soak_journal_duration")
         self.phase, self.duration = phase, duration
+        if type(drain_seconds) not in (int, float) or not math.isfinite(drain_seconds) or not 0 <= drain_seconds <= 45 or (drain_seconds and phase != "churn"):
+            raise ValueError("invalid churn drain")
+        self.drain_seconds = drain_seconds
+        self.target = math.ceil(Fraction(str(self.duration)) * 100 / 60)
         self.serials = [0] * 4
         self.active = {}
         self.assigned = 0
@@ -36,16 +41,18 @@ class SoakJournal:
             if elapsed < self.last_elapsed or client in self.active:
                 raise ValueError("soak_journal_order")
             self.last_elapsed = elapsed
-            if elapsed >= self.duration:
+            if elapsed >= self.duration and (not self.drain_seconds or self.assigned >= self.target or elapsed >= self.duration + self.drain_seconds):
                 return None
             row = plan_request(client, self.serials[client], self.phase)
             indices = []
             if self.phase == "churn" and row["category"] == "text":
-                indices = list(churn_due_indices(elapsed, self.assigned, 40))
+                indices = list(churn_due_indices(elapsed, self.assigned, 40, horizon=self.duration if self.drain_seconds else None))
             row.update(elapsed_s=elapsed, churn_indices=indices)
             self.assigned += len(indices)
             self.serials[client] += 1
             self.active[client] = row["identity"]
+            if self.drain_seconds:
+                row["drain"] = elapsed >= self.duration
             self.rows.append(row)
             return copy.deepcopy(row)
 
@@ -66,14 +73,16 @@ class SoakJournal:
             return copy.deepcopy(self.rows)
 
 
-def replay_requests(records, phase, duration=7200):
+def replay_requests(records, phase, duration=7200, *, drain_seconds=0):
     """Validate assignment history and group it without rescheduling churn."""
-    journal = SoakJournal(phase, duration)
+    journal = SoakJournal(phase, duration, drain_seconds=drain_seconds)
     clients = [[] for _ in range(4)]
     if not isinstance(records, list):
         raise ValueError("soak_journal_replay")
     for row in records:
-        if not isinstance(row, dict) or set(row) != {"identity", "category", "scenario", "size_bytes", "elapsed_s", "churn_indices"}:
+        if drain_seconds and (not isinstance(row, dict) or type(row.get("drain")) is not bool):
+            raise ValueError("soak_journal_replay")
+        if not isinstance(row, dict) or set(row) != ({'identity', 'category', 'scenario', 'size_bytes', 'elapsed_s', 'churn_indices'} | ({"drain"} if drain_seconds else set())):
             raise ValueError("soak_journal_replay")
         identity = row["identity"]
         if not isinstance(identity, (tuple, list)) or len(identity) != 3:

@@ -18,7 +18,7 @@ def _mapping(values):
 def finalize_mapping_evidence(report, workload, initial_mappings, final_mappings):
     _mapping(initial_mappings); _mapping(final_mappings)
     phase = report["phase"]
-    replay_requests(report["schedule"], phase, report["duration_s"])
+    replay_requests(report["schedule"], phase, report["duration_s"], drain_seconds=report.get("drain_admission_seconds", 0))
     plans = {tuple(plan["identity"]): plan for plan in report["schedule"]}
     identities = [tuple(entry["identity"]) for entry in report["results"]]
     if len(identities) != len(set(identities)) or set(identities) != set(plans):

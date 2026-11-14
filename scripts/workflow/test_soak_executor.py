@@ -17,8 +17,9 @@ class ExecutorTests(unittest.TestCase):
 
     def test_text_keeps_pending_boundary_and_verifies_unique_arrival(self):
         row = {"outcome": "boundary_pending", "boundary_sha256": "a" * 64, "operation_id": "text-1"}
+        row.update(completed=True, semantic_verified=True)
         with patch("soak_executor.execute_text", return_value=row), patch("soak_executor.verify_deferred_boundary", return_value=row), patch("soak_executor.build_text_case", return_value={"occurrences": []}), patch("soak_executor.backend_evidence", return_value={"complete": True, "count": 1, "body_sha256": "a" * 64}):
-            result = self.runner()(self.plan(0))
+            result = self.runner()(self.churn_plan())
         self.assertEqual(result["outcome"], "boundary_pending")
         self.assertTrue(result["upstream_receipt_verified"])
         self.assertEqual(result["scenario"], "W01")
@@ -114,7 +115,25 @@ class ExecutorTests(unittest.TestCase):
 
     def test_new_churn_mapping_remains_pending_until_persisted_snapshot(self):
         row = {"outcome": "boundary_pending", "boundary_sha256": "a" * 64, "operation_id": "new"}
+        row.update(completed=True, semantic_verified=True)
         with patch("soak_executor.execute_text", return_value=row), patch("soak_executor.build_text_case", return_value={"occurrences": ["not-yet-inspected"]}), patch("soak_executor.verify_deferred_boundary") as verify, patch("soak_executor.backend_evidence", return_value={"complete": True, "count": 1, "body_sha256": "a" * 64}):
-            result = self.runner()(self.plan(0))
+            result = self.runner()(self.churn_plan())
         self.assertEqual(result["outcome"], "boundary_pending")
         verify.assert_not_called()
+
+    def test_unexpected_semantic_failure_stops_before_long_run_continues(self):
+        from soak_phase import OperationFailure
+        row = {"outcome": "supported_success", "completed": True, "semantic_verified": False, "boundary_sha256": "a" * 64, "operation_id": "bad-semantics", "status": 200}
+        with patch("soak_executor.execute_text", return_value=row), patch("soak_executor.build_text_case", return_value={"occurrences": []}), patch("soak_executor.verify_deferred_boundary", return_value=row), patch("soak_executor.backend_evidence", return_value={"complete": True, "count": 1, "body_sha256": "a" * 64}):
+            with self.assertRaises(OperationFailure) as caught: self.runner()(self.plan(0))
+        self.assertEqual(caught.exception.result["observed_outcome"], "supported_success")
+        self.assertFalse(caught.exception.result["semantic_verified"])
+
+    def test_pending_boundary_is_not_allowed_without_assigned_churn(self):
+        from soak_phase import OperationFailure
+        row = {"outcome": "boundary_pending", "completed": True, "semantic_verified": True, "boundary_sha256": "a" * 64, "operation_id": "missing-seed"}
+        with patch("soak_executor.execute_text", return_value=row), patch("soak_executor.build_text_case", return_value={"occurrences": ["missing-seed"]}), patch("soak_executor.backend_evidence", return_value={"complete": True, "count": 1, "body_sha256": "a" * 64}):
+            with self.assertRaises(OperationFailure): self.runner()(self.plan(0))
+
+    def churn_plan(self):
+        plan = plan_request(0, 0, "churn"); plan["churn_indices"] = [0]; return plan

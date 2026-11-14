@@ -1,4 +1,6 @@
 """Persistent-environment phase execution; callbacks own actual protocol work."""
+import math
+from fractions import Fraction
 
 from concurrent.futures import ThreadPoolExecutor
 import copy
@@ -22,18 +24,18 @@ class PhaseFailure(RuntimeError):
 
 
 def run_phase(execute, phase, *, duration=7200, clock=time.monotonic,
-              record=lambda event: None, stop=None):
-    journal = SoakJournal(phase, duration)
+              record=lambda event: None, stop=None, drain_seconds=0):
+    journal = SoakJournal(phase, duration, drain_seconds=drain_seconds)
     started = clock()
     return _execute_clients(
         execute, phase, duration, clock, record, stop, started,
         lambda client: journal.claim(client, lambda: clock() - started),
-        journal.complete, journal.snapshot, replay=False)
+        journal.complete, journal.snapshot, replay=False, drain_seconds=drain_seconds)
 
 
 def run_replay(execute, records, phase, *, duration=7200, clock=time.monotonic,
-               record=lambda event: None, stop=None):
-    clients = replay_requests(records, phase, duration)
+               record=lambda event: None, stop=None, drain_seconds=0):
+    clients = replay_requests(records, phase, duration, drain_seconds=drain_seconds)
     if any(not rows for rows in clients):
         raise ValueError("soak_replay_missing_client")
     pending = [iter(rows) for rows in clients]
@@ -41,11 +43,11 @@ def run_replay(execute, records, phase, *, duration=7200, clock=time.monotonic,
     return _execute_clients(
         execute, phase, duration, clock, record, stop, clock(),
         lambda client: next(pending[client], None), lambda identity: None,
-        lambda: schedule, replay=True)
+        lambda: schedule, replay=True, drain_seconds=drain_seconds)
 
 
 def _execute_clients(execute, phase, duration, clock, record, stop, started,
-                     next_plan, complete, snapshot, *, replay):
+                     next_plan, complete, snapshot, *, replay, drain_seconds=0):
     external_stop = stop if stop is not None else threading.Event()
     stop = threading.Event()
     results, failures = [], []
@@ -108,6 +110,17 @@ def _execute_clients(execute, phase, duration, clock, record, stop, started,
                   completed=not executor_stop and not failures and len(exhausted) == 4
                   and (replay or elapsed >= duration), replay=replay,
                   schedule=snapshot(), results=results, failures=failures)
-    if failures:
+    if drain_seconds:
+        due = math.ceil(Fraction(str(duration)) * 100 / 60)
+        assigned = sum(len(row["churn_indices"]) for row in report["schedule"])
+        report.update(churn_horizon_s=duration, drain_admission_seconds=drain_seconds,
+                      churn_due_pairs=due, churn_assigned_pairs=assigned,
+                      churn_drain_completed=assigned == due,
+                      drain_requests=sum(row["drain"] for row in report["schedule"]),
+                      elapsed_beyond_horizon_s=max(0, elapsed-duration) if not replay else None)
+        if assigned != due:
+            report["completed"] = False
+            report["drain_failure"] = "churn_backlog"
+    if failures or report.get("churn_drain_completed") is False:
         raise PhaseFailure(report)
     return report

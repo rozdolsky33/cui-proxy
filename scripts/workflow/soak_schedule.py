@@ -36,7 +36,7 @@ def plan_request(client, serial, phase):
             "scenario": scenario, "size_bytes": _SIZES[(serial + client) % 3]}
 
 
-def churn_due_indices(elapsed_seconds, assigned, capacity):
+def churn_due_indices(elapsed_seconds, assigned, capacity, *, horizon=None):
     """Allocate due indices without dropping backlog or implying persistence.
 
     Interpret the clock's decimal representation exactly so boundary values
@@ -54,6 +54,10 @@ def churn_due_indices(elapsed_seconds, assigned, capacity):
         raise ValueError("invalid churn schedule")
     # Match the established half-open arrival schedule: first pair at t=0.
     due = math.floor(Fraction(str(elapsed_seconds)) * 100 / 60) + 1
+    if horizon is not None:
+        if type(horizon) not in (int, float) or not math.isfinite(horizon) or horizon <= 0:
+            raise ValueError("invalid churn horizon")
+        due = min(due, math.ceil(Fraction(str(horizon)) * 100 / 60))
     if assigned > due:
         raise ValueError("churn counter exceeds schedule")
     return tuple(range(assigned, assigned + min(capacity, due - assigned)))

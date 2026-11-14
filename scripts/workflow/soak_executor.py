@@ -97,6 +97,12 @@ class ScenarioExecutor:
                     self.forbidden_values.update(case["forbidden_values"])
         else:
             row = self._fault(plan, operation)
+        if plan["scenario"] not in {"W11", "W12"}:
+            allowed = {"supported_success"}
+            if phase == "churn" and plan["category"] == "text" and plan["churn_indices"]:
+                allowed.add("boundary_pending")
+            if row.get("outcome") not in allowed or row.get("completed") is not True or row.get("semantic_verified") is not True:
+                raise _failure(row, "unexpected_supported_operation_result")
         row.update(category=plan["category"], scenario=plan["scenario"])
         return row
 

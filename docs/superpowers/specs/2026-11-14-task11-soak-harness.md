@@ -123,3 +123,31 @@ handling, connection cleanup and outcome accounting remain in the common path.
 In-memory socket tests cover structured completion, missing-terminal failure,
 first-byte/prefix recording and default text behavior. They do not substitute
 for real-proxy integration or measured backend pacing.
+
+
+## Finite churn horizon and explicit queue drain
+
+The churn arrival horizon remains two hours at 100 new pairs per minute,
+starting at time zero: exactly 12,000 offered pairs in the half-open interval
+[0, 7,200 seconds). A closed-loop client may still be processing an earlier
+request when the last arrivals become due. Ending admission immediately at the
+horizon can therefore leave offered pairs unassigned, even with correct steady
+operation. Such backlog remains a failure; the target must not be reduced.
+
+The sustained churn runner explicitly enables a bounded admission drain after
+the arrival horizon. It continues each client's next deterministic schedule
+slots, including images and lifecycle work, until all offered pairs have been
+assigned or a maximum 45 seconds of additional admission time has elapsed. No
+new pair is offered beyond the original horizon. Every post-horizon request is
+marked `drain` and retained in the exact matched replay; no extra hidden probe
+or unscheduled text-only request is permitted. Default phase execution without
+this explicit mode still stops admission at its original duration.
+
+The original measurement horizon and all 15-minute windows remain unchanged.
+Drain traffic cannot fill missing in-window samples or improve the window gates.
+Its outcomes and resource use remain part of safety, privacy, persistence and
+post-drain recovery evidence. The existing per-request 45-second maximum also
+applies during the drain, so already-admitted work can require up to another
+45 seconds after the admission deadline. Both actual elapsed time and the
+original horizon are reported. A drain that exhausts its deadline with backlog,
+a missing persisted pair, or a failed semantic/boundary check cannot qualify.

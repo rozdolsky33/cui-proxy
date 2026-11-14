@@ -286,3 +286,46 @@ attempts `-attempt1` through `-attempt3`, private initial/final mapping snapshot
 recorded phase events, reports and captured logs. The latest attempt took
 31.820 seconds. The workflow suite passed 501 tests in 38.409 seconds; seed-vault
 race tests, Go vet and staticcheck also passed. None closes churn qualification.
+
+
+## Bounded churn drain and exact replay
+
+The explicit churn-drain mode preserves the original arrival horizon and target.
+After the horizon, it follows the same mixed schedule while assigning only pairs
+already offered. Extra admission is capped at 45 seconds; each HTTP request
+retains its existing 45-second maximum. Every extra request has a strict boolean
+`drain` marker. Replay rejects changed markers, extra assignments, invalid
+settings and traces outside the declared bounds. Default phase execution still
+stops at its original cutoff. A deadline reached with backlog produces incomplete
+phase evidence and an incomplete seal.
+
+The live four-client test now passes all 50 offered pairs over the original
+30-second horizon. All 50 were persisted; the vault grew from 10,000 to 10,050
+with no changed seed mappings, unexpected entries or unverified text boundaries.
+One recorded drain request cleared the final backlog. The phase contained 58
+requests (57 supported and one expected rejection), ran for 32.685 seconds
+including in-flight completion, and retained its original 30-second measurement
+horizon. All 58 audit records reconciled.
+
+Matched bypass replay passed the exact same 58 request identities, plans, churn
+assignments and drain marker. Proxy and replay process wall times were 34.104
+and 30.622 seconds. The original failed cutoff attempts remain retained. This
+short integration run does not qualify the two-hour churn phase or the normal
+latency/resource windows; drain traffic cannot supply missing in-window samples.
+
+The executor also stops a long phase promptly on an unexpected supported-operation
+outcome or failed semantic validation, retaining observed request metadata via
+OperationFailure. Pending boundaries are allowed only for text requests carrying
+new assigned churn pairs; missing seed evidence cannot silently remain pending.
+Expected W11/W12 outcomes retain their separate handling.
+
+Ten drain regressions cover finite arrival caps, unchanged default cutoff,
+mixed-slot preservation, exact replay, strict markers, deadline failure and
+recorded-phase integration. Two additional regressions cover early semantic
+failure and unjustified pending boundaries. All 513 workflow tests passed in
+38.353 seconds.
+
+Private evidence prefixes: `/private/tmp/cui-task11-soak-live-churn-drain`,
+`/private/tmp/cui-task11-soak-live-churn-drain-replay`, and
+`/private/tmp/cui-task11-soak-drain-full-workflow`. Private mapping snapshots,
+sealed phase events, audit records and captured logs are retained.
