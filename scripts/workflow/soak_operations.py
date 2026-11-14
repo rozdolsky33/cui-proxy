@@ -10,7 +10,7 @@ from soak_semantics import verify_tool_effect
 from soak_tool_stream import ToolStreamObserver
 
 
-def run_tool_operation(url, case, expected_hash, *, timeout=45, expected_layout_hash=None):
+def run_tool_operation(url, case, expected_hash, *, timeout=45, expected_layout_hash=None, defer_boundary=False):
     scenario = case["benchmark_tool_scenario"]
     call_id = case["benchmark_tool_call_id"]
     originals = case["occurrences"][:2]
@@ -32,9 +32,10 @@ def run_tool_operation(url, case, expected_hash, *, timeout=45, expected_layout_
             Path(directory, "effect.txt").write_text(originals[0])
         row = performance.request(url, case, expected_hash, timeout=timeout,
                                   expected_layout_hash=expected_layout_hash,
+                                  defer_boundary=defer_boundary,
                                   observer_factory=lambda: observer)
         row.update(scenario=scenario, semantic_verified=False)
-        if row["outcome"] != "supported_success":
+        if row["outcome"] not in ("supported_success", "boundary_pending"):
             return row
         try:
             if not observer.valid():

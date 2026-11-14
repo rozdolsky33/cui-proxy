@@ -53,3 +53,14 @@ class ToolOperationTests(unittest.TestCase):
         effect.assert_not_called()
         self.assertEqual(row["outcome"], "timeout")
         self.assertFalse(row["semantic_verified"])
+
+    def test_new_mapping_tool_effect_is_checked_while_boundary_stays_pending(self):
+        case = self.case("W02")
+        fake = self.fake_request("W02", case["occurrences"][:2])
+        def pending(*args, **kwargs):
+            self.assertTrue(kwargs["defer_boundary"])
+            return dict(fake(*args, **kwargs), outcome="boundary_pending")
+        with patch("soak_operations.performance.request", side_effect=pending):
+            row = run_tool_operation("http://unused", case, None, defer_boundary=True)
+        self.assertTrue(row["semantic_verified"])
+        self.assertEqual(row["outcome"], "boundary_pending")
