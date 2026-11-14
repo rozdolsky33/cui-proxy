@@ -31,9 +31,9 @@
 
 **Files:** Create scripts/workflow/cancellation_gate.py, cancellation_acceptance.py, test_cancellation_gate.py, test_cancellation_acceptance.py.
 
-**Interfaces:** GatedOCR(directory, delegate) context manager owns the launcher, arm(), release(), and snapshot() metadata. evaluate_cancellation(report) consumes three trial records plus warmup, identity, baseline/recovery, receipt/audit, privacy and cleanup proofs; returns cancellation_qualified and always performance_qualified=false.
+**Interfaces:** GatedOCR(directory, delegate) context manager owns the launcher, arm(), release(), and snapshot() metadata. evaluate_trial(trial) checks observed timing, queue states and identified helper/slot continuity; returns bounds_passed and always cancellation_qualified=false/performance_qualified=false. Complete evidence composition belongs to Task 2.
 
-- [ ] Add failing tests for the exact 1/2/45-second boundaries, missing/non-finite observations, ambiguous helper/request binding, unexpected success, upstream receipt presence and incomplete cleanup.
+- [ ] Add failing tests for the exact 1/2/45-second boundaries, missing/non-finite observations, ambiguous helper/request binding, premature headers, lost gate state and a transport exceeding 45 seconds.
 - [ ] Add failing tests for bounded stdin preservation, absolute delegation, immediate version delegation, stale/symlink markers and restoration on error; defer subprocess-heavy tests until a real gap.
 - [ ] Implement the smallest primitives satisfying those tests; run focused tests and commit.
 
@@ -41,9 +41,9 @@
 
 **Files:** Create scripts/workflow/cancellation_probe.py and test_cancellation_probe.py; reuse existing soak and request helpers without changing production defaults.
 
-**Interfaces:** run_probe(options) owns setup/identity, thread-local connection tracking, original warmup, three trial sequences, evidence binding and cleanup. CLI accepts the existing runtime/source/seed/corpus identity options and a fresh output root; no paid/live service or installation changes.
+**Interfaces:** run_probe(options) owns setup/identity, thread-local connection tracking, original warmup, three trial sequences, evidence binding and cleanup. evaluate_cancellation(report, expected_identity) combines all three trial bounds with the existing provenance/warmup oracles and receipt/audit, privacy and cleanup evidence; only that fully bound result may set cancellation_qualified=true, while performance_qualified remains false. CLI accepts the existing runtime/source/seed/corpus identity options and a fresh output root; no paid/live service or installation changes.
 
-- [ ] Add failing fake-transport/state-sequence tests for queue cancellation, identified active-helper termination/new slot admission, unrelated connection exclusion and cleanup at every failure point.
+- [ ] Add failing fake-transport/state-sequence tests for queue cancellation, identified active-helper termination/new slot admission, unrelated connection exclusion, unexpected success, upstream receipt presence, ambiguous audit differences and incomplete cleanup at every failure point.
 - [ ] Implement the collector phase hook and measurement sequence; preserve actual observed outcomes and distinguish oracle time from cancellation time.
 - [ ] Verify baseline/recovery requests with existing semantic/receipt oracles, request-ID audit matching, privacy and owned-process checks; commit.
 
