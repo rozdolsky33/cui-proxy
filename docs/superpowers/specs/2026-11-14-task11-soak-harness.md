@@ -486,3 +486,37 @@ Trace acceptance reuses the deterministic journal replay validator, requires exa
 Resource samples retain observation_started_s and observed_s around the actual measurement, in addition to the nominal one-second slot and monitor-relative elapsed time. Nonfinite or backwards observation clocks stop admissions. The aggregate uses these bounds to attribute an unavailable sample to an explicitly validated restart; it must not infer an exception merely because a sample was recorded after a restart.
 
 Whole-series resource acceptance validates a consistent monotonic origin, ordered observation bounds and nominal one-second slots. It accounts for skipped nominal slots without expanding arbitrarily large ranges. Every missing slot must lie in an explicitly supplied restart interval, and unavailable measurements must overlap a restart by their actual start/end bounds; reloads cannot excuse missing data. Availability and exception counts remain visible. Known RSS values contribute to the original 512MiB proxy and 1GiB child-tree caps even in partially unavailable fault samples. Fixed-state medians use only available RSS/runtime observations after this validation, retain all eight original windows and the ten-percent growth limit, and still flag positive growth for investigation.
+
+
+### Retained acceptance evaluation
+
+The collector supports `--expected-identity-output PATH`, which exclusively
+creates a mode-0600 identity file on the first pre-run probe, outside the sealed
+campaign directory. Later identity probes cannot replace it. Preserve this file
+with the frozen binary/source provenance before starting the original campaign.
+The evaluator must receive that independent file; copying identity out of a
+completed campaign is suitable only for a negative diagnostic, never acceptance.
+
+Run the read-only evaluator after campaign finalization:
+
+```sh
+python3 scripts/workflow/soak_acceptance_cli.py \
+  --root /private/tmp/cui-soak-qualified \
+  --expected-identity /private/tmp/cui-soak-qualified-identity.json \
+  --output /private/tmp/cui-soak-qualified-acceptance.json
+```
+
+The output is exclusively created outside the sealed root. Existing acceptance
+artifacts are never overwritten. Incomplete evidence produces a retained
+unqualified diagnostic and a nonzero exit status. The original two 7200-second
+phases, 60-second/100-request warmup and at least ten controls remain mandatory.
+The evaluator combines provenance, sealed-journal bindings, phase order,
+canonical traces and mappings, paired text windows, extraction coverage and
+windows, controls, whole-run resource availability, fixed-population growth,
+observed idle/GC recovery, and audit/privacy/cleanup finalization. Sustained
+positive resource growth remains incomplete until investigated.
+
+A passing soak sets `soak_qualified: true` but leaves
+`performance_qualified: false`: fairness repetitions, throughput, PDF,
+cancellation, stress and the final release envelope still require their own
+original evidence. Short smoke campaigns cannot qualify the soak.

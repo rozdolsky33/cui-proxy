@@ -69,3 +69,24 @@ class SoakCommandTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 soak.main(self.arguments() + ["--drain-seconds", "46"])
             mocks["run_campaign"].assert_not_called()
+
+    def test_requested_identity_is_captured_by_the_first_campaign_probe(self):
+        import json
+        from pathlib import Path
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory, contextlib.ExitStack() as stack:
+            mocks = self.setup_mocks(stack)
+            identity = dict(revision="pre_run")
+            mocks["make_identity_probe"].return_value = lambda: identity
+            output = Path(directory) / "campaign"
+            expected = Path(directory) / "expected.json"
+            def run(*args, **kwargs):
+                self.assertFalse(expected.exists())
+                self.assertEqual(kwargs["identity_probe"](), identity)
+                self.assertEqual(json.loads(expected.read_text()), identity)
+                return dict(completed=True, performance_qualified=False)
+            mocks["run_campaign"].side_effect = run
+            with contextlib.redirect_stdout(io.StringIO()):
+                result = soak.main(self.arguments() + ["--output", str(output),
+                    "--expected-identity-output", str(expected)])
+            self.assertEqual(result, 0)

@@ -11,6 +11,7 @@ from soak_identity import make_identity_probe
 from soak_rejections import BLOCK_CANARY, negative_policy
 from soak_run import run_campaign
 from soak_reload import renamed_policy
+from soak_identity_record import retain_initial_identity
 
 
 def _positive_seconds(value):
@@ -53,6 +54,8 @@ def main(argv=None):
     parser.add_argument("--warmup-count", type=_positive_count, default=100)
     parser.add_argument("--control-count", type=_control_count, default=10)
     parser.add_argument("--drain-seconds", type=_drain, default=45)
+    parser.add_argument("--expected-identity-output", type=Path,
+                        help="retain the pre-run identity outside the campaign root")
     args = parser.parse_args(argv)
     settings = {name: getattr(args, name) for name in
                 ("fixed_seconds", "churn_seconds", "warmup_seconds", "warmup_count",
@@ -80,6 +83,8 @@ def main(argv=None):
         probe = make_identity_probe(args.binary, args.seed_binary, args.fixtures,
                                     args.build_manifest, args.binary_commit, workload, settings,
                                     binary_source=args.binary_source)
+        if args.expected_identity_output is not None:
+            probe = retain_initial_identity(probe, args.expected_identity_output, args.output)
         result = run_campaign(args.output, args.binary, args.seed_binary, workload, args.fixtures,
                               identity_probe=probe, finalize_mode=finalize, **settings)
         if result.get("completed") is not True:
