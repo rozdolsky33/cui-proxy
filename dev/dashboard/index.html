@@ -2267,6 +2267,7 @@ non-loopback <code>Host</code> headers and cross-origin writes. Keep the listene
 loopback; do not expose it through a remote forwarding service. These guards
 are not remote authentication.</p>
 <p>Cross-field metrics are approximate concurrent snapshots, not transactional snapshots.</p>
+<p>The <code>mapping_checkpoint</code> timing measures the pre-forward durable mapping checkpoint, including time waiting for another checkpoint to finish. It is separate from audit and upstream timing. An absent observation means no checkpoint callback ran; a measured zero remains a real observation. Storage errors still refuse forwarding.</p>
 
 
 
