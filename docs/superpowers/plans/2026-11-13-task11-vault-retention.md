@@ -16,8 +16,8 @@ Spec:docs/superpowers/specs/2026-11-13-task11-vault-retention.md.
 - [x] Minimal fixes; targeted vault/transform/proxy race and300workflow tests GREEN (4opt-in skips).
 
 ## Task 2: Verify outcomes
-- [ ] Compare fixed-cardinality retained input and full-request allocation/latency with captured diagnostics.
-- [ ] Run full local regression gates and update interrupted-run evidence honestly.
+- [x] Compare fixed-cardinality retained input and full-request allocation/latency with captured diagnostics.
+- [x] Run full local regression gates and update interrupted-run evidence honestly.
 - [ ] Independent whole-branch review; one material RED/GREEN fix pass, archive rulings.
 - [ ] Commit/push/PR, pass exact-head CI, merge, synchronize clean main.
 - [ ] Resume full-sample acceptance with provenance-checked baseline reuse or fresh arms.

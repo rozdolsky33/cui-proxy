@@ -30,6 +30,14 @@ The live metrics snapshot, interruption manifest, completed bypass report and ca
 
 The distinct earlier macOS Python3.15.2 cleanup-test flake remains unconfirmed; this fix does not claim its root cause was resolved.
 
-## Remaining verification
+## Full-request controls
 
-Run the real interrupt smoke, full-request allocation/latency comparison, full regression gates and independent review, then exact-head CI. Resume full-sample performance acceptance with explicit provenance for any reused completed bypass arm. Original150ms latency, throughput, resource and sustained-soak gates remain open.
+Eight alternating equal-work pairs used the same32changing768KiB bodies and32timed iterations per arm. Relative to merged PR47, rotating-request median latency changed-0.337% and fixed-request latency-0.230%, effectively unchanged. Rotating allocated bytes increased2.301% and fixed allocated bytes1.558%; this fix reduces **retained backing storage**, and is not presented as a per-request allocation reduction. Detection and cold/warm restoration controls did not materially regress.
+
+Private evidence: `/private/tmp/cui-task11-retention-micro-summary.json`. No timing campaign ran alongside another build or test. Nine source/AST checks confirmed the workload generator, fake backend, fixture builder, phase setup and normal mixed-loop behavior are unchanged; the only mixed-loop addition is exception cleanup. Any resumed run will retain the completed bypass artifact and separate provenance explicitly rather than pretending its proxy arm completed.
+
+## Regression verification
+
+All local regression gates passed on the final runtime change: 23 Go race-test packages, 300 workflow tests (4 opt-in skips), go vet, staticcheck, and the HTTP corpus with all three boundary mutations detected. Detailed output is retained privately. The HTTP report records a dirty tree because verification documentation was being updated; runtime source was unchanged from ff6272f.
+
+Independent review and exact-head remote CI remain required before merging. Full performance qualification remains open; the interrupted proxy arm is not acceptance evidence.
