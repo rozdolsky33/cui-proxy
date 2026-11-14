@@ -167,8 +167,83 @@ func (n *node) setString(s string) {
 // canonical, every container and string is re-encoded from decoded values.
 func (n *node) encode(canonical bool) []byte {
 	var b bytes.Buffer
+	// Count only substantial rewritten containers. Saturation falls back to
+	// ordinary growth; large inputs and unchanged raw output pay no extra scan.
+	if (n.dirty || canonical) && (n.kind == '{' || n.kind == '[') && len(n.raw) >= 4096 && len(n.raw) <= maxEncodeHint {
+		if size := n.encodedSizeHint(canonical, maxEncodeHint); size < maxEncodeHint {
+			b.Grow(size)
+		}
+	}
 	n.write(&b, canonical)
 	return b.Bytes()
+}
+
+const maxEncodeHint = 1 << 20
+
+// encodedSizeHint counts output bytes, saturating at limit before any addition
+// can overflow. Rewritten nodes use their new values, never discarded raw input.
+func (n *node) encodedSizeHint(canonical bool, limit int) int {
+	if limit <= 0 {
+		return 0
+	}
+	if !n.dirty && !canonical || n.kind == '0' && !n.dirty || n.kind == 'l' {
+		return min(limit, len(n.raw))
+	}
+	switch n.kind {
+	case '0', 'l':
+		return min(limit, len(n.raw))
+	case '{', '[':
+		size := min(2, limit)
+		add := func(count int) { size += min(count, limit-size) }
+		for i, kid := range n.kids {
+			if size == limit {
+				break
+			}
+			if i > 0 {
+				add(1)
+			}
+			if n.kind == '{' {
+				add(quotedSizeHint(n.keys[i], limit-size))
+				add(1)
+			}
+			add(kid.encodedSizeHint(canonical, limit-size))
+		}
+		return size
+	default:
+		return quotedSizeHint(n.str, limit)
+	}
+}
+
+// quotedSizeHint counts the standard encoder's non-HTML-escaped string output.
+// It only sizes capacity: encoding/json remains responsible for output bytes.
+func quotedSizeHint(s string, limit int) int {
+	if limit <= 0 {
+		return 0
+	}
+	size := min(2, limit) // quotes
+	for i := 0; i < len(s) && size < limit; {
+		count := 1
+		if c := s[i]; c < utf8.RuneSelf {
+			switch c {
+			case '"', '\\', '\b', '\f', '\n', '\r', '\t':
+				count = 2
+			default:
+				if c < 0x20 {
+					count = 6
+				}
+			}
+			i++
+		} else {
+			r, width := utf8.DecodeRuneInString(s[i:])
+			i += width
+			count = width
+			if r == '\u2028' || r == '\u2029' || r == utf8.RuneError && width == 1 {
+				count = 6
+			}
+		}
+		size += min(count, limit-size)
+	}
+	return size
 }
 
 func (n *node) write(b *bytes.Buffer, canonical bool) {

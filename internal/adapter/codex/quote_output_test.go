@@ -58,5 +58,62 @@ func FuzzWriteQuoteMatchesStandardJSON(f *testing.F) {
 		if !json.Valid(b.Bytes()) {
 			t.Fatal("direct output is invalid JSON")
 		}
+		n := &node{kind: '"', str: s, dirty: true}
+		for _, limit := range []int{0, 1, 17, 1048576} {
+			if got := n.encodedSizeHint(false, limit); got != min(limit, len(q)) {
+				t.Fatal("encoded size differs from standard encoder")
+			}
+		}
+		object := &node{kind: '{', dirty: true, keys: []string{s}, kids: []*node{n}}
+		for _, limit := range []int{0, 1, 17, 1048576} {
+			if got := object.encodedSizeHint(true, limit); got != min(limit, 3+2*len(q)) {
+				t.Fatal("object size differs from standard encoder")
+			}
+		}
 	})
+}
+
+func TestEncodedSizeHintMatchesOutputAndCaps(t *testing.T) {
+	for _, text := range []string{"plain", "\n\x00\"\\", "\u2028\u2029", "é界", string([]byte{0xff, 0xfe})} {
+		for _, canonical := range []bool{false, true} {
+			n, err := parse([]byte(` { "key": "old", "items": [true,12,"raw"] } `), 0)
+			if err != nil {
+				t.Fatal("test document rejected")
+			}
+			n.dirty = true
+			n.get("key").setString(text)
+			var expected bytes.Buffer
+			n.write(&expected, canonical)
+			for _, limit := range []int{0, 1, 2, 7, 64, 1024} {
+				got := n.encodedSizeHint(canonical, limit)
+				if got != min(limit, expected.Len()) {
+					t.Fatalf("size hint %d, expected %d", got, min(limit, expected.Len()))
+				}
+			}
+		}
+	}
+}
+
+func TestOutputReservationDoesNotUseDiscardedImageSize(t *testing.T) {
+	n := &node{kind: '{', raw: make([]byte, 512*1024), dirty: true, keys: []string{"text"}, kids: []*node{{kind: '"', str: "small", dirty: true}}}
+	got := n.encode(false)
+	if !bytes.Equal(got, []byte(`{"text":"small"}`)) {
+		t.Fatal("rewritten output differs")
+	}
+	if cap(got) > 4096 {
+		t.Fatal("reserved discarded input capacity")
+	}
+}
+
+func TestEncodedSizeHintSaturatesExpandedOutput(t *testing.T) {
+	text := strings.Repeat("\x00", 200000)
+	n := &node{kind: '{', raw: make([]byte, 512*1024), dirty: true, keys: []string{"text"}, kids: []*node{{kind: '"', str: text, dirty: true}}}
+	if n.encodedSizeHint(false, maxEncodeHint) != maxEncodeHint {
+		t.Fatal("expanded output did not saturate")
+	}
+	var expected bytes.Buffer
+	n.write(&expected, false)
+	if !bytes.Equal(n.encode(false), expected.Bytes()) {
+		t.Fatal("saturated fallback changed output")
+	}
 }
