@@ -166,12 +166,15 @@ class FakeBackend:
         class Handler(http.server.BaseHTTPRequestHandler):
             def log_message(self, *_): pass
             def do_GET(self):
-                prefix = "/benchmark/receipt/"
-                if not self.path.startswith(prefix):
+                if self.path.startswith("/benchmark/receipt/"):
+                    prefix, lookup = "/benchmark/receipt/", outer.receipts.get
+                elif self.path.startswith("/benchmark/activity/"):
+                    prefix, lookup = "/benchmark/activity/", outer.receipts.activity
+                else:
                     self.send_error(404)
                     return
                 try:
-                    row = outer.receipts.get(self.path[len(prefix):])
+                    row = lookup(self.path[len(prefix):])
                 except ValueError:
                     self.send_error(400)
                     return
@@ -235,6 +238,9 @@ class FakeBackend:
                 except (BrokenPipeError, ConnectionResetError, OSError): pass
                 except (KeyError, ValueError, TypeError):
                     self.close_connection = True
+                finally:
+                    outer.receipts.finish(self.headers.get("X-Benchmark-Receipt-ID"),
+                                          disconnected=getattr(self, "benchmark_disconnected", False))
         backend_stage("binding")
         self.server = _LoopbackHTTPServer(("127.0.0.1", 0), Handler)
         backend_stage("bound")
@@ -330,6 +336,10 @@ def failure_outcome(status, body):
     return "unexpected_proxy_refusal" if status < 500 else "upstream_failure"
 
 
+def request_headers(case, expected_layout_hash=None):
+    return {'Content-Type': 'application/json', 'Authorization': 'Bearer benchmark-only', 'X-Benchmark-Text-Layout': '1' if expected_layout_hash is not None else '0', 'session_id': case.get('benchmark_session', ''), 'X-Benchmark-Text-Only-Reply': '1' if case.get('benchmark_text_only') else '0', **({"X-Benchmark-Tool-Scenario": case["benchmark_tool_scenario"], "X-Benchmark-Tool-Call-ID": case.get("benchmark_tool_call_id", "")} if "benchmark_tool_scenario" in case else {}), **({"X-Benchmark-Fault": case["benchmark_fault"]} if "benchmark_fault" in case else {}), "X-Benchmark-Receipt-ID": receipt_id(case["operation_id"])}
+
+
 def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None, *, defer_boundary=False, observer_factory=None):
     if defer_boundary and (expected_hash is not None or expected_layout_hash is not None):
         raise ValueError("deferred_boundary_arguments")
@@ -356,7 +366,7 @@ def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None
         remaining = deadline - time.monotonic()
         if remaining <= 0: raise TimeoutError()
         conn.sock.settimeout(remaining)
-        conn.request("POST", "/v1/responses", body=case["body"], headers={'Content-Type': 'application/json', 'Authorization': 'Bearer benchmark-only', 'X-Benchmark-Text-Layout': '1' if expected_layout_hash is not None else '0', 'session_id': case.get('benchmark_session', ''), 'X-Benchmark-Text-Only-Reply': '1' if case.get('benchmark_text_only') else '0', **({"X-Benchmark-Tool-Scenario": case["benchmark_tool_scenario"], "X-Benchmark-Tool-Call-ID": case.get("benchmark_tool_call_id", "")} if "benchmark_tool_scenario" in case else {}), **({"X-Benchmark-Fault": case["benchmark_fault"]} if "benchmark_fault" in case else {}), "X-Benchmark-Receipt-ID": receipt_id(case["operation_id"])})
+        conn.request("POST", "/v1/responses", body=case["body"], headers=request_headers(case, expected_layout_hash))
         response = conn.getresponse()
         row["status"] = response.status
         boundary_ok = expected_hash is None or response.getheader("X-Benchmark-Body-SHA256") == expected_hash

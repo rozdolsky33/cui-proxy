@@ -72,6 +72,16 @@ class StructuredBackendTests(unittest.TestCase):
         handler.send_response.assert_called_once_with(200)
         self.assertEqual(json.loads(handler.wfile.getvalue()), {"count": 1, "body_sha256": hashlib.sha256(b"{}").hexdigest(), "complete": True})
 
+    def test_activity_endpoint_records_handler_completion_on_fault_return(self):
+        import json
+        from soak_receipts import receipt_id
+        key = receipt_id("fault-finished")
+        handler = self.run_handler("W02", fault="upstream_error", receipt=key)
+        handler.wfile = io.BytesIO()
+        handler.path = "/benchmark/activity/" + key
+        handler.do_GET()
+        self.assertEqual(json.loads(handler.wfile.getvalue()), {"complete": True, "arrived": 1, "active": 0, "finished": 1, "disconnected": 0})
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -50,3 +50,9 @@ Two isolated real-proxy requests verified explicit upstream failure and malforme
 Four live checks passed in 2.797 seconds. A successful request and both upstream-fault requests each produced exactly one upstream receipt with the expected sanitized-body SHA256. Malformed JSON returned 422 and produced zero upstream arrivals. Receipt capture stores only hashed operation IDs, counts and body hashes; incomplete capture cannot prove absence. The focused suite has 112 passing tests. Evidence is retained under `/private/tmp/cui-task11-soak-live-receipt-smoke`. Full sustained acceptance must recheck receipts after draining requests to catch any late arrival.
 
 After the shared receipt changes, the complete workflow suite passed all 435 tests in 38.126 seconds. Captured evidence: `/private/tmp/cui-task11-soak-receipt-full-workflow.log` and `/private/tmp/cui-task11-soak-receipt-full-workflow-summary.json`.
+
+## Stream cancellation follow-up
+
+A real isolated proxy cancellation passed after a valid initial stream event and independent sanitized-body receipt. The client disconnected; upstream handler completion with an observed disconnect was confirmed about 47.65 ms later, and proxy active requests drained to zero. The outcome is `cancelled`, not supported success. The complete smoke took 0.688 seconds. Evidence is retained under `/private/tmp/cui-task11-soak-live-cancel-smoke`; the first failed endpoint-path attempt is retained as `-attempt1`.
+
+All 119 focused tests and all 442 workflow tests passed after shared request-header and completion-tracking changes. The full suite took 38.046 seconds; evidence is under `/private/tmp/cui-task11-soak-cancel-full-workflow`. This stream cancellation check does not establish queued or active extraction cancellation timing.

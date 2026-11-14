@@ -54,3 +54,14 @@ class ReceiptTests(unittest.TestCase):
         for receipt, options in (({"complete": False, "count": 0, "body_sha256": None}, {"absent": True}), ({"complete": True, "count": 1, "body_sha256": None}, {"absent": True}), ({"complete": True, "count": 2, "body_sha256": "a" * 64}, {"expected_hash": "a" * 64}), ({"complete": True, "count": 1, "body_sha256": "b" * 64}, {"expected_hash": "a" * 64})):
             with self.assertRaises(ValueError):
                 verify_receipt(receipt, **options)
+
+    def test_handler_activity_is_independent_of_arrival_and_body_hash(self):
+        store = ReceiptStore()
+        key = receipt_id("active")
+        store.record(key, b"body")
+        self.assertEqual(store.activity(key), {"complete": True, "arrived": 1, "active": 1, "finished": 0, "disconnected": 0})
+        store.finish(key, disconnected=True)
+        self.assertEqual(store.activity(key), {"complete": True, "arrived": 1, "active": 0, "finished": 1, "disconnected": 1})
+        self.assertEqual(store.get(key)["count"], 1)
+        with self.assertRaises(ValueError):
+            store.finish(key)

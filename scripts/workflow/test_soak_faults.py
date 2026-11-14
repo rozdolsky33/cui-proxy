@@ -30,3 +30,24 @@ class FaultSenderTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             send_fault_response(handler, "unknown", "a" * 64)
         handler.send_response.assert_not_called()
+
+    def test_cancel_stream_records_disconnect_without_success_terminal(self):
+        from soak_faults import send_cancel_stream
+        class Disconnect(io.BytesIO):
+            def write(self, data):
+                if self.tell():
+                    raise BrokenPipeError()
+                return super().write(data)
+        handler = self.handler()
+        handler.wfile = Disconnect()
+        send_cancel_stream(handler, "a" * 64, sleep=lambda _: None)
+        self.assertTrue(handler.benchmark_disconnected)
+        self.assertNotIn(b"response.completed", handler.wfile.getvalue())
+
+    def test_cancel_timeout_is_not_reported_as_disconnect(self):
+        from soak_faults import send_cancel_stream
+        handler = self.handler()
+        times = iter((0, 46))
+        with self.assertRaises(ValueError):
+            send_cancel_stream(handler, "a" * 64, clock=lambda: next(times), sleep=lambda _: None)
+        self.assertFalse(handler.benchmark_disconnected)
