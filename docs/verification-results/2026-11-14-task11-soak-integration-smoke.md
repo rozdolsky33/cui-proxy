@@ -150,3 +150,41 @@ Evidence prefixes under `/private/tmp/`:
 
 JSON reports and captured logs accompany the prefixes; the two recorded phase
 runs keep separate `-events` directories with JSONL events and final seals.
+
+
+## Resource monitoring and equivalent idle-GC integration
+
+The resource monitor reuses the existing bounded whole-process-tree RSS and
+runtime collector. It emits only declared numeric metadata and availability
+flags at one-second scheduled slots; delayed/missing slots remain visible.
+Measurement failures retain an unavailable sample. Evidence-write failures stop
+the phase and remain errors at monitor shutdown. Ten focused tests exercise
+availability, invalid numeric data, missing runtime evidence, cycle resets,
+active-load rejection, timeouts, recording failure and thread cleanup.
+
+The equivalent heap procedure waits for two observed GC-cycle advances while
+proxy request activity remains zero. It neither forces GC nor labels an old
+snapshot as post-GC. Both pre-load and post-drain samples use that same procedure;
+the separate goroutine check enforces the pre-load idle count plus five within
+60 seconds. Counter resets, resumed traffic, missing runtime data or observation
+timeout prevent success. The GC observation deadline is 300 seconds, separate
+from the original 60-second goroutine deadline.
+
+A live isolated test ran a 40-second four-client phase between those idle-GC
+observations. It passed 83 requests (80 supported, two expected rejections and
+one expected upstream error). All 79 resource slots were present and had RSS
+and runtime data; the largest observed sample interval was 1.069 seconds.
+Observed sampled peaks were 61,685,760 bytes proxy RSS and 13,893,632 bytes child
+RSS. These sampled peaks do not claim continuous observation between ticks.
+
+Idle goroutines were 22 before and after load; the post-drain observation met
+the baseline immediately. The two-cycle GC waits took 18.217 and 16.238 seconds.
+Comparable live heaps were 7,094,976 and 7,606,560 bytes (about 7.2% higher after
+load). This short, minimally warmed integration run does not establish sustained
+heap growth or stability and does not satisfy the two-hour fixed-state windows.
+Proper warmup and investigation of any sustained growth remain required.
+
+Private evidence prefix: `/private/tmp/cui-task11-soak-live-resources-smoke`,
+including the report, captured log, summary, sealed resource JSONL and recorded
+phase directory. Total wall time was 79.022 seconds. Duration qualification is
+explicitly false in the report.
