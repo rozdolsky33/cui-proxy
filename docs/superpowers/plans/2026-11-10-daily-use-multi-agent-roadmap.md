@@ -113,7 +113,7 @@ permission between already authorized tasks.
 | 06 | Improve refusal recovery and dependency preflight | P0 | 03, 05 | done |
 | 07 | Fix the largest measured processing cost | P1 | 04, 05 | done |
 | 08 | Bound contention and protect text-workload fairness | P1 | 04, 07 | in progress |
-| 09 | Make repeated attachment processing efficient | P1 | 04, 05, 08 bounds | in progress |
+| 09 | Make repeated attachment processing efficient | P1 | 04, 05, 08 bounds | done |
 | 10 | Verify mapping lifetime and recovery | P1 | 02, 04, 05 | ready |
 | 11 | Run sustained four-agent acceptance and tune | P0 release gate | 06–10 | blocked |
 | 12 | Establish release and regression gates | P0 release gate | 11 | blocked |
@@ -303,27 +303,29 @@ current rules cannot be bypassed by a cache hit, memory stays bounded, and
 failed/cancelled extraction does not poison other requests. If retention costs
 outweigh the benefit, close with evidence and retain uncached extraction.
 
-Implementation and local acceptance are complete; review/CI integration is pending. See [Task 09 evidence](../../verification-results/2026-11-13-task09-extraction-reuse.md). The repeated-image cache does not close Task 08's mixed-text latency gap.
+Integrated in [PR #43](https://github.com/rozdolsky33/cui-proxy/pull/43), squash `5509f3a`, after independent review and all CI/security/packaging gates passed. See [Task 09 evidence](../../verification-results/2026-11-13-task09-extraction-reuse.md). The repeated-image cache does not close Task 08's mixed-text latency gap.
 
 ## Task 10 — Verify mapping lifetime and recovery
 
 **Likely areas:** `internal/vault/`, application lifecycle, restoration, operations docs.
 
-- [ ] Test long-running vault growth, graceful restart, abrupt termination,
+- [x] Test long-running vault growth, graceful restart, abrupt termination,
       periodic-save failures and coherent policy reload under concurrent work.
-- [ ] Quantify the file-vault crash-loss window and test that recovery does not
+- [x] Quantify the file-vault crash-loss window and test that recovery does not
       silently produce incorrect restored tool arguments.
-- [ ] Decide whether stronger persistence is needed from evidence and workload
+- [x] Decide whether stronger persistence is needed from evidence and workload
       expectations; document its throughput and durability tradeoff.
-- [ ] Document shared mappings for cooperating agents and boundaries for
+- [x] Document shared mappings for cooperating agents and boundaries for
       unrelated workspaces. Do not introduce per-agent vaults that break delegation.
-- [ ] Specify lifecycle/retention options without evicting mappings still
+- [x] Specify lifecycle/retention options without evicting mappings still
       needed by active or resumable histories. Scope changes require an ADR.
 
 **Acceptance:** Graceful restart/resume succeeds with original mappings;
 crash behavior matches the documented contract; multi-process locking holds;
 no mapping silently resolves to another original. Resource growth and recovery
 limits are recorded, not hidden behind a successful health endpoint.
+
+Local recovery and growth acceptance is implemented; final review and remote integration remain pending. See [Task 10 recovery evidence](../../verification-results/2026-11-13-task10-vault-recovery.md) and [ADR 0004](../../adr/0004-mapping-durability.md).
 
 ## Task 11 — Run sustained four-agent acceptance and tune
 
@@ -431,4 +433,4 @@ Next ready task:
 
 ## Next action
 
-Continue **Task 04** using its [implementation plan](2026-11-10-concurrent-performance-baseline.md). Start with paired first-byte statistics, then representative workloads and the matched-load runner. The full baseline remains unmeasured.
+Finish **Task 10** review and integration using its [implementation plan](2026-11-13-task10-vault-recovery.md), then run **Task 11** sustained acceptance. **Task 08** remains open for the original mixed-text latency target; **Task 12** still requires release/regression evidence. Task 09 is integrated in PR #43.

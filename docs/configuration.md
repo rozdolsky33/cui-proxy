@@ -391,6 +391,8 @@ a second signal closes at once.
 
 ## Vault
 
+File mode checkpoints mappings before forwarding and refuses requests if saving fails. See [mapping lifetime and recovery](vault-recovery.md) for crash guarantees, storage repair, shared-agent boundaries and retention limits.
+
 - `vault.mode: memory` (default): mappings live only in the process, under a
   random key that never touches disk. After a restart, synthetic values in
   history that Codex resends are unknown to the new vault and pass through
@@ -398,12 +400,13 @@ a second signal closes at once.
 - `vault.mode: file`: mappings are stored encrypted (AES-256-GCM, file format
   `CUIV2`) in `vault.file`, keyed by `vault.key_file` (32 bytes, created with
   mode 0600 on first run; a key file with wider permissions is refused). The
-  vault is saved every 30 s when it changed and on shutdown. A vault file that
+  vault checkpoints mappings before forwarding and saves other changes every
+  30 seconds and on shutdown. A vault file that
   cannot be read (wrong key, missing key file, older format, corruption) stops
-  startup; it is never silently replaced. To start over, remove the vault
-  file yourself. Only one process may own a file vault: a lifetime lock
+  startup; it is never silently replaced. Retire the vault only after draining cooperating agents and
+  deciding that its histories will never resume. Only one process may own a file vault: a lifetime lock
   prevents stale writers from overwriting mappings. Keep its parent directory
-  private. A crash can still lose changes since the last periodic save.
+  private. Unforwarded changes can be lost on a crash; mappings exposed upstream are checkpointed before forwarding in file mode. See [mapping recovery](vault-recovery.md).
 
 ### Synthetic address pool
 

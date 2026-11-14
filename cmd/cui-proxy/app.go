@@ -97,6 +97,7 @@ type App struct {
 	proxyCancel, uiCancel context.CancelFunc
 	errs                  chan error
 
+	saveMu   sync.Mutex // serializes checkpoints and savedAt
 	saveStop chan struct{}
 	saveDone chan struct{}
 	savedAt  uint64 // vault.Changes at the last successful save (or at open)
@@ -371,11 +372,12 @@ func (a *App) Start() error {
 				rs := a.cur.Load() // one load: policy and rules from the same reload
 				return proxy.Snapshot{Cfg: rs.cfg, Sanitizer: rs.sanitizer, Restorer: rs.restorer}
 			},
-			VaultLen:  a.vault.Len,
-			Metrics:   a.metrics,
-			Audit:     a.audit,
-			Decisions: a.recorder(),
-			Logf:      a.logf,
+			PersistMappings: a.persistMappings,
+			VaultLen:        a.vault.Len,
+			Metrics:         a.metrics,
+			Audit:           a.audit,
+			Decisions:       a.recorder(),
+			Logf:            a.logf,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       120 * time.Second,
@@ -724,7 +726,10 @@ func (a *App) saveLoop() {
 		case <-a.saveStop:
 			return
 		case <-t.C:
-			if a.vault.Changes() == a.savedAt {
+			a.saveMu.Lock()
+			dirty := a.vault.Changes() != a.savedAt
+			a.saveMu.Unlock()
+			if !dirty {
 				continue
 			}
 			n := a.vault.Len()
@@ -740,6 +745,15 @@ func (a *App) saveLoop() {
 // flag) since the last save. A failure is
 // logged by kind only and retried on the next call.
 func (a *App) saveIfChanged() error {
+	return a.saveIfChangedContext(context.Background())
+}
+
+func (a *App) saveIfChangedContext(ctx context.Context) error {
+	a.saveMu.Lock()
+	defer a.saveMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	n := a.vault.Changes() // read first: a change during Save is saved next time
 	if n == a.savedAt {
 		return nil
@@ -769,4 +783,20 @@ type suppressed struct{ logf func(string, ...any) }
 func (s suppressed) Write(p []byte) (int, error) {
 	s.logf("http server error (details suppressed)")
 	return len(p), nil
+}
+
+// persistMappings is the durability fence before a request can expose mappings.
+// Memory mode deliberately remains ephemeral. Cancellation cannot interrupt a
+// filesystem sync already in progress, but it prevents subsequent forwarding.
+func (a *App) persistMappings(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if a.vaultAt == "" {
+		return nil
+	}
+	if err := a.saveIfChangedContext(ctx); err != nil {
+		return err
+	}
+	return ctx.Err()
 }

@@ -22,7 +22,15 @@ def _cleanup_probe_kind(stderr):
         frames = re.findall(rb'File "(?:[^"\n]*/)?(performance_campaign.py|subprocess.py|threading.py|<string>)", line (\d+)', stderr)
         trace = ",".join(name.decode("ascii") + ":" + line.decode("ascii") for name, line in frames[-8:])
         version = ".".join(str(part) for part in sys.version_info[:3])
-        return "interrupted_probe py=" + version + " frames=" + trace
+        terminal, errno = "unknown", "unknown"
+        allowed = {b"KeyboardInterrupt", b"InterruptedError", b"PermissionError", b"ProcessLookupError", b"OSError", b"ValueError", b"TypeError", b"AssertionError"}
+        for diagnostic_line in stderr.splitlines():
+            match = re.match(rb"^([A-Za-z][A-Za-z0-9_]*)(?::|$)", diagnostic_line)
+            if match and match.group(1) in allowed:
+                terminal = match.group(1).decode("ascii")
+                number = re.search(rb"\[Errno ([0-9]+)\]", diagnostic_line)
+                errno = number.group(1).decode("ascii") if number else "unknown"
+        return 'interrupted_probe py=' + version + ' frames=' + trace + " terminal=" + terminal + " errno=" + errno
     return "unclassified_probe_exit"
 
 
@@ -338,3 +346,13 @@ class CampaignTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 campaign.run_campaign(root, jobs, "original", execute, resume=True)
             self.assertEqual(calls, ["one"])
+
+class CleanupDiagnosticTests(unittest.TestCase):
+    def test_interrupted_probe_reports_exception_type_without_values(self):
+        stderr = (b"Traceback (most recent call last):\nKeyboardInterrupt\n"
+                  b"During handling of the above exception, another exception occurred:\n"
+                  b"PermissionError: [Errno 1] private_fixture_value\n")
+        kind = _cleanup_probe_kind(stderr)
+        self.assertIn("terminal=PermissionError", kind)
+        self.assertIn("errno=1", kind)
+        self.assertNotIn("private_fixture_value", kind)

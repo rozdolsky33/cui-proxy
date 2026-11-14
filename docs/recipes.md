@@ -121,6 +121,8 @@ match overlaps a sanitizing rule. Reordering rules cannot create an exception.
 
 ## Keep mappings across restarts
 
+File mode checkpoints mappings before forwarding and refuses requests if saving fails. See [mapping lifetime and recovery](vault-recovery.md) for crash guarantees, storage repair, shared-agent boundaries and retention limits.
+
 Use a file vault when a conversation must retain its synthetic mappings across
 normal proxy restarts. The key and encrypted mapping file are both local.
 
@@ -128,11 +130,7 @@ normal proxy restarts. The key and encrypted mapping file are both local.
 --8<-- "examples/persistent-vault.yaml"
 ```
 
-The proxy creates missing state directories/files with private permissions.
-Keep the key and vault together in your private backup process; someone with
-both can recover the mappings. Only one proxy may use this vault at a time.
-Writes are periodic and on clean shutdown, so an abrupt crash can lose recent
-mappings. Do not delete or rotate the key while expecting old mappings to work.
+The proxy creates missing state directories/files with private permissions. Keep the key and vault together in your private backup process; someone with both can recover the mappings. Only one proxy may use this vault at a time. File mode checkpoints mappings before forwarding; unforwarded changes can still be lost on a crash. Do not delete or rotate the key while expecting old mappings to work. See [mapping recovery](vault-recovery.md).
 
 `test-rules` still uses a throwaway vault even when given this configuration.
 It does not inspect or change the production file vault.

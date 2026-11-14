@@ -117,6 +117,7 @@ nav:
       - Block diagnostics: block-diagnostics.md
       - Capacity and overload: admission.md
       - Repeated image extraction: extraction-reuse.md
+      - Mapping recovery: vault-recovery.md
   - Understand:
       - Life of a request: architecture.md
       - Capabilities and limitations: limitations.md

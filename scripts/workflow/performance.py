@@ -260,13 +260,15 @@ class _TimedRaw(io.RawIOBase):
 
 
 def failure_outcome(status, body):
-    """Recognize only the proxy's closed overload response, never arbitrary 503s."""
+    """Recognize closed proxy overload/storage refusals, never arbitrary 503s."""
     if status == 503:
         try:
             payload = json.loads(body)
             error = payload.get("error") if isinstance(payload, dict) else None
             if isinstance(error, dict) and error.get("code") == "overload" and error.get("type") == "cui_proxy_blocked":
                 return "proxy_overload"
+            if isinstance(error, dict) and error.get('code') == 'vault' and (error.get('type') == 'cui_proxy_blocked'):
+                return 'dependency_failure'
         except (ValueError, UnicodeError):
             pass
     return "unexpected_proxy_refusal" if status < 500 else "upstream_failure"
