@@ -8,11 +8,11 @@ import threading
 def receipt_id(operation):
     if not isinstance(operation, str) or not operation:
         raise ValueError("soak_receipt_identity")
-    return hashlib.sha256(operation.encode()).hexdigest()
+    return hashlib.sha256(operation.encode()).hexdigest().translate(str.maketrans("0123456789abcdef", "ghijklmnopqrstuv"))
 
 
 def _valid(key):
-    return isinstance(key, str) and re.fullmatch("[0-9a-f]{64}", key) is not None
+    return isinstance(key, str) and re.fullmatch(r"(?:[0-9a-f]{64}|[g-v]{64})", key) is not None
 
 
 class ReceiptStore:

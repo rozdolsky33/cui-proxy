@@ -429,3 +429,12 @@ build. Subsequent identity probes may reuse that build proof only for the same
 source/commit/binary/command identity and recheck source cleanliness each time.
 Present but incorrect embedded VCS metadata remains a hard failure. The measured
 binary is never replaced by the verification build.
+
+Receipt IDs use a bijective 16-letter encoding of SHA-256: 64 characters from
+`g` through `v`. This preserves the full digest and identifier length while
+avoiding arbitrary hexadecimal correlation metadata matching the normal secret
+detector. The receipt store still accepts archived 64-character hexadecimal IDs.
+A live smoke case reproduced a header-policy rejection from the former encoding;
+the same reconstructed metadata with the new encoding passes the unchanged
+normal-policy detectors. No runtime detection rule or credential exemption was
+added or removed.
