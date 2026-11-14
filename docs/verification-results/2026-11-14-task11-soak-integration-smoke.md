@@ -84,3 +84,23 @@ Private evidence: `/private/tmp/cui-task11-soak-live-rejection-smoke` with
 attempts are retained with `-attempt1` through `-attempt6` suffixes. The final
 smoke took 2.756 seconds. This is integration evidence, not sustained-load,
 final absence-after-drain, or performance qualification.
+
+
+## Incremental phase evidence
+
+The recorded phase executor now persists each assignment and completion in a
+private, exclusively created JSONL file. Each bounded record carries a sequence
+number and hash of the preceding record, and is flushed to storage before the
+callback returns. A separate final count/digest seal detects removal of the last
+complete record. An interrupted final line or absent/invalid seal remains
+incomplete evidence. Failed phases retain their events with an incomplete seal;
+storage failures stop later appends instead of silently dropping evidence.
+
+Ten focused tests cover concurrent appends, tampering, interrupted tails,
+private permissions, existing-file protection, missing seals, invalid metadata,
+storage failure, and integration with successful and failed phase execution.
+These are deterministic harness tests, not sustained-load qualification. The
+writer's per-event storage synchronization must remain enabled in both proxy
+and matched replay runs and be declared in provenance. A sealed completed phase
+still requires independent duration, mix, semantics, resource and recovery
+acceptance checks.
