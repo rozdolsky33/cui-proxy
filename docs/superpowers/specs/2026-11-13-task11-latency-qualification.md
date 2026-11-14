@@ -17,3 +17,7 @@ Keep builds and CPU-heavy tests idle during timing. Capture all runner output an
 ## Follow-through
 
 Record the result and remaining gates. A failing measured criterion leads to a focused investigation; passing this subset still leaves the full throughput/lifecycle/soak contract open. Review documentation and any harness changes, pass required checks, integrate and synchronize main autonomously.
+
+## Wall-clock budget
+
+The contract fixes a1000ms upstream wait and32stream events at20ms intervals. Prior short diagnostics measured approximately1.84–1.89seconds per completed text request. Fairness has one text client, so1000text requests in each of two separate arms takes about62minutes of measured request time, plus warmup/setup/cleanup: allow roughly65–70minutes per full pair. Nine passing size/repetition pairs would therefore take about10hours for fairness alone. Other qualification and soak work is additional; do not describe the whole remaining roadmap as a six-to-ten-hour job. Stop subsequent repetitions when a complete required criterion fails; preserve the evidence and investigate before spending the rest of the campaign.

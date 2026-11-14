@@ -11,8 +11,8 @@ Spec:docs/superpowers/specs/2026-11-13-task11-latency-qualification.md.
 4. The tested binary matches merged runtime source and no competing build/test contaminates timing.
 
 ## Task 1: Prepare and measure
-- [ ] Record PR47 integration and update prior plan status.
-- [ ] Build immutable current-main binary and capture source/binary manifest.
+- [x] Record PR47 integration and update prior plan status.
+- [x] Build immutable current-main binary and capture source/binary manifest.
 - [ ] Execute first768KiB full-warmup/full-sample pair with captured outputs.
 - [ ] Evaluate every scoped criterion; stop on failure or missing evidence.
 - [ ] Only after passing, complete remaining repetitions and sizes with alternating order.
@@ -23,3 +23,5 @@ Spec:docs/superpowers/specs/2026-11-13-task11-latency-qualification.md.
 - [ ] Verify documentation and relevant changed paths; independent whole-branch review.
 - [ ] Commit/push/PR; merge after all exact-head checks; synchronize clean primary main.
 - [ ] Continue the highest-impact unmet original gate.
+
+Outcome so far: completed bypass1000text/2942images; proxy arm deliberately interrupted for verified vault retention and mixed-worker cleanup issues. No qualification claim. Continue through [the focused fix plan](2026-11-13-task11-vault-retention.md), then resume acceptance.
