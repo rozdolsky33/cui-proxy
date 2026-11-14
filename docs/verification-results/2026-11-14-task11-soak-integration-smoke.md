@@ -56,3 +56,31 @@ After the shared receipt changes, the complete workflow suite passed all 435 tes
 A real isolated proxy cancellation passed after a valid initial stream event and independent sanitized-body receipt. The client disconnected; upstream handler completion with an observed disconnect was confirmed about 47.65 ms later, and proxy active requests drained to zero. The outcome is `cancelled`, not supported success. The complete smoke took 0.688 seconds. Evidence is retained under `/private/tmp/cui-task11-soak-live-cancel-smoke`; the first failed endpoint-path attempt is retained as `-attempt1`.
 
 All 119 focused tests and all 442 workflow tests passed after shared request-header and completion-tracking changes. The full suite took 38.046 seconds; evidence is under `/private/tmp/cui-task11-soak-cancel-full-workflow`. This stream cancellation check does not establish queued or active extraction cancellation timing.
+
+
+## W11 rejection integration checkpoint
+
+The isolated live rejection check passed all three cases: explicit policy
+block, unsupported audio input, and malformed JSON. Each returned HTTP 422
+with the expected reason, kind and recovery code. Independent backend receipts
+reported zero arrivals both immediately and at the final recheck. A normal
+request passed its semantic and sanitized-body checks. Four harness-owned logs
+were scanned locally against 61 distinct protected values; none appeared.
+
+The negative-policy variant preserves the normal rules and appends one explicit
+blocking regex for an independent refusal canary. This follows the workload
+contract's explicit negative-policy provision. It is not the canonical fairness
+policy; its extra detector must be recorded in soak provenance. An attempted
+variant that changed the existing dictionary action was rejected because it
+also blocked normal traffic. No production policy was changed.
+
+The unsupported-audio recovery code is `attachment_audio_unsupported`, while
+malformed JSON uses `sanitize_bad_body`. Both have reason `sanitize` and kind
+`bad_body`; the oracle requires the distinct recovery codes. The explicit rule
+block requires reason `policy`, kind `rule_match`, and recovery `policy`.
+
+Private evidence: `/private/tmp/cui-task11-soak-live-rejection-smoke` with
+`.json`, `.log`, and `-summary.json` suffixes. Six unsuccessful setup/expectation
+attempts are retained with `-attempt1` through `-attempt6` suffixes. The final
+smoke took 2.756 seconds. This is integration evidence, not sustained-load,
+final absence-after-drain, or performance qualification.
