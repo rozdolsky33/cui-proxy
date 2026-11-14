@@ -274,7 +274,7 @@ def failure_outcome(status, body):
     return "unexpected_proxy_refusal" if status < 500 else "upstream_failure"
 
 
-def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None, *, defer_boundary=False):
+def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None, *, defer_boundary=False, observer_factory=None):
     if defer_boundary and (expected_hash is not None or expected_layout_hash is not None):
         raise ValueError("deferred_boundary_arguments")
     start = time.monotonic()
@@ -294,8 +294,7 @@ def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None
     conn.response_class = Response
     expected = response_text(case.get("occurrences", ["page", "page"]))
     chunks = stream_chunks(case.get('occurrences', ['page', 'page']))
-    observer = StreamObserver(expected, prefix_lengths=[
-        sum(map(len, chunks[:i + 1])) for i in range(len(chunks))])
+    observer = StreamObserver(expected, prefix_lengths=[sum(map(len, chunks[:i + 1])) for i in range(len(chunks))]) if observer_factory is None else observer_factory()
     try:
         conn.connect()
         remaining = deadline - time.monotonic()

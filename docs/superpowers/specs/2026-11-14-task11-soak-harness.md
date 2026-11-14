@@ -115,3 +115,11 @@ Semantic stream validity does not qualify latency or relay evidence: the phase
 and acceptance layers must reject missing, malformed or unmatched timing
 samples. These collectors still require real-proxy request-path integration,
 normal-policy boundary checks and actual tool-effect oracles.
+
+The existing `performance.request` accepts an optional `observer_factory`
+which constructs a fresh observer for each request. Omitting it retains the
+existing text observer. Body/layout boundary hashes, real HTTP reading, deadline
+handling, connection cleanup and outcome accounting remain in the common path.
+In-memory socket tests cover structured completion, missing-terminal failure,
+first-byte/prefix recording and default text behavior. They do not substitute
+for real-proxy integration or measured backend pacing.
