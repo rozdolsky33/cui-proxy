@@ -1,6 +1,15 @@
 """Numeric-only, report-only comparisons of a fixed Go microbenchmark."""
 
+import argparse
+import hashlib
+import json
 import math
+import os
+from pathlib import Path
+import signal
+import tempfile
+
+from performance_campaign import execute_command
 import re
 import statistics
 
@@ -78,6 +87,98 @@ def compare_samples(base, candidate):
                 absolute_change=absolute)
 
 
+def _write_summary(path, report):
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=path.parent,
+                                         prefix="." + path.name + ".", delete=False) as stream:
+            temporary = Path(stream.name)
+            json.dump(report, stream, allow_nan=False, sort_keys=True, indent=2)
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
 def run_comparison(base_binary, candidate_binary, base_commit, candidate_commit,
                    report_path, capture_directory):
-    return None
+    for revision in (base_commit, candidate_commit):
+        if not isinstance(revision, str) or re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", revision) is None:
+            raise ValueError("benchmark_source_identity")
+    binaries = {"base": Path(base_binary).resolve(strict=True),
+                "candidate": Path(candidate_binary).resolve(strict=True)}
+    identities = {arm: hashlib.sha256(path.read_bytes()).hexdigest()
+                  for arm, path in binaries.items()}
+    report_path = Path(report_path)
+    capture_directory = Path(capture_directory)
+    descriptor = os.open(report_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    os.close(descriptor)
+    report = dict(schema_version=1, report_only=True, performance_qualified=False,
+                  status="incomplete", base_commit=base_commit, candidate_commit=candidate_commit,
+                  base_binary_sha256=identities["base"],
+                  candidate_binary_sha256=identities["candidate"], completed_invocations=0)
+    samples = {"base": [], "candidate": []}
+    try:
+        _write_summary(report_path, report)
+        capture_directory.mkdir(mode=0o700)
+        for repetition in range(REPETITIONS):
+            order = ("base", "candidate") if repetition % 2 == 0 else ("candidate", "base")
+            for arm in order:
+                for name, binary in binaries.items():
+                    if hashlib.sha256(binary.read_bytes()).hexdigest() != identities[name]:
+                        raise ValueError("benchmark_binary_changed")
+                log = capture_directory / f"{repetition}-{arm}.log"
+                command = [str(binaries[arm]), "-test.run=^$", "-test.bench=^BenchmarkRequestWalk$",
+                           "-test.benchtime=10x", "-test.benchmem", "-test.count=1",
+                           "-test.cpu=2", "-test.timeout=30s"]
+                if execute_command(command, log) != 0:
+                    raise RuntimeError("benchmark_command_failed")
+                for name, binary in binaries.items():
+                    if hashlib.sha256(binary.read_bytes()).hexdigest() != identities[name]:
+                        raise ValueError("benchmark_binary_changed")
+                samples[arm].append(parse_output(log.read_text()))
+                report["completed_invocations"] += 1
+                _write_summary(report_path, report)
+        report["comparison"] = compare_samples(samples["base"], samples["candidate"])
+        report["status"] = "complete"
+        _write_summary(report_path, report)
+        return report
+    except BaseException as error:
+        report["status"] = "interrupted" if isinstance(error, (KeyboardInterrupt, SystemExit)) else "failed"
+        try:
+            _write_summary(report_path, report)
+        except OSError:
+            pass
+        raise
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Captured, report-only equal-work benchmark comparison")
+    parser.add_argument("--base-binary", type=Path, required=True)
+    parser.add_argument("--candidate-binary", type=Path, required=True)
+    parser.add_argument("--base-commit", required=True)
+    parser.add_argument("--candidate-commit", required=True)
+    parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--captures", type=Path, required=True)
+    args = parser.parse_args(argv)
+    previous = signal.getsignal(signal.SIGTERM)
+    def interrupted(signum, frame):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, interrupted)
+    try:
+        run_comparison(args.base_binary, args.candidate_binary, args.base_commit,
+                       args.candidate_commit, args.report, args.captures)
+    except KeyboardInterrupt:
+        print("benchmark comparison interrupted; available evidence retained")
+        return 130
+    except Exception:
+        print("benchmark comparison failed; available evidence retained")
+        return 1
+    finally:
+        signal.signal(signal.SIGTERM, previous)
+    print("benchmark comparison complete (report-only)")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
