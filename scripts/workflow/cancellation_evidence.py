@@ -54,7 +54,7 @@ def evaluate_trial_evidence(report):
         if not isinstance(plan, dict) or not isinstance(row, dict):
             raise ValueError("cancellation_trial_operation_record")
         identity = plan.get("identity")
-        if isinstance(identity, list):
+        if isinstance(identity, (list, tuple)):
             if (len(identity) != 3 or identity[0] != "fixed"
                     or any(type(value) is not int or value < 0 for value in identity[1:])):
                 raise ValueError("cancellation_trial_operation_identity")

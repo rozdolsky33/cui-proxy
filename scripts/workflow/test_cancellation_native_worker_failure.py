@@ -68,3 +68,12 @@ class WorkerFailureTests(unittest.TestCase):
                     row["status"] = bad
                 with self.assertRaises(ValueError):
                     evaluate_trial_evidence(report)
+
+    def test_native_in_memory_tuple_identity_is_validated(self):
+        from test_cancellation_evidence import evidence
+        from cancellation_evidence import evaluate_trial_evidence
+        report = evidence()
+        for index, entry in enumerate(report["operations"].values()):
+            entry["request"]["identity"] = ("fixed", 0, index)
+            entry["result"]["operation_id"] = f"soak-fixed-0-{index}"
+        self.assertTrue(evaluate_trial_evidence(report)["trial_verified"])
