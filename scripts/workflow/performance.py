@@ -8,6 +8,8 @@ import sys
 
 _BACKEND_CHILD = "--upstream" in sys.argv
 
+from soak_receipts import ReceiptStore, receipt_id
+
 def backend_stage(stage):
     if _BACKEND_CHILD: print("backend_stage=" + stage, flush=True)
 
@@ -157,17 +159,39 @@ class FakeBackend:
     """The real runner runs this in a separate process without the oracle."""
     def __init__(self, delay=1.0, interval=0.02):
         self.delay, self.interval = delay, interval
+        self.receipts = ReceiptStore()
 
     def __enter__(self):
         outer = self
         class Handler(http.server.BaseHTTPRequestHandler):
             def log_message(self, *_): pass
+            def do_GET(self):
+                prefix = "/benchmark/receipt/"
+                if not self.path.startswith(prefix):
+                    self.send_error(404)
+                    return
+                try:
+                    row = outer.receipts.get(self.path[len(prefix):])
+                except ValueError:
+                    self.send_error(400)
+                    return
+                body = json.dumps(row, separators=(",", ":")).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                self.wfile.flush()
+
             def do_POST(self):
                 try:
+                    receipt_key = self.headers.get("X-Benchmark-Receipt-ID")
+                    outer.receipts.record(receipt_key, None)
                     length = int(self.headers.get("Content-Length", "0"))
                     if not 0 < length <= 12 * 1024 * 1024:
                         self.send_error(400); return
                     raw = self.rfile.read(length)
+                    outer.receipts.complete_body(receipt_key, raw)
                     fault = self.headers.get("X-Benchmark-Fault")
                     if fault is not None:
                         from soak_faults import send_fault_response
@@ -332,7 +356,7 @@ def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None
         remaining = deadline - time.monotonic()
         if remaining <= 0: raise TimeoutError()
         conn.sock.settimeout(remaining)
-        conn.request("POST", "/v1/responses", body=case["body"], headers={'Content-Type': 'application/json', 'Authorization': 'Bearer benchmark-only', 'X-Benchmark-Text-Layout': '1' if expected_layout_hash is not None else '0', 'session_id': case.get('benchmark_session', ''), 'X-Benchmark-Text-Only-Reply': '1' if case.get('benchmark_text_only') else '0', **({"X-Benchmark-Tool-Scenario": case["benchmark_tool_scenario"], "X-Benchmark-Tool-Call-ID": case.get("benchmark_tool_call_id", "")} if "benchmark_tool_scenario" in case else {}), **({"X-Benchmark-Fault": case["benchmark_fault"]} if "benchmark_fault" in case else {})})
+        conn.request("POST", "/v1/responses", body=case["body"], headers={'Content-Type': 'application/json', 'Authorization': 'Bearer benchmark-only', 'X-Benchmark-Text-Layout': '1' if expected_layout_hash is not None else '0', 'session_id': case.get('benchmark_session', ''), 'X-Benchmark-Text-Only-Reply': '1' if case.get('benchmark_text_only') else '0', **({"X-Benchmark-Tool-Scenario": case["benchmark_tool_scenario"], "X-Benchmark-Tool-Call-ID": case.get("benchmark_tool_call_id", "")} if "benchmark_tool_scenario" in case else {}), **({"X-Benchmark-Fault": case["benchmark_fault"]} if "benchmark_fault" in case else {}), "X-Benchmark-Receipt-ID": receipt_id(case["operation_id"])})
         response = conn.getresponse()
         row["status"] = response.status
         boundary_ok = expected_hash is None or response.getheader("X-Benchmark-Body-SHA256") == expected_hash

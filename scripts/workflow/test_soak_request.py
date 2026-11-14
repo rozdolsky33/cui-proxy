@@ -123,3 +123,9 @@ class SoakRequestTests(unittest.TestCase):
         self.case["benchmark_fault"] = "upstream_error"
         self.request(tool_events(self.expected))
         self.assertEqual(MemoryConnection.instances[-1].headers["X-Benchmark-Fault"], "upstream_error")
+
+    def test_request_receipt_marker_is_hash_only(self):
+        from soak_tool_stream import tool_events
+        from soak_receipts import receipt_id
+        self.request(tool_events(self.expected))
+        self.assertEqual(MemoryConnection.instances[-1].headers["X-Benchmark-Receipt-ID"], receipt_id(self.case["operation_id"]))

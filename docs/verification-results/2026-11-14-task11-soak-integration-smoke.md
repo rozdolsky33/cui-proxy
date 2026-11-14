@@ -44,3 +44,9 @@ Evidence is retained under `/private/tmp/cui-task11-soak-live-reload-smoke` and 
 ## Upstream fault attribution follow-up
 
 Two isolated real-proxy requests verified explicit upstream failure and malformed successful-stream attribution. Their outcomes were `upstream_failure` and `transformation_error`; neither was counted as supported success. The smoke took 0.769 seconds, and 104 focused harness tests pass. Evidence is retained under `/private/tmp/cui-task11-soak-live-fault-smoke`. Cancellation/resource-release and independent upstream-boundary receipt checks remain required for complete fault-scenario qualification.
+
+## Independent upstream receipt follow-up
+
+Four live checks passed in 2.797 seconds. A successful request and both upstream-fault requests each produced exactly one upstream receipt with the expected sanitized-body SHA256. Malformed JSON returned 422 and produced zero upstream arrivals. Receipt capture stores only hashed operation IDs, counts and body hashes; incomplete capture cannot prove absence. The focused suite has 112 passing tests. Evidence is retained under `/private/tmp/cui-task11-soak-live-receipt-smoke`. Full sustained acceptance must recheck receipts after draining requests to catch any late arrival.
+
+After the shared receipt changes, the complete workflow suite passed all 435 tests in 38.126 seconds. Captured evidence: `/private/tmp/cui-task11-soak-receipt-full-workflow.log` and `/private/tmp/cui-task11-soak-receipt-full-workflow-summary.json`.
