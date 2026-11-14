@@ -438,3 +438,10 @@ A live smoke case reproduced a header-policy rejection from the former encoding;
 the same reconstructed metadata with the new encoding passes the unchanged
 normal-policy detectors. No runtime detection rule or credential exemption was
 added or removed.
+
+Initial policy rule names are tagged generation0 before warmup so both warmup and
+measured audit observations participate in the same explicit generation proof.
+This changes observation labels only. The seed workload pairs are(class,original):
+the privacy oracle includes originals, actual final mappings and the negative
+canary, while ordinary class labels remain metadata. Resource sample totals use
+the monitor's integer counter directly.
