@@ -28,3 +28,9 @@ The remaining rejection/cancellation scenarios, actual restart/reload orchestrat
 ## Continuation integration follow-up
 
 An additional isolated real-proxy smoke passed all 10 requests in 21.087 seconds: W07 parent dispatch, three distinct child sessions and result collection; W09 history, resume and opaque compaction representation; W10 establishment and restoration of previously issued substitutions sent without their originals. Every request passed complete-stream semantic and upstream-boundary checks. The lifecycle state recorded one complete W07 workflow, one complete W09 workflow and one continuation. No actual restart occurred, so this is not restart qualification. Evidence is retained under `/private/tmp/cui-task11-soak-live-continuation-smoke` (`.py`, `.json`, `.log`, `-summary.json`). The focused harness suite now has 87 passing tests.
+
+## Actual graceful restart follow-up
+
+A separate isolated smoke now passed a real graceful shutdown and restart, followed by restoration of old substitutions without resending their originals. The reopened vault retained 10,000 entries, and the post-restart request passed semantic and upstream-boundary checks. The smoke took 4.872 seconds; 93 focused harness tests pass. Evidence is retained under `/private/tmp/cui-task11-soak-live-restart-smoke`.
+
+Two earlier failed smoke attempts are retained with `-attempt1` and `-attempt2` names. They exposed a harness timing assumption: `vault_size` is refreshed after requests, so it reads zero immediately after startup. The corrected check first verifies old-substitution restoration, then checks the refreshed count. This single isolated restart does not satisfy the required ten restarts under load.

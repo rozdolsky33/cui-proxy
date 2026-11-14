@@ -75,5 +75,6 @@ def execute_continuation(url, workload, plan, mappings, state, *, bypass=False):
         state.finish(plan, {"outcome": "harness_failure"}, {})
         raise
     step = lifecycle_step(plan)
-    row.update(scenario=plan["scenario"], category="lifecycle", stage=step["stage"], workflow=step["workflow"])
+    row.update(scenario=plan["scenario"], category="lifecycle", stage=step["stage"], workflow=step["workflow"],
+               old_substitutions_only=case["benchmark_existing_substitutions"])
     return row
