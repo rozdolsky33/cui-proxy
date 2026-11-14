@@ -15,9 +15,9 @@
 
 ### Task 1: Checkpoint stage
 Files: internal/observe/trace.go, internal/proxy/proxy.go, affected observe/metrics/proxy tests, scripts/workflow/observation.py and tests, docs/dashboard.md.
-- [ ] Add callback outcome/absence and closed-stage tests; observe RED.
-- [ ] Append MappingCheckpoint and wrap only the existing callback with deferred measurement.
-- [ ] Extend closed observer stage metadata without relaxing validation. Affected race and workflow observation tests pass; commit.
+- [x] Add callback outcome/absence and closed-stage tests; observe RED.
+- [x] Append MappingCheckpoint and wrap only the existing callback with deferred measurement.
+- [x] Extend closed observer stage metadata without relaxing validation. Affected race and workflow observation tests pass; commit.
 
 ### Task 2: Mixed-workload attribution
 Files: scripts/workflow/performance_load.py, appropriate stats helper and tests, fairness report.

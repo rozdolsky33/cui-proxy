@@ -21,10 +21,11 @@ const (
 	UpstreamWait
 	Restore
 	AdmissionWait
+	MappingCheckpoint
 	stageCount
 )
 
-var Names = [...]string{"ingress_read", "metadata_inspect", "body_inspect", "extraction_wait", "extraction_run", "audit_write", "upstream_wait", "restore", "admission_wait"}
+var Names = [...]string{"ingress_read", "metadata_inspect", "body_inspect", "extraction_wait", "extraction_run", "audit_write", "upstream_wait", "restore", "admission_wait", "mapping_checkpoint"}
 
 // ExtractorGauges is the narrow process-wide gauge sink carried by a trace.
 type ExtractorGauges interface {

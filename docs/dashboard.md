@@ -299,3 +299,5 @@ loopback; do not expose it through a remote forwarding service. These guards
 are not remote authentication.
 
 Cross-field metrics are approximate concurrent snapshots, not transactional snapshots.
+
+The `mapping_checkpoint` timing measures the pre-forward durable mapping checkpoint, including time waiting for another checkpoint to finish. It is separate from audit and upstream timing. An absent observation means no checkpoint callback ran; a measured zero remains a real observation. Storage errors still refuse forwarding.

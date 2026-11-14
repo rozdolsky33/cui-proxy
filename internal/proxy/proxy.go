@@ -575,7 +575,12 @@ func (h *handler) forward(x *exchange, r *http.Request, route adapter.Route, bod
 	// A model-visible synthetic must already be recoverable after a process
 	// crash. Never treat a persistence failure as sanitization passthrough.
 	if h.d.PersistMappings != nil {
-		if err := h.d.PersistMappings(r.Context()); err != nil {
+		var checkpointErr error
+		func() {
+			defer x.trace.Measure(observe.MappingCheckpoint)()
+			checkpointErr = h.d.PersistMappings(r.Context())
+		}()
+		if checkpointErr != nil {
 			return h.block(x, reasonVault)
 		}
 	}
