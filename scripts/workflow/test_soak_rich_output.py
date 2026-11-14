@@ -15,3 +15,7 @@ class RichOutputTests(unittest.TestCase):
     def test_plain_custom_output_is_supported(self):
         body = {"input": [{"type": "custom_tool_call_output", "call_id": "one", "output": "first"}]}
         self.assertEqual(values_from_body(body), ["first"])
+
+    def test_user_image_is_opaque_on_bypass(self):
+        body = {"input": [{"role": "user", "content": [{"type": "input_image", "image_url": "data:image/png;base64,AA=="}]}, {"role": "user", "content": [{"type": "input_text", "text": "first"}]}]}
+        self.assertEqual(values_from_body(body), ["first"])
