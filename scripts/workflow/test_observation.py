@@ -51,3 +51,7 @@ class ObservationTests(unittest.TestCase):
         image["extractor_queued"] = 1
         with self.assertRaises(harness.CheckFailure):
             observation.check_snapshots(text, image)
+
+    def test_checkpoint_is_a_closed_stage(self):
+        self.assertIn("mapping_checkpoint", observation.STAGES)
+        self.assertEqual(observation.STAGES.count("mapping_checkpoint"), 1)

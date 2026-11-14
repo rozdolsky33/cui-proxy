@@ -16,6 +16,7 @@ STAGES = (
     'upstream_wait',
     'restore',
     'admission_wait',
+    'mapping_checkpoint',
 )
 
 
