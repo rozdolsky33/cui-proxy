@@ -204,7 +204,7 @@ class NativeTrialDriver:
 
     def receipts(self, operations):
         started = self.clock()
-        rows = {role: backend_evidence(self.env.upstream_url, "receipt", operations[role]["request"]["identity"], 5)
+        rows = {role: backend_evidence(self.env.upstream_url, "receipt", operations[role]["result"]["operation_id"], 5)
                 for role in ("queued", "active")}
         return rows, {"started_s": started, "ended_s": self.clock()}
 
