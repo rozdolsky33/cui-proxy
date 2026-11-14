@@ -32,7 +32,7 @@ def parse_processes(text):
         except ValueError as error:
             raise ValueError("cancellation_process_pid") from error
         state, start = fields[2:]
-        if (pid <= 0 or parent < 0 or pid in rows or re.fullmatch(r"[A-Za-z<+]+", state) is None
+        if (pid <= 0 or parent < 0 or pid in rows or re.fullmatch(r"[A-Za-z?<+]+", state) is None
                 or not start.strip() or not start.isprintable() or len(start) > 128):
             raise ValueError("cancellation_process_identity")
         rows[pid] = {"pid": pid, "parent_pid": parent, "state": state, "start": start}
@@ -121,12 +121,14 @@ class NativeTrialDriver:
         processes = self.process_reader()
         parent = processes.get(self.proxy_identity["pid"])
         if (parent is None or parent["start"] != self.proxy_identity["start"]
-                or "Z" in parent["state"]):
+                or "Z" in parent["state"] or "?" in parent["state"]):
             raise ValueError("cancellation_native_proxy_identity")
         live, stopped = [], []
         for marker in markers:
             pid = marker["pid"]
             current = processes.get(pid)
+            if current is not None and "?" in current["state"]:
+                raise ValueError("cancellation_native_unknown_helper_state")
             known = self.known.get(pid)
             if known is None:
                 if current is None:

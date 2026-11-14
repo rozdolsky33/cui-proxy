@@ -51,6 +51,13 @@ class NativeDriverObservationTests(unittest.TestCase):
         self.processes[90]["start"] = "different-start"
         with self.assertRaises(ValueError): self.driver.observe()
 
+    def test_unknown_owned_process_state_cannot_prove_liveness(self):
+        for pid in (90, 101):
+            original = self.processes[pid]["state"]
+            self.processes[pid]["state"] = "?s"
+            with self.subTest(pid=pid), self.assertRaises(ValueError): self.driver.observe()
+            self.processes[pid]["state"] = original
+
     def test_retains_original_identity_when_pid_is_reused(self):
         self.driver.observe()
         self.processes[101]["start"] = "replacement-process"
@@ -108,7 +115,7 @@ class NativeDriverObservationTests(unittest.TestCase):
         self.driver.cleanup()
 
     def test_process_parser_accepts_standard_ps_status_modifiers(self):
-        for state in ("S+", "R<", "SN", "Ssl+", "Zs"):
+        for state in ("S+", "R<", "SN", "Ssl+", "Zs", "?", "?s"):
             with self.subTest(state=state):
                 self.assertEqual(parse_processes(f"90 1 {state} process-start\n")[90]["state"], state)
 
