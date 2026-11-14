@@ -20,10 +20,10 @@ Pattern <=4 KiB; syntax nodes <=128; compiled instructions <=4,096; finite width
 ### Task 1: Bounded matcher and semantic proof
 Files: internal/detect/bounded.go, bounded_test.go, regex.go; existing benchmark diagnostic.
 Interfaces: newBoundedSearch(re *regexp.Regexp) *boundedSearch returns nil when ineligible; (*boundedSearch).find(s string) (matches [][]int, used bool), where used=false requires unchanged reference search. regexDetector stores optional helper only for custom patterns.
-- [ ] Add eligibility, boundary/capture/validator and dense-fallback tests against referenceFind; observe RED.
-- [ ] Implement conservative syntax width/anchor/node/program checks and immutable anchored validators; use fixed32-position candidate storage and ASCII/size checks.
-- [ ] Integrate non-group custom Find with reference fallback. Run captured go test -race ./internal/detect ./internal/transform ./internal/adapter/codex ./internal/proxy; expected exit zero.
-- [ ] Add/run differential fuzzing over forced-ASCII optimized input and separate Unicode/invalid-input fallback; expected no mismatches. Commit.
+- [x] Add eligibility, boundary/capture/validator and dense-fallback tests against referenceFind; observe RED.
+- [x] Implement conservative syntax width/anchor/node/program checks and immutable anchored validators; use fixed32-position candidate storage and ASCII/size checks.
+- [x] Integrate non-group custom Find with reference fallback. Run captured go test -race ./internal/detect ./internal/transform ./internal/adapter/codex ./internal/proxy; expected exit zero.
+- [x] Add/run differential fuzzing over forced-ASCII optimized input and separate Unicode/invalid-input fallback; expected no mismatches. Commit.
 
 ### Task 2: Paired performance acceptance
 Files: benchmark controls, existing workflow runners; private evidence and aggregate report.
