@@ -29,10 +29,10 @@ Files: internal/vault/file.go, internal/vault/recovery_guidance_test.go, docs/va
 ## Task 2: Bounded benchmark comparison reporting
 
 Files: scripts/workflow/benchmark_comparison.py, scripts/workflow/test_benchmark_comparison.py, .github/workflows/ci.yml.
-Interfaces: parser consumes captured Go benchmark lines; comparator consumes equally sized finite positive samples per benchmark and source identities; emits only names, counts, median ns/op, bytes/op, allocations/op and relative differences.
+Interfaces: parser consumes captured Go benchmark lines; comparator consumes five finite samples per benchmark per arm (positive ns/op; nonnegative bytes/op and allocations/op) and source identities; emits only names, counts, median ns/op, bytes/op, allocations/op and relative differences.
 - [ ] Test malformed/duplicate/missing samples, unequal repetition counts, zero/non-finite baselines, preserved negative improvements, and allocation regressions.
 - [ ] Observe RED, implement strict parsing/comparison, GREEN.
-- [ ] Integrate a bounded base/candidate comparison after correctness gates; capture raw logs privately and upload safe aggregate artifact only. Keep timings report-only.
+- [ ] Integrate a bounded base/candidate comparison after correctness gates, using `BenchmarkRequestWalk` with 10 iterations per invocation and five alternating base/candidate pairs; capture raw logs privately and upload safe aggregate artifact only. Keep timings report-only.
 - [ ] Verify command failure and cancellation retain evidence and do not launch later work; unit tests and full workflow suite pass.
 
 ## Task 3: Operator release evidence
