@@ -8,6 +8,13 @@ import time
 from soak_journal import SoakJournal, replay_requests
 
 
+class OperationFailure(ValueError):
+    """Stop scheduling while preserving the observed request metadata."""
+    def __init__(self, result):
+        super().__init__("scenario verification failed")
+        self.result = dict(result)
+
+
 class PhaseFailure(RuntimeError):
     def __init__(self, report):
         super().__init__("soak_phase_failed")
@@ -64,6 +71,10 @@ def _execute_clients(execute, phase, duration, clock, record, stop, started,
                 if not isinstance(result, dict) or not isinstance(result.get("outcome"), str):
                     raise ValueError("soak_phase_result")
                 result = copy.deepcopy(result)
+            except OperationFailure as error:
+                result = error.result
+                failure = 'execution_or_record_failure'
+                stop.set()
             except Exception:
                 result = {"outcome": "harness_failure", "completed": False}
                 failure = "execution_or_record_failure"

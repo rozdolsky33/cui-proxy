@@ -43,9 +43,11 @@ def build_image_case(workload, serial, size, fixtures, directory, mappings, sess
 
 
 def execute_image(url, workload, serial, size, fixtures, directory, mappings,
-                  session, scenario, *, bypass=False):
+                  session, scenario, *, bypass=False, operation_id=None):
     case, expected = build_image_case(workload, serial, size, fixtures, directory,
                                       mappings, session, scenario)
+    if operation_id is not None:
+        case["operation_id"] = operation_id
     if bypass:
         case = dict(case, occurrences=performance.values_from_body(json.loads(case["body"])))
         row = performance.request(url, case, expected_hash=hashlib.sha256(case["body"]).hexdigest())

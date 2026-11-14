@@ -81,7 +81,7 @@ class DeferredBoundaryTests(unittest.TestCase):
     def test_existing_immediate_boundary_path_still_verifies_success(self):
         row, _ = self.request_row("a" * 64, deferred=False)
         self.assertEqual(row["outcome"], "supported_success")
-        self.assertNotIn("boundary_sha256", row)
+        self.assertRegex(row["boundary_sha256"], r"^[0-9a-f]{64}$")
 
     def test_deferred_valid_stream_is_pending_not_success(self):
         row, _ = self.request_row("a" * 64)

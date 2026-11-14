@@ -104,3 +104,49 @@ writer's per-event storage synchronization must remain enabled in both proxy
 and matched replay runs and be declared in provenance. A sealed completed phase
 still requires independent duration, mix, semantics, resource and recovery
 acceptance checks.
+
+
+## Unified scenario and four-client phase integration
+
+The shared scenario executor passed a 23-request isolated proxy smoke covering
+W01–W12 and all implemented lifecycle/fault variants: 17 supported operations,
+three expected rejections, one expected upstream error, one malformed upstream
+success, and one stream cancellation. The parent/three-child/collection workflow,
+history/resume/compaction workflow, and established-token continuation completed.
+Independent receipts verified arrivals and body digests; final rechecks confirmed
+zero arrivals for all three rejected requests. Four private logs were scanned
+against 61 protected values with no matches. Forty-six assigned/completed events
+were retained in sealed evidence. Elapsed smoke time was 33.833 seconds.
+
+The corresponding 23-request direct-backend smoke passed in 32.876 seconds.
+Negative inputs in bypass are explicitly labeled `bypass_negative_control`,
+with their actual outcome retained and exact raw-body arrival verified. They do
+not claim proxy refusal semantics or count as supported-operation successes.
+
+A separate 40-second four-client recorded phase passed 87 requests: 84 supported,
+two expected rejections, and one expected upstream error. All four client
+identities were present and 174 events were retained. Replaying its exact saved
+schedule against the direct backend passed the same 87 identities and plans,
+with 174 independent events. Normalized complete schedules matched exactly.
+Proxy and replay wall times were 41.877 and 40.508 seconds respectively. These
+short runs do not qualify duration, latency windows, sustained resources,
+complete repeated recovery, or the four-hour soak.
+
+Integration uncovered two harness issues, now covered by regression tests:
+immediate boundary verification discarded the upstream digest needed for a
+second receipt check, and the fault dispatcher incorrectly treated a completely
+received HTTP error body as incompatible with an expected error. Valid digests
+are now retained as metadata; status and outcome determine the expected fault.
+Verification failures preserve observed request metadata while stopping later
+scheduling, instead of replacing that evidence with a generic operation error.
+Image requests also receive unique phase/client/serial identities.
+
+Evidence prefixes under `/private/tmp/`:
+- `cui-task11-soak-live-executor-smoke` and its three failed attempts;
+- `cui-task11-soak-live-executor-fault-diagnostic` (failed diagnostic retained);
+- `cui-task11-soak-live-executor-bypass-smoke`;
+- `cui-task11-soak-live-phase-smoke`;
+- `cui-task11-soak-live-phase-replay-smoke`.
+
+JSON reports and captured logs accompany the prefixes; the two recorded phase
+runs keep separate `-events` directories with JSONL events and final seals.

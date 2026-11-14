@@ -111,3 +111,20 @@ class EvidenceTests(unittest.TestCase):
             saved = evidence.read_sealed_evidence(path / "events.jsonl", path / "seal.json")
             self.assertFalse(saved["run_completed"])
             self.assertGreater(len(saved["events"]), 0)
+
+    def test_operation_failure_retains_observed_request_metadata(self):
+        import itertools
+        from soak_phase import OperationFailure, PhaseFailure
+        from soak_recorded import run_recorded_phase
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "phase"
+            def fail(plan):
+                raise OperationFailure({"outcome": "scenario_failure", "completed": False, "observed_outcome": "supported_success", "status": 200})
+            with self.assertRaises(PhaseFailure):
+                run_recorded_phase(fail, "fixed", path, duration=1, clock=itertools.count(step=0.01).__next__)
+            saved = evidence.read_sealed_evidence(path / "events.jsonl", path / "seal.json")
+            rows = [event["request"] for event in saved["events"] if event["event"] == "completed"]
+            self.assertGreater(len(rows), 0)
+            self.assertEqual(rows[0]["outcome"], "scenario_failure")
+            self.assertEqual(rows[0]["status"], 200)
+            self.assertEqual(rows[0]["observed_outcome"], "supported_success")
