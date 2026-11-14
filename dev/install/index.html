@@ -1011,6 +1011,8 @@
       
         
       
+        
+      
     
     
     
@@ -1295,6 +1297,34 @@
     
   
     Mapping recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release-readiness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release readiness
   
 
     
@@ -1823,6 +1853,7 @@ your <code>PATH</code>. To build from source, see <a href="../development/#build
 <p>Archives exist for macOS and Linux on amd64 and arm64. Check the install with
 <code>cui-proxy version</code>.</p>
 <h2 id="uninstall">Uninstall<a class="headerlink" href="#uninstall" title="Permanent link">&para;</a></h2>
+<p>Before removing configuration, drain all cooperating agents and preserve the vault and key if any conversation may resume. Deleting mapping state can make old histories unsafe to restore; intentionally retire those histories before deleting their state. See <a href="../release-readiness/">release and rollback guidance</a>.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>cui-proxy<span class="w"> </span>menubar<span class="w"> </span>uninstall<span class="w">                               </span><span class="c1"># FIRST, if you installed the macOS menu-bar app</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>brew<span class="w"> </span>uninstall<span class="w"> </span>cui-proxy<span class="w">                                  </span><span class="c1"># Homebrew</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>brew<span class="w"> </span>untrust<span class="w"> </span>--formula<span class="w"> </span>rozdolsky33/tap/cui-proxy<span class="w">          </span><span class="c1"># optional: drop the trust entry</span>
