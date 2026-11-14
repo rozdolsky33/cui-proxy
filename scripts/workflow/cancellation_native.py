@@ -116,6 +116,10 @@ class NativeTrialDriver:
         return entry["started_s"]
 
     def observe(self):
+        # Preserve worker failures instead of masking them as observation timeouts.
+        for future in self.futures.values():
+            if future.done():
+                future.result()
         started = self.clock()
         markers = self.gate.snapshot()
         processes = self.process_reader()
