@@ -114,3 +114,112 @@ jobs:
           "$tmp/cui-proxy" version
           "$tmp/cui-proxy" check-config -config "$tmp/examples/config.yaml"
           scripts/make-formula.sh v0.0.0 dist/checksums.txt | ruby -c
+
+      - name: report-only benchmark comparison
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000')
+        timeout-minutes: 5
+        env:
+          BENCHMARK_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          GOTOOLCHAIN: local
+        run: |
+          python3 - <<'PYBENCH'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import signal
+          import sys
+          import tempfile
+          sys.path.insert(0, "scripts/workflow")
+          from benchmark_comparison import run_comparison
+          from performance import prepare
+          from performance_workload import Workload
+          from performance_campaign import execute_command
+
+          private = Path(tempfile.mkdtemp(prefix="cui-benchmark-", dir=os.environ["RUNNER_TEMP"]))
+          report = Path(os.environ["RUNNER_TEMP"]) / "cui-benchmark-summary.json"
+          base_tree = private / "base"
+          root = Path.cwd()
+          created = False
+          code = 1
+
+          def interrupted(signum, frame):
+              raise KeyboardInterrupt
+          signal.signal(signal.SIGTERM, interrupted)
+
+          def capture(command, name):
+              path = private / (name + ".log")
+              if execute_command(command, path) != 0:
+                  raise RuntimeError("benchmark_preparation_failed")
+              return path.read_bytes()
+
+          def harness(directory):
+              files = {}
+              for path in (directory / "internal/benchmark").rglob("*"):
+                  if path.is_symlink():
+                      raise ValueError("benchmark_harness_symlink")
+                  if path.is_file():
+                      files[path.relative_to(directory / "internal/benchmark").as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+              if not files:
+                  raise ValueError("benchmark_harness_missing")
+              return files
+
+          try:
+              base = os.environ["BENCHMARK_BASE_SHA"]
+              if re.fullmatch(r"[0-9a-f]{40}", base) is None:
+                  raise ValueError("benchmark_base_revision")
+              candidate = capture(["git", "rev-parse", "HEAD"], "candidate-identity").decode().strip()
+              if re.fullmatch(r"[0-9a-f]{40}", candidate) is None:
+                  raise ValueError("benchmark_candidate_revision")
+              capture(["git", "fetch", "--no-tags", "--depth=1", "origin", base], "fetch")
+              capture(["git", "worktree", "add", "--detach", str(base_tree), base], "worktree")
+              created = True
+              capture(["git", "diff", "HEAD", "--exit-code", "--quiet"], "candidate-source-clean")
+              capture(["git", "-C", str(base_tree), "diff", "HEAD", "--exit-code", "--quiet"], "base-source-clean")
+              if harness(root) != harness(base_tree):
+                  report.write_text(json.dumps(dict(schema_version=1, report_only=True,
+                      performance_qualified=False, status="unavailable", reason="benchmark_harness_changed",
+                      base_commit=base, candidate_commit=candidate), indent=2))
+                  print("benchmark comparison unavailable: harness changed")
+              else:
+                  base_binary = private / "base-bench"
+                  candidate_binary = private / "candidate-bench"
+                  capture(["go", "-C", str(base_tree), "test", "-c", "-o", str(base_binary), "./internal/benchmark"], "build-base")
+                  capture(["go", "test", "-c", "-o", str(candidate_binary), "./internal/benchmark"], "build-candidate")
+                  seed_binary = private / "seedvault"
+                  capture(["go", "build", "-o", str(seed_binary), "./scripts/workflow/seedvault"], "build-seed")
+                  fixtures = private / "fixtures"
+                  fixtures.mkdir(mode=0o700)
+                  workload = Workload()
+                  prepare(fixtures, workload, str(seed_binary), 18080, 18081, "http://127.0.0.1:18082", 786432, False)
+                  os.environ["CUI_BENCH_FIXTURE_DIR"] = str(fixtures)
+                  result = run_comparison(base_binary, candidate_binary, base, candidate, report, private / "measurements")
+                  metadata = workload.metadata()
+                  result["workload"] = {key: metadata[key] for key in (
+                      "generator_version", "seed", "regex_declarations", "dictionary_entries", "mapping_pairs")}
+                  result["workload"]["size_bytes"] = 786432
+                  report.write_text(json.dumps(result, allow_nan=False, sort_keys=True, indent=2))
+                  print("benchmark comparison complete (report-only)")
+              code = 0
+          except KeyboardInterrupt:
+              print("benchmark comparison interrupted; available evidence retained")
+              code = 130
+          except Exception:
+              print("benchmark comparison failed; available evidence retained")
+          finally:
+              if created:
+                  cleanup = execute_command(["git", "worktree", "remove", str(base_tree)], private / "cleanup.log")
+                  if cleanup != 0:
+                      print("benchmark workspace cleanup failed")
+                      code = 1
+          raise SystemExit(code)
+          PYBENCH
+      - name: upload numeric benchmark comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-comparison
+          path: ${{ runner.temp }}/cui-benchmark-summary.json
+          if-no-files-found: ignore
+          retention-days: 7

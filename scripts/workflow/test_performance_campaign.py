@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 
-def _cleanup_probe_kind(stderr):
+def _cleanup_probe_error_kind(stderr):
     if b"probe_caught_runtime" in stderr:
         return "caught_runtime_error"
     if b"probe_caught_interrupt" in stderr:
@@ -32,6 +32,16 @@ def _cleanup_probe_kind(stderr):
                 errno = number.group(1).decode("ascii") if number else "unknown"
         return 'interrupted_probe py=' + version + ' frames=' + trace + " terminal=" + terminal + " errno=" + errno
     return "unclassified_probe_exit"
+
+
+def _cleanup_probe_kind(stderr):
+    import re
+    kind = _cleanup_probe_error_kind(stderr)
+    sites = re.findall(rb'File "[^"\n]+", line ([0-9]+), in ([A-Za-z_<>][A-Za-z0-9_<>]*)', stderr)
+    if sites:
+        line, function = sites[-1]
+        return kind + "/site=" + function.decode("ascii") + ":" + line.decode("ascii")
+    return kind
 
 
 class CampaignTests(unittest.TestCase):

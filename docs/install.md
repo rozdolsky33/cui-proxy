@@ -52,6 +52,8 @@ Archives exist for macOS and Linux on amd64 and arm64. Check the install with
 
 ## Uninstall
 
+Before removing configuration, drain all cooperating agents and preserve the vault and key if any conversation may resume. Deleting mapping state can make old histories unsafe to restore; intentionally retire those histories before deleting their state. See [release and rollback guidance](release-readiness.md).
+
 ```sh
 cui-proxy menubar uninstall                               # FIRST, if you installed the macOS menu-bar app
 brew uninstall cui-proxy                                  # Homebrew
