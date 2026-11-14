@@ -40,7 +40,8 @@ func builtinSet(prefix string) []Detector {
 		out = append(out, &regexDetector{
 			name: prefix + b.class, class: b.class,
 			required: detectorLiteral(compiled), costly: regexCostly(compiled), folded: foldedDetectorLiteral(compiled),
-			re: compiled, refine: b.refine, find: b.find, group: b.group,
+			boundedWidth: boundedDigitWidth(compiled),
+			re:           compiled, refine: b.refine, find: b.find, group: b.group,
 		})
 	}
 	return out

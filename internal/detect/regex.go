@@ -7,14 +7,15 @@ import (
 )
 
 type regexDetector struct {
-	name, class string
-	required    string
-	folded      string
-	costly      bool
-	re          *regexp.Regexp
-	refine      refiner // nil: accept every match
-	find        finder  // if set, replaces refine: may return several spans per candidate
-	group       bool    // report capture group 1 instead of the whole match
+	name, class  string
+	required     string
+	folded       string
+	costly       bool
+	boundedWidth int
+	re           *regexp.Regexp
+	refine       refiner // nil: accept every match
+	find         finder  // if set, replaces refine: may return several spans per candidate
+	group        bool    // report capture group 1 instead of the whole match
 }
 
 // A finder turns a regex candidate text[s:e] into zero or more spans.
@@ -25,7 +26,7 @@ func newRegex(name, class, pattern, validate string) (*regexDetector, error) {
 	if err != nil {
 		return nil, fmt.Errorf("detect: rule %q: bad pattern: %w", name, err)
 	}
-	d := &regexDetector{name: name, class: class, re: re, required: detectorLiteral(re), costly: regexCostly(re), folded: foldedDetectorLiteral(re)}
+	d := &regexDetector{name: name, class: class, re: re, required: detectorLiteral(re), costly: regexCostly(re), folded: foldedDetectorLiteral(re), boundedWidth: boundedDigitWidth(re)}
 	if validate != "" {
 		r, ok := refiners[validate]
 		if !ok {
@@ -80,7 +81,7 @@ func (d *regexDetector) Find(s string) []Span {
 	if d.group {
 		ms = d.groupMatches(s)
 	} else {
-		ms = d.re.FindAllStringSubmatchIndex(s, -1)
+		ms = boundedMatches(d.re, s, d.boundedWidth)
 	}
 	for _, m := range ms {
 		st, en := m[0], m[1]
