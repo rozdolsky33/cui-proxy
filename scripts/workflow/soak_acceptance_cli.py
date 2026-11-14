@@ -6,7 +6,9 @@ import json
 import os
 from pathlib import Path
 import stat
+import subprocess
 
+from performance_campaign import source_identity
 from soak_acceptance import evaluate_completed_soak
 from soak_campaign_reader import read_completed_campaign, read_report_bytes
 
@@ -49,6 +51,15 @@ def main(argv=None):
     except (ValueError, OSError, TypeError, KeyError) as error:
         result = dict(state="incomplete", soak_qualified=False, performance_qualified=False,
                       reason="soak_evidence_or_identity_unavailable")
+    try:
+        evaluator_source = source_identity()
+        result["evaluator_source"] = evaluator_source
+        if result["soak_qualified"] and evaluator_source.get("dirty") is not False:
+            result.update(state="incomplete", soak_qualified=False,
+                          reason="soak_evaluator_source_dirty")
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
+        result.update(state="incomplete", soak_qualified=False,
+                      reason="soak_evaluator_source_unavailable")
     try:
         data = (json.dumps(result, sort_keys=True, allow_nan=False) + "\n").encode()
         fd = os.open(args.output, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)

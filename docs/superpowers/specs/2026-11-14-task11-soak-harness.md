@@ -520,3 +520,38 @@ A passing soak sets `soak_qualified: true` but leaves
 `performance_qualified: false`: fairness repetitions, throughput, PDF,
 cancellation, stress and the final release envelope still require their own
 original evidence. Short smoke campaigns cannot qualify the soak.
+
+
+### Churn growth and evaluator provenance
+
+The churn resource report uses the latest complete sample before churn starts
+and the earliest sample whose measurement starts after churn has drained.
+Each boundary must be within two seconds (one sampling tick plus its bounded
+scheduling delay). Both samples must contain available RSS and runtime
+measurements. Report their signed live-heap and proxy-RSS differences divided
+by the 12,000 new mappings verified in the persisted final population. Retain
+both raw measurements, observation distances and GC counters. This is observed
+net phase growth, not an estimate of each mapping's allocation size or a leak
+claim. Do not clamp negative changes or apply the fixed-state 10% threshold to
+intentional retained churn. Whole-series availability and peak budgets remain
+required independent gates.
+
+Acceptance reports also record the evaluator's source revision, dirty state
+and script digest. A dirty evaluator cannot publish a qualified soak. This
+records which code judged the retained measurement without requiring the
+evaluator revision to equal the collector revision.
+
+### Supplemental missing-extractor acceptance
+
+Task 11 additionally requires live missing-extractor fault evidence. Prepare
+an isolated four-client check using private tool launchers and the same frozen
+runtime, normal workload, fixtures and seeded mappings. Verify image success,
+remove only the test process's private OCR launcher, verify preflight reports
+`missing_tool`, and issue an uncached image while three text requests remain
+active. Require the precise missing-tool recovery code, zero upstream receipt
+for the failed image, verified semantics for all three overlapping text
+requests, and successful images after restoring the launcher. Retain source,
+process cleanup, audit counts and value-free log evidence. Keep this fault
+report distinct from the four-hour normal-work and recovery soak; it cannot
+supply missing duration, latency or throughput evidence. The prepared probe is
+not acceptance evidence until its live run passes.

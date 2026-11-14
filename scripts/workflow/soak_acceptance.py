@@ -3,6 +3,7 @@
 import math
 import re
 
+from soak_churn_resources import evaluate_churn_resources
 from soak_control_acceptance import evaluate_controls
 from soak_evidence_bindings import evaluate_evidence_bindings
 from soak_finalization_acceptance import evaluate_finalization
@@ -18,7 +19,7 @@ from soak_window_acceptance import evaluate_text_windows
 
 REQUIRED_GATES = frozenset({
     "provenance", "bindings", "timeline", "controls", "corpus", "stage_coverage",
-    "resource_series", "fixed_resources", "idle_recovery", "growth_review",
+    "resource_series", "fixed_resources", "churn_resources", "idle_recovery", "growth_review",
     "fixed_trace", "churn_trace", "fixed_text", "churn_text",
     "fixed_extraction", "churn_extraction", "proxy_warmup", "bypass_warmup",
     "proxy_finalization", "bypass_finalization",
@@ -134,6 +135,9 @@ def evaluate_completed_soak(campaign, expected_identity):
             ended_s=ended, restart_intervals=restarts)
         resource_result = run("fixed_resources", evaluate_fixed_resources, resources,
                               started_s=started, duration_s=fixed["duration_s"], restart_intervals=restarts)
+        run("churn_resources", evaluate_churn_resources, resources,
+            started_s=churn["started_s"], duration_s=churn["duration_s"], elapsed_s=churn["elapsed_s"],
+            mapping_evidence=churn["mapping_evidence"])
         # Sustained positive growth needs an evidence-backed investigation, even below 10%.
         reviewed = (resource_result.get("state") == "pass"
                     and resource_result.get("positive_growth_requires_review") is False)
