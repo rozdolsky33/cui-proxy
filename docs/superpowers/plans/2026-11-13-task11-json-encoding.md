@@ -12,14 +12,15 @@
 3. Unchanged-node raw output, canonical mode, request/response restoration and fail-closed behavior remain unchanged.
 4. Allocation and mixed-load evidence use comparable inputs, retain failures and show no material regression.
 5. This allocation optimization does not waive the original performance or sustained-soak criteria.
-6. Capacity counting saturates without overflow, matches standard-encoded size, skips ineligible outputs and never reserves discarded image input.
+6. Fragment counting saturates, metadata stays bounded, final output owns every byte, quoted fragments do not alias encoder pools, and discarded image input does not determine output capacity.
 
 ### Task 1: Direct string writer
 - [x] Add exact differential prefix/suffix, Unicode/control/invalid-input tests and fuzz target; observe RED.
 - [x] Add writeQuote using the existing standard encoder on the destination buffer; use it for keys/values and quote wrapper.
 - [x] Affected adapter/transform/proxy race tests and20second differential fuzz pass; commit.
 
-- [x] Revision after v1 allocation gate miss: prove a capped exact output-tree size count, then use it to reduce final-buffer growth; repeat affected race/fuzz tests.
+- [x] Reject two character-counting revisions after encoding-control latency regressions; retain evidence.
+- [x] Verify bounded per-call standard-encoded fragment planning, ownership and differential output; affected race tests and 20-second differential fuzz pass.
 
 ### Task 2: Performance acceptance
 - [ ] Build identical private benchmark harnesses against reference/candidate; eight alternating equal-work pairs plus existing controls.
