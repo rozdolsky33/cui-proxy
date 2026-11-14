@@ -34,3 +34,9 @@ An additional isolated real-proxy smoke passed all 10 requests in 21.087 seconds
 A separate isolated smoke now passed a real graceful shutdown and restart, followed by restoration of old substitutions without resending their originals. The reopened vault retained 10,000 entries, and the post-restart request passed semantic and upstream-boundary checks. The smoke took 4.872 seconds; 93 focused harness tests pass. Evidence is retained under `/private/tmp/cui-task11-soak-live-restart-smoke`.
 
 Two earlier failed smoke attempts are retained with `-attempt1` and `-attempt2` names. They exposed a harness timing assumption: `vault_size` is refreshed after requests, so it reads zero immediately after startup. The corrected check first verifies old-substitution restoration, then checks the refreshed count. This single isolated restart does not satisfy the required ten restarts under load.
+
+## Reload coherence follow-up
+
+A live four-client smoke changed from policy generation 0 to 1 while requests were active. All six requests passed semantic and upstream-boundary checks. Audit records observed both generations, and each request contained only one generation. Only rule labels changed; matching patterns, dictionary configuration and fail-closed settings were preserved. The smoke took 6.467 seconds; 99 focused harness tests pass.
+
+Evidence is retained under `/private/tmp/cui-task11-soak-live-reload-smoke` and `/private/tmp/cui-task11-soak-live-reload-audit.jsonl`. The first failed attempt, retained as `-attempt1`, exposed a harness dashboard-URL mismatch and was corrected with a regression test. This establishes one under-load transition, not the required ten transitions over the full sustained run.
