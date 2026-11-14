@@ -54,6 +54,11 @@ def evaluate_trial_evidence(report):
         if not isinstance(plan, dict) or not isinstance(row, dict):
             raise ValueError("cancellation_trial_operation_record")
         identity = plan.get("identity")
+        if isinstance(identity, list):
+            if (len(identity) != 3 or identity[0] != "fixed"
+                    or any(type(value) is not int or value < 0 for value in identity[1:])):
+                raise ValueError("cancellation_trial_operation_identity")
+            identity = f"soak-{identity[0]}-{identity[1]}-{identity[2]}"
         if (not isinstance(identity, str) or not identity.strip()
                 or not identity.isprintable() or len(identity) > 512
                 or identity in identities or row.get("operation_id") != identity):
@@ -66,11 +71,13 @@ def evaluate_trial_evidence(report):
             image_ids.update(item["id"] for item in _image_proof(row))
         if role in _DETAILS:
             step = bounds[role]
-            if (started != _number(step["request_started_s"])
-                    or ended < _number(step["transport_end_s"])
-                    or row.get("completed") is not False
-                    or type(row.get("status")) is not int or row["status"] != 0
-                    or row.get("semantic_verified") is True):
+            if ((
+                    started != _number(step['request_started_s'])
+                    or ended < _number(step['transport_end_s'])
+                    or row.get('completed') is not False
+                    or row.get('semantic_verified') is True
+                    or 'status' not in row or (row['status'] is not None and (type(row['status']) is not int or row['status'] != 0))
+            )):
                 raise ValueError("cancellation_trial_cancel_outcome")
             verify_receipt(receipts[role], absent=True)
             snapshot = audits[role]

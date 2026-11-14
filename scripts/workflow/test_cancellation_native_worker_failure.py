@@ -35,3 +35,36 @@ class WorkerFailureTests(unittest.TestCase):
             driver.receipts(operations)
         self.assertEqual([call.args[2] for call in lookup.call_args_list],
                          ["probe-queued", "probe-active"])
+
+    def test_native_plan_identity_and_headerless_status_are_validated(self):
+        from test_cancellation_evidence import evidence
+        from cancellation_evidence import evaluate_trial_evidence
+        report = evidence()
+        for index, (role, entry) in enumerate(report["operations"].items()):
+            entry["request"]["identity"] = ["fixed", 0, index]
+            entry["result"]["operation_id"] = f"soak-fixed-0-{index}"
+            if role in ("queued", "active"):
+                entry["result"]["status"] = None
+        self.assertTrue(evaluate_trial_evidence(report)["trial_verified"])
+
+    def test_native_identity_does_not_accept_boolean_client(self):
+        from test_cancellation_evidence import evidence
+        from cancellation_evidence import evaluate_trial_evidence
+        report = evidence()
+        report["operations"]["active"]["request"]["identity"] = ["fixed", True, 0]
+        with self.assertRaises(ValueError):
+            evaluate_trial_evidence(report)
+
+    def test_cancelled_status_requires_explicit_none_or_integer_zero(self):
+        from test_cancellation_evidence import evidence
+        from cancellation_evidence import evaluate_trial_evidence
+        for bad in (False, True, 200, "0", "missing"):
+            with self.subTest(status=bad):
+                report = evidence()
+                row = report["operations"]["active"]["result"]
+                if bad == "missing":
+                    row.pop("status")
+                else:
+                    row["status"] = bad
+                with self.assertRaises(ValueError):
+                    evaluate_trial_evidence(report)
