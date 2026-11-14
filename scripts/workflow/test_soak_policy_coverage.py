@@ -47,4 +47,3 @@ class CoverageTests(unittest.TestCase):
                 restored = campaign.load_report("proxy-finalization.json")
                 self.assertEqual(restored, report)
                 self.assertEqual(set(restored["policy"]), {"0"})
-
