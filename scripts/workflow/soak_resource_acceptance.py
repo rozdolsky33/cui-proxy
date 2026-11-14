@@ -2,6 +2,8 @@
 import math
 import statistics
 
+from soak_resource_series import evaluate_resource_series
+
 
 def _number(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
@@ -11,37 +13,16 @@ def _integer(value):
     return isinstance(value, int) and not isinstance(value, bool) and value >= 0
 
 
-def evaluate_fixed_resources(rows, *, started_s, duration_s):
+def evaluate_fixed_resources(rows, *, started_s, duration_s, restart_intervals=None):
     if not _number(started_s) or duration_s != 7200 or isinstance(duration_s, bool):
         raise ValueError("fixed_resource_duration")
-    selected = []
-    seen = set()
-    for row in rows:
-        if not isinstance(row, dict) or row.get("event") != "resource":
-            raise ValueError("resource_shape")
-        observed = row.get("observed_s")
-        slot = row.get("slot")
-        if not _number(observed) or not _integer(slot) or slot in seen:
-            raise ValueError("resource_identity")
-        seen.add(slot)
-        if started_s <= observed < started_s + duration_s:
-            if row.get("rss_available") is not True or row.get("runtime_available") is not True:
-                raise ValueError("resource_unavailable")
-            for key in ("proxy_rss_bytes", "child_rss_bytes", "live_heap_bytes", "goroutines", "gc_cycles"):
-                if not _integer(row.get(key)):
-                    raise ValueError("resource_value")
-            selected.append(row)
-    selected.sort(key=lambda row: row["observed_s"])
-    if (not selected or selected[0]["observed_s"] > started_s + 1
-            or selected[-1]["observed_s"] < started_s + duration_s - 1):
-        raise ValueError("resource_horizon")
-    for previous, current in zip(selected, selected[1:]):
-        if (current["slot"] != previous["slot"] + 1
-                or not 0 < current["observed_s"] - previous["observed_s"] < 2):
-            raise ValueError("resource_sampling_gap")
+    availability = evaluate_resource_series(rows, started_s=started_s, ended_s=started_s+duration_s,
+                                            restart_intervals=[] if restart_intervals is None else restart_intervals)
+    selected = [row for row in rows if started_s <= row["observed_s"] < started_s+duration_s
+                and row["rss_available"] is True and row["runtime_available"] is True]
     windows = []
     for offset in range(0, 7200, 900):
-        samples = [row for row in selected if started_s + offset <= row["observed_s"] < started_s + offset + 900]
+        samples = [row for row in selected if started_s+offset <= row["observed_s"] < started_s+offset+900]
         if not samples:
             raise ValueError("resource_window_missing")
         windows.append(dict(start_s=offset, samples=len(samples),
@@ -52,12 +33,12 @@ def evaluate_fixed_resources(rows, *, started_s, duration_s):
     for key in ("rss_median_bytes", "live_heap_median_bytes"):
         if first[key] <= 0:
             raise ValueError("resource_growth_baseline")
-        growth[key] = (last[key] - first[key]) / first[key]
-    proxy_peak = max(row["proxy_rss_bytes"] for row in selected)
-    child_peak = max(row["child_rss_bytes"] for row in selected)
-    passed = proxy_peak <= 512 * 1024**2 and child_peak <= 1024**3 and all(value <= .10 for value in growth.values())
-    return dict(state="pass" if passed else "fail", windows=windows, observed_slots=len(selected),
-                proxy_peak_bytes=proxy_peak, child_peak_bytes=child_peak, growth=growth,
+        growth[key] = (last[key]-first[key])/first[key]
+    passed = availability["state"] == "pass" and all(value <= .10 for value in growth.values())
+    return dict(state="pass" if passed else "fail", windows=windows,
+                observed_slots=availability["observed_samples"], available_samples=len(selected),
+                proxy_peak_bytes=availability["proxy_peak_bytes"], child_peak_bytes=availability["child_peak_bytes"],
+                growth=growth, availability=availability,
                 positive_growth_requires_review=any(value > 0 for value in growth.values()),
                 performance_qualified=False)
 
