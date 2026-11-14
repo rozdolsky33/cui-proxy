@@ -93,3 +93,25 @@ command. Failure messages and returned evidence contain only closed labels,
 never argument text or original values. These unit oracles do not establish
 streaming, upstream-boundary or end-to-end W02/W04 coverage until integrated
 with the real proxy and normal-policy fixture/backend path.
+
+## Structured stream collection
+
+`soak_tool_stream.tool_events(call)` supplies a fixed 32-argument-delta script
+for the controlled upstream. The sender must apply the specified backend delay
+and interval and record actual delta send/flush times. The script itself does
+not sleep or fabricate send-time evidence.
+
+`ToolStreamObserver(expected_call)` collects decoded events or fragmented SSE
+bytes. It enforces item/call association, argument-prefix integrity and a matching
+terminal call. It records 32 logical decoded-argument prefix availability times;
+if the proxy buffers arguments, the resulting delay must remain visible.
+Duplicate JSON fields, contradictory event names, invalid clocks, malformed or
+unfinished data cannot establish valid completion. Pending frames are bounded
+to 1 MiB for these controlled small-argument scripts. This is a harness bound,
+not a new proxy protocol limit.
+
+Backend send-time metadata is retained separately and may be unavailable.
+Semantic stream validity does not qualify latency or relay evidence: the phase
+and acceptance layers must reject missing, malformed or unmatched timing
+samples. These collectors still require real-proxy request-path integration,
+normal-policy boundary checks and actual tool-effect oracles.
