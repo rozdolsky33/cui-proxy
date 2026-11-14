@@ -45,3 +45,9 @@ Each trial carries the mechanical `bounds` record plus exactly five operation ro
 The trial retains both before/after audit snapshots, with continuous history between cancellations; exactly one newly blocked record must identify each interruption. Independent final upstream receipts must prove both canceled operations absent after recovery completes. The final three helper identities must match the two original admissions and the replacement. Recovery requires the existing semantic and image-proof verifiers, text overlap with both cancellation events, and five joined request workers.
 
 `evaluate_trial_evidence` composes these proofs but returns both qualification flags false. Only the complete three-trial artifact with independent provenance, original warmup, privacy and owned-process cleanup may qualify cancellation; it never qualifies overall performance.
+
+### Complete cancellation artifact
+
+`evaluate_cancellation(report, expected_identity)` requires schema version 1, proxy mode, a completed diagnostic, an explicitly incomplete collector root and no overall performance claim. It reuses the existing provenance and original warmup evaluators, then requires three sequential verified trials after warmup, 15 distinct operation identities, six distinct blocked audit identities, three distinct gate generations and nine identified helper admissions under one proxy process identity. Warmup request/image identities must not overlap the measured population.
+
+Finalization must follow all trial observations. Privacy verification must cover at least the normal 40 protected values and three output files. Cleanup must close logs, release the gate, restore the connection factory and join all 15 workers. Exactly the owned proxy/backend process identities and all nine helper identities must have terminal observations in the finalization window. Only this complete composition returns `cancellation_qualified=true`; `performance_qualified` remains false.
