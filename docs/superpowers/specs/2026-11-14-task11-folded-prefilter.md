@@ -12,13 +12,13 @@ nodes, map each rune to its lowercase ASCII representative if one exists in
 its permitted simple-fold cycle; leave non-ASCII-only runes non-ASCII. Clear
 folding only in this private analysis tree. Reuse the existing conservative
 necessary-literal derivation (required concatenation members, mandatory
-repetitions, common alternate substrings, bounded64byte literal metadata).
+repetitions, common alternate substrings, bounded64-byte literal metadata).
 A literal with no ASCII representative cannot occur in ASCII input. If that
 literal separates other ASCII portions, any derived portion remains necessary.
 Optional branches without a common required substring yield no prefilter.
 Anchored and already literal-prefix-optimized regexes remain excluded.
 
-At request time, inputs smaller than4096bytes and every input containing a
+At request time, inputs smaller than4,096 bytes and every input containing a
 non-ASCII byte (including invalid UTF-8) use existing detection unchanged.
 For eligible larger input, prepare lowercase ASCII text once per Scan. A
 compiled owned regex can be skipped only if its derived folded substring is
@@ -36,5 +36,5 @@ non-ASCII and invalid UTF-8 fallback. Capture outputs privately.
 Measure fixed and rotating full requests with identical fixtures and alternating
 binary order, followed by matched real mixed-load diagnostics. Preserve added
 allocation costs and reject regressions. Diagnostic improvements do not close
-the full1000sample fairness gate or unrelated workload gates. Complete ordinary
+the full1,000-sample fairness gate or unrelated workload gates. Complete ordinary
 correctness/security CI and one independent whole-branch review before merge.

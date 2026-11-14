@@ -33,14 +33,14 @@ Do not convert scheduling diagnostics into performance qualification. Keep
 failed and rejected results, immutable binary identities and exact provenance.
 
 ## Second experiment: ASCII-only folded necessary literals
-The threshold experiment regressed median full-request latency by65.351% and
+The threshold experiment regressed median full-request latency by 65.351% and
 was reverted. Per-detector measurements identify case-insensitive scans among
-the costly paths. All40large fixture leaves are ASCII. Derive a necessary
+the costly paths. All40 large fixture leaves are ASCII. Derive a necessary
 ASCII-folded substring from regex syntax, and prepare lowercase ASCII input
 once per scan. Apply only to immutable owned regex detectors with a necessary folded substring longer than its
 existing ordinary literal precheck; preserve blocking wrappers and detector
 order. Non-ASCII input always uses the original detector. This is a necessary
-condition only, never a replacement matcher. Bound metadata to64bytes and
+condition only, never a replacement matcher. Bound metadata to64-bytes and
 retain no request cache. Tests must establish Unicode folding, invalid UTF-8,
 alternation/optional branches, blocking wrappers and exact sequential parity.
 First run semantic RED/GREEN tests, then identical full-request comparisons.
@@ -50,7 +50,7 @@ must focus on proof that no actual match can be skipped, not only speed.
 Extend the same necessary-condition proof to compiled dictionary alternations.
 A dictionary regression must fail before adding metadata/skip eligibility and
 then pass with exact original Find boundary/shorter-entry semantics. The private
-representative fixture has40large fields,32of which lack the dictionary's
-15byte necessary folded substring. Measure this final candidate separately;
+representative fixture has40 large fields,32of which lack the dictionary's
+15-byte necessary folded substring. Measure this final candidate separately;
 the regex-only normal-CPU diagnostic improved rotating latency only3.089% and
-increased allocated bytes13.082%, so it does not establish the required gate.
+increased allocated bytes 13.082%, so it does not establish the required gate.
