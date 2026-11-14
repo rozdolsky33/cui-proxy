@@ -33,9 +33,9 @@
 
 **Interfaces:** GatedOCR(directory, delegate) context manager owns the launcher, arm(), release(), and snapshot() metadata. evaluate_trial(trial) checks observed timing, queue states and identified helper/slot continuity; returns bounds_passed and always cancellation_qualified=false/performance_qualified=false. Complete evidence composition belongs to Task 2.
 
-- [ ] Add failing tests for the exact 1/2/45-second boundaries, missing/non-finite observations, ambiguous helper/request binding, premature headers, lost gate state and a transport exceeding 45 seconds.
-- [ ] Add failing tests for bounded stdin preservation, absolute delegation, immediate version delegation, stale/symlink markers and restoration on error; defer subprocess-heavy tests until a real gap.
-- [ ] Implement the smallest primitives satisfying those tests; run focused tests and commit.
+- [x] Add failing tests for the exact 1/2/45-second boundaries, missing/non-finite observations, ambiguous helper/request binding, premature headers, lost gate state and a transport exceeding 45 seconds.
+- [x] Add failing tests for bounded stdin preservation, absolute delegation, immediate version delegation, stale/symlink markers and restoration on error; defer subprocess-heavy tests until a real gap.
+- [x] Implement the smallest primitives satisfying those tests; run focused tests and commit.
 
 ### Task 2: Isolated native diagnostic runner
 

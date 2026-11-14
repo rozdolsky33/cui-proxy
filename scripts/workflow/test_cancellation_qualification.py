@@ -15,6 +15,7 @@ def report():
     terminal_helpers = []
     for index in range(3):
         trial = trial_evidence()
+        trial["completed"] = True
         offset = 100 * (index + 1)
         generation = format(index + 1, "032x")
         def change(value):
@@ -112,6 +113,11 @@ class CancellationQualificationTests(unittest.TestCase):
                 replace(value["trials"][1])
             with self.subTest(mutation=mutation), self.assertRaises(ValueError):
                 evaluate_cancellation(value, expected)
+
+    def test_rejects_partial_trial_even_when_its_measurements_pass(self):
+        value, expected = report()
+        value["trials"][1]["completed"] = False
+        with self.assertRaises(ValueError): evaluate_cancellation(value, expected)
 
     def test_rejects_short_warmup_or_mismatched_provenance(self):
         for mutation in ("warmup", "provenance"):

@@ -50,6 +50,8 @@ def _evaluate(report, expected_identity):
     previous_end = warmup_end = _number(report.get("warmup_ended_s"))
     operations, audits, images, helpers, generations, parents = set(), set(), set(), set(), set(), set()
     for trial in trials:
+        if not isinstance(trial, dict) or trial.get("completed") is not True:
+            raise ValueError("cancellation_artifact_partial_trial")
         result = evaluate_trial_evidence(trial)
         first_started = min(_number(row["started_s"]) for row in trial["operations"].values())
         if first_started < previous_end:
