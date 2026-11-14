@@ -356,4 +356,3 @@ class CleanupDiagnosticTests(unittest.TestCase):
         self.assertIn("terminal=PermissionError", kind)
         self.assertIn("errno=1", kind)
         self.assertNotIn("private_fixture_value", kind)
-
