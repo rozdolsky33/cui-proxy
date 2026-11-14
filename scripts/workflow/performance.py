@@ -98,6 +98,14 @@ def relay_timings(started_s, prefix_ms, send_started_s, send_finished_s):
 def values_from_body(body, *, allow_attachments=False):
     values = []
     for item in body["input"]:
+        if item.get("type") in ("function_call_output", "custom_tool_call_output"):
+            if isinstance(item.get("output"), list):
+                values.extend(values_from_body({"input": [
+                    {"role": "user", "content": [part]} for part in item["output"]
+                    if part.get("type") not in ("input_image", "input_file")]}))
+                continue
+            if item["type"] == "custom_tool_call_output":
+                item = dict(item, type="function_call_output")
         if item.get("type") == "function_call":
             continue
         if allow_attachments and item.get("type") != "function_call_output":
