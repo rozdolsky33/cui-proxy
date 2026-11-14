@@ -121,3 +121,9 @@ def run_trial(driver, retained=None):
         driver.cleanup()
     report["completed"] = True
     return report
+
+
+def run_probe(options):
+    """Run the complete original-warmup diagnostic controller."""
+    from cancellation_campaign import run_probe as run_campaign
+    return run_campaign(options)
