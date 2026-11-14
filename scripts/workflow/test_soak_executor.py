@@ -17,7 +17,7 @@ class ExecutorTests(unittest.TestCase):
 
     def test_text_keeps_pending_boundary_and_verifies_unique_arrival(self):
         row = {"outcome": "boundary_pending", "boundary_sha256": "a" * 64, "operation_id": "text-1"}
-        with patch("soak_executor.execute_text", return_value=row), patch("soak_executor.verify_deferred_boundary", return_value=row), patch("soak_executor.build_text_case", return_value={}), patch("soak_executor.backend_evidence", return_value={"complete": True, "count": 1, "body_sha256": "a" * 64}):
+        with patch("soak_executor.execute_text", return_value=row), patch("soak_executor.verify_deferred_boundary", return_value=row), patch("soak_executor.build_text_case", return_value={"occurrences": []}), patch("soak_executor.backend_evidence", return_value={"complete": True, "count": 1, "body_sha256": "a" * 64}):
             result = self.runner()(self.plan(0))
         self.assertEqual(result["outcome"], "boundary_pending")
         self.assertTrue(result["upstream_receipt_verified"])
@@ -25,7 +25,7 @@ class ExecutorTests(unittest.TestCase):
 
     def test_wrong_arrival_digest_cannot_pass(self):
         row = {"outcome": "supported_success", "boundary_sha256": "a" * 64, "operation_id": "text-1"}
-        with patch("soak_executor.execute_text", return_value=row), patch("soak_executor.verify_deferred_boundary", return_value=row), patch("soak_executor.build_text_case", return_value={}), patch("soak_executor.backend_evidence", return_value={"complete": True, "count": 1, "body_sha256": "b" * 64}):
+        with patch("soak_executor.execute_text", return_value=row), patch("soak_executor.verify_deferred_boundary", return_value=row), patch("soak_executor.build_text_case", return_value={"occurrences": []}), patch("soak_executor.backend_evidence", return_value={"complete": True, "count": 1, "body_sha256": "b" * 64}):
             with self.assertRaises(ValueError): self.runner()(self.plan(0))
 
     def test_negative_receives_unique_phase_client_identity(self):
@@ -111,3 +111,10 @@ class ExecutorTests(unittest.TestCase):
         with patch("performance.http.client.HTTPConnection", return_value=connection):
             row = request("http://127.0.0.1:1", {"body": b"{}", "occurrences": [], "operation_id": "audit"}, observer_factory=lambda: observer)
         self.assertEqual(row["server_request_id"], "a" * 16)
+
+    def test_new_churn_mapping_remains_pending_until_persisted_snapshot(self):
+        row = {"outcome": "boundary_pending", "boundary_sha256": "a" * 64, "operation_id": "new"}
+        with patch("soak_executor.execute_text", return_value=row), patch("soak_executor.build_text_case", return_value={"occurrences": ["not-yet-inspected"]}), patch("soak_executor.verify_deferred_boundary") as verify, patch("soak_executor.backend_evidence", return_value={"complete": True, "count": 1, "body_sha256": "a" * 64}):
+            result = self.runner()(self.plan(0))
+        self.assertEqual(result["outcome"], "boundary_pending")
+        verify.assert_not_called()

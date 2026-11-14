@@ -68,7 +68,9 @@ class ScenarioExecutor:
         if plan["category"] == "text":
             row = execute_text(self.url, self.workload, plan, bypass=self.bypass)
             if not self.bypass:
-                row = verify_deferred_boundary(build_text_case(self.workload, plan), row, self.mappings)
+                case = build_text_case(self.workload, plan)
+                if all(value in self.mappings for value in case["occurrences"]):
+                    row = verify_deferred_boundary(case, row, self.mappings)
             row = self._receipt(row)
         elif plan["category"] == "image":
             row = execute_image(self.url, self.workload, serial * 4 + client, plan["size_bytes"], self.fixtures,

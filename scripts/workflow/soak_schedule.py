@@ -52,7 +52,8 @@ def churn_due_indices(elapsed_seconds, assigned, capacity):
     if (not valid_time or not _integer(assigned, 0)
             or not _integer(capacity, 1, 40)):
         raise ValueError("invalid churn schedule")
-    due = math.floor(Fraction(str(elapsed_seconds)) * 100 / 60)
+    # Match the established half-open arrival schedule: first pair at t=0.
+    due = math.floor(Fraction(str(elapsed_seconds)) * 100 / 60) + 1
     if assigned > due:
         raise ValueError("churn counter exceeds schedule")
     return tuple(range(assigned, assigned + min(capacity, due - assigned)))

@@ -240,3 +240,49 @@ Private evidence prefixes:
 
 Reports, captured logs, private audit copies and sealed control event files are
 retained alongside these prefixes. Full-duration qualification remains open.
+
+
+## Churn persistence and boundary finalization — still unqualified
+
+The soak churn schedule now agrees with the existing churn runner: the first
+pair is due at time zero, followed by one every 0.6 seconds. Thus a half-open
+two-hour arrival horizon contains 12,000 scheduled pairs, with the last due at
+7,199.4 seconds. Previously the soak helper shifted all arrivals by 0.6 seconds,
+placing the final pair at a cutoff where no request could claim it. Cross-runner
+regressions now enforce the same arrival convention.
+
+Private vault inspection supports an optional validated JSON basename, allowing
+before/after snapshots to coexist without overwriting either. The old default
+filename and CLI invocation remain supported. Both the Python wrapper and Go
+helper reject traversal/invalid names; existing private-file, no-follow,
+exclusive-creation and schema checks remain in effect. The new isolated helper
+is `/private/tmp/cui-task11-soak-seedvault`; the prior qualification helper is
+unchanged. Its build/source hashes are retained in the adjacent build manifest.
+
+Mapping finalization reconciles every scheduled request identity, assigned pair,
+seed mapping and persisted mapping. Text sanitization is checked against the
+saved mappings and independent upstream body digest. New pairs remain pending
+until that snapshot is available. Already successful text is independently
+rechecked without losing its verified boundary flag; failed outcomes are not
+promoted. Missing or changed mappings, unexpected new entries, unverified
+boundaries and unassigned arrivals remain explicit unmet requirements.
+
+The latest 30-second four-client churn attempt remains **failed**. It assigned
+and persisted 48 pairs, grew the vault from 10,000 to 10,048 entries, changed no
+seed mappings, and created no unexpected mappings. All text boundaries verified
+against the final snapshot. However, two of the 50 scheduled arrivals remained
+queued at the cutoff. The churn target has not been reduced and the attempt is
+not qualification evidence. A bounded, explicitly recorded drain of the offered
+arrival queue is still needed before the sustained campaign can be accepted.
+
+Earlier attempts are retained: the first encountered exclusive snapshot-name
+protection; the second exposed the helper's fixed output filename; the third
+persisted all assigned pairs but exposed premature unresolved classification and
+loss of the verified flag during a repeated boundary check. Those harness issues
+are covered by regressions; the final attempt still exposes the cutoff backlog.
+
+Evidence prefix: `/private/tmp/cui-task11-soak-live-churn-smoke`, with failed
+attempts `-attempt1` through `-attempt3`, private initial/final mapping snapshots,
+recorded phase events, reports and captured logs. The latest attempt took
+31.820 seconds. The workflow suite passed 501 tests in 38.409 seconds; seed-vault
+race tests, Go vet and staticcheck also passed. None closes churn qualification.

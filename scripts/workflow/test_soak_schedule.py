@@ -42,20 +42,20 @@ class SoakScheduleTests(unittest.TestCase):
                     soak_schedule.plan_request(client, serial, phase)
 
     def test_churn_pacing_and_capacity_keep_backlog(self):
-        self.assertEqual(soak_schedule.churn_due_indices(0, 0, 40), ())
-        self.assertEqual(soak_schedule.churn_due_indices(0.59, 0, 40), ())
-        self.assertEqual(soak_schedule.churn_due_indices(0.6, 0, 40), (0,))
+        self.assertEqual(soak_schedule.churn_due_indices(0, 0, 40), (0,))
+        self.assertEqual(soak_schedule.churn_due_indices(0.59, 0, 40), (0,))
+        self.assertEqual(soak_schedule.churn_due_indices(0.6, 0, 40), (0, 1))
         self.assertEqual(soak_schedule.churn_due_indices(60, 0, 40), tuple(range(40)))
         self.assertEqual(soak_schedule.churn_due_indices(60, 40, 40), tuple(range(40, 80)))
-        self.assertEqual(soak_schedule.churn_due_indices(60, 80, 40), tuple(range(80, 100)))
-        self.assertEqual(soak_schedule.churn_due_indices(7200, 11998, 40), (11998, 11999))
+        self.assertEqual(soak_schedule.churn_due_indices(60, 80, 40), tuple(range(80, 101)))
+        self.assertEqual(soak_schedule.churn_due_indices(7200, 11998, 40), (11998, 11999, 12000))
 
     def test_invalid_churn_evidence_is_rejected(self):
         for elapsed, assigned, capacity in [(math.nan, 0, 40), (math.inf, 0, 40),
                                             (-1, 0, 40), (True, 0, 40),
                                             (1, True, 40), (1, -1, 40),
                                             (1, 0, False), (1, 0, 0),
-                                            (1, 0, 41), (0, 1, 40)]:
+                                            (1, 0, 41), (0, 2, 40)]:
             with self.subTest(elapsed=elapsed, assigned=assigned, capacity=capacity):
                 with self.assertRaises(ValueError):
                     soak_schedule.churn_due_indices(elapsed, assigned, capacity)

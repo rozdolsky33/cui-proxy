@@ -152,3 +152,77 @@ func TestInspectRejectsPublicDirectory(t *testing.T) {
 		t.Fatal("public directory accepted")
 	}
 }
+
+func TestInspectNamedSnapshotsKeepBothFiles(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	key := bytes.Repeat([]byte{7}, 32)
+	keyPath := filepath.Join(dir, "vault.key")
+	vaultPath := filepath.Join(dir, "vault.enc")
+	if err := os.WriteFile(keyPath, key, 0600); err != nil {
+		t.Fatal(err)
+	}
+	v := vault.New(key)
+	synthetic, err := v.Pseudonym("email", "churn@example.invalid")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := v.Save(vaultPath); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(vaultPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	count, err := inspect(dir, "before.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatal("unexpected population")
+	}
+	after, err := os.ReadFile(vaultPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Fatal("inspection mutated vault")
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, "before.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result struct {
+		Population int               `json:"population"`
+		Mappings   map[string]string `json:"mappings"`
+	}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Population != 1 || len(result.Mappings) != 1 || result.Mappings["churn@example.invalid"] != synthetic {
+		t.Fatal("incorrect observed mapping")
+	}
+	info, err := os.Stat(filepath.Join(dir, "before.json"))
+	if err != nil || info.Mode().Perm() != 0600 {
+		t.Fatal("unsafe observation permissions")
+	}
+	if _, err := inspect(dir, "before.json"); err == nil {
+		t.Fatal("existing evidence overwritten")
+	}
+
+	if _, err := inspect(dir, "after.json"); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"before.json", "after.json"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, name := range []string{"../outside.json", "/tmp/outside.json", "", "bad.txt"} {
+		if _, err := inspect(dir, name); err == nil {
+			t.Fatal("unsafe observation name accepted")
+		}
+	}
+}

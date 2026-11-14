@@ -29,7 +29,7 @@ class SoakJournalTests(unittest.TestCase):
             journal.complete(row["identity"])
         saved = journal.snapshot()
         indices = [i for row in saved for i in row["churn_indices"]]
-        self.assertEqual(indices, list(range(100)))
+        self.assertEqual(indices, list(range(101)))
         self.assertTrue(all(len(row["churn_indices"]) <= 40 for row in saved))
         replay = replay_requests(saved, "churn")
         for client in range(4):
