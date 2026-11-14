@@ -470,3 +470,5 @@ sees the record. Failed polls do not move the lower bound forward. An initial
 snapshot has an unknown lower bound, represented explicitly rather than invented.
 Backward or non-finite clock observations stop admissions. These intervals enable
 conservative window attribution; they do not identify exact request start times.
+
+The fixed-resource evaluator requires the original 7200-second horizon, consecutive recorded one-second slots, available runtime/RSS observations, and first/last observations within one sampling interval of the phase boundaries. Duplicate slots, non-finite values, backward timestamps and observation gaps of two intervals or more are incomplete evidence. It reports all eight 900-second window medians and the original first/last growth limit. Any positive endpoint growth remains explicitly flagged for investigation even when under ten percent; a passing component never qualifies the campaign. Whole-campaign resource peaks, intentional restart availability exceptions, and sustained growth review still require the aggregate evaluator.
