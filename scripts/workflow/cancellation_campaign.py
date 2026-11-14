@@ -98,9 +98,18 @@ def run_probe(options, *, clock=time.monotonic):
     retained = {"drivers": [], "forbidden": set()}
     original_path = os.environ.get("PATH")
     original_phase = soak_campaign.run_recorded_phase
+    original_campaign = soak.run_campaign
     original_factory = http.client.HTTPConnection
     original_umask = os.umask(0o077)
     gate = None
+
+    def capture_campaign(*args, **kwargs):
+        try:
+            return original_campaign(*args, **kwargs)
+        except BaseException as error:
+            retained["campaign_error"] = error
+            retained["campaign_traceback"] = error.__traceback__
+            raise
 
     def hook(controlled, phase, *args, **kwargs):
         if phase != "fixed" or "env" in retained:
@@ -139,6 +148,7 @@ def run_probe(options, *, clock=time.monotonic):
         with GatedOCR(paths["gate"], delegate) as gate:
             os.environ["PATH"] = str(gate.launcher.parent) + os.pathsep + (original_path or "")
             soak_campaign.run_recorded_phase = hook
+            soak.run_campaign = capture_campaign
             arguments = []
             for flag in ("binary", "seed-binary", "fixtures", "build-manifest", "binary-source"):
                 arguments.extend(("--" + flag, str(getattr(options, flag.replace("-", "_")))))
@@ -149,11 +159,17 @@ def run_probe(options, *, clock=time.monotonic):
                     try:
                         soak.main(arguments)
                     except _DiagnosticComplete:
-                        if len(report["trials"]) != 3 or any(trial.get("completed") is not True for trial in report["trials"]):
-                            raise ValueError("cancellation_trial_completion")
+                        pass
                     else:
-                        raise ValueError("cancellation_diagnostic_not_executed")
+                        error = retained.get("campaign_error")
+                        if not isinstance(error, _DiagnosticComplete):
+                            if error is not None:
+                                raise error.with_traceback(retained["campaign_traceback"])
+                            raise ValueError("cancellation_diagnostic_not_executed")
+                    if len(report["trials"]) != 3 or any(trial.get("completed") is not True for trial in report["trials"]):
+                        raise ValueError("cancellation_trial_completion")
         soak_campaign.run_recorded_phase = original_phase
+        soak.run_campaign = original_campaign
         if original_path is None:
             os.environ.pop("PATH", None)
         else:
@@ -194,6 +210,7 @@ def run_probe(options, *, clock=time.monotonic):
         raise
     finally:
         soak_campaign.run_recorded_phase = original_phase
+        soak.run_campaign = original_campaign
         if original_path is None:
             os.environ.pop("PATH", None)
         else:

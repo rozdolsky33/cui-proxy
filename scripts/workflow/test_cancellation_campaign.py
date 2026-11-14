@@ -28,6 +28,7 @@ class CancellationCampaignTests(unittest.TestCase):
         self.events = []
         self.original_path = os.environ.get("PATH")
         self.original_phase = campaign.soak_campaign.run_recorded_phase
+        self.original_run_campaign = campaign.soak.run_campaign
         self.original_factory = http.client.HTTPConnection
 
     def processes(self):
@@ -70,14 +71,20 @@ class CancellationCampaignTests(unittest.TestCase):
         retained.update(copy.deepcopy(self.value["trials"][index]))
         return retained
 
-    def execute(self, privacy=True):
+    def execute(self, privacy=True, cli_catches=False):
         clocks = iter((100.0, 319.0, 320.0, 321.0))
-        with mock.patch.object(campaign.shutil, "which", return_value=sys.executable), mock.patch.object(campaign.soak, "main", side_effect=self.fake_soak), mock.patch.object(campaign, "read_processes", side_effect=self.processes), mock.patch.object(campaign, "NativeTrialDriver", side_effect=lambda *a, **k: SimpleNamespace(factory_restored=True, workers_joined=5)), mock.patch.object(campaign, "run_trial", side_effect=self.fake_trial), mock.patch.object(campaign, "read_sealed_evidence", side_effect=lambda *a: {"events": self.events, "framing_complete": True, "trailing_bytes": 0, "run_completed": False}), mock.patch.object(campaign, "verify_log_privacy", return_value={"privacy_verified": privacy, "files_checked": 5, "protected_values_checked": 40}):
+        def cli(arguments):
+            try:
+                return campaign.soak.run_campaign(arguments)
+            except Exception:
+                return 1
+        with mock.patch.object(campaign.soak, "run_campaign", side_effect=self.fake_soak), mock.patch.object(campaign.shutil, "which", return_value=sys.executable), mock.patch.object(campaign.soak, "main", side_effect=cli if cli_catches else self.fake_soak), mock.patch.object(campaign, "read_processes", side_effect=self.processes), mock.patch.object(campaign, "NativeTrialDriver", side_effect=lambda *a, **k: SimpleNamespace(factory_restored=True, workers_joined=5)), mock.patch.object(campaign, "run_trial", side_effect=self.fake_trial), mock.patch.object(campaign, "read_sealed_evidence", side_effect=lambda *a: {"events": self.events, "framing_complete": True, "trailing_bytes": 0, "run_completed": False}), mock.patch.object(campaign, "verify_log_privacy", return_value={"privacy_verified": privacy, "files_checked": 5, "protected_values_checked": 40}):
             return campaign.run_probe(self.options, clock=lambda: next(clocks))
 
     def assert_restored(self):
         self.assertEqual(os.environ.get("PATH"), self.original_path)
         self.assertIs(campaign.soak_campaign.run_recorded_phase, self.original_phase)
+        self.assertIs(campaign.soak.run_campaign, self.original_run_campaign)
         self.assertIs(http.client.HTTPConnection, self.original_factory)
 
     def test_runs_three_trials_and_publishes_only_cancellation_qualification(self):
@@ -88,6 +95,17 @@ class CancellationCampaignTests(unittest.TestCase):
         artifact = json.loads(Path(result["report_path"]).read_text())
         self.assertTrue(artifact["completed"])
         self.assertFalse(artifact["collector_completed"])
+        self.assert_restored()
+
+    def test_cli_exception_conversion_preserves_intentional_successful_stop(self):
+        result = self.execute(cli_catches=True)
+        self.assertTrue(result["cancellation_qualified"])
+        self.assertEqual(self.started_trials, 3)
+        self.assert_restored()
+
+    def test_cli_exception_conversion_preserves_original_failure(self):
+        self.fail_setup = True
+        with self.assertRaises(RuntimeError): self.execute(cli_catches=True)
         self.assert_restored()
 
     def test_setup_and_trial_failures_restore_scope_and_retain_failure(self):
