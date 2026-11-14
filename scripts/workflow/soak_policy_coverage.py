@@ -34,4 +34,4 @@ def verify_policy_coverage(records, rows, generations):
     policy = verify_policy_records(matching, generations)
     return {"audit_records": len(records), "rule_observation_records": len(matching),
             "old_token_records_without_matches": old_tokens,
-            "shape_rejections_without_matches": shape_rejections, "policy": policy}
+            "shape_rejections_without_matches": shape_rejections, "policy": {str(generation): count for generation, count in policy.items()}}

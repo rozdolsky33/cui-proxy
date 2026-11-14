@@ -34,3 +34,17 @@ class CoverageTests(unittest.TestCase):
         with self.assertRaises(ValueError): coverage.verify_policy_coverage(self.records(), self.rows(), [0,1])
         records = self.records(); records[0]["rule_ids"].append("soak-g1-example")
         with self.assertRaises(ValueError): coverage.verify_policy_coverage(records, self.rows(), [0,1])
+
+    def test_real_policy_report_is_accepted_by_evidence_writer(self):
+        import tempfile
+        from pathlib import Path
+        from soak_campaign_evidence import CampaignEvidence
+        from soak_policy_coverage import verify_policy_coverage
+        report = verify_policy_coverage(self.records(), self.rows(), [0])
+        with tempfile.TemporaryDirectory() as directory:
+            with CampaignEvidence(Path(directory) / "campaign", {}, {}) as campaign:
+                campaign.save_report("proxy-finalization.json", report)
+                restored = campaign.load_report("proxy-finalization.json")
+                self.assertEqual(restored, report)
+                self.assertEqual(set(restored["policy"]), {"0"})
+

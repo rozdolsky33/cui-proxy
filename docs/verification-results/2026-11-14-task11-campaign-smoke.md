@@ -63,3 +63,7 @@ seal were not rewritten, and this diagnostic does not complete that campaign.
 Deliberate live setup and mid-phase failure checks also passed: spawned children
 stopped, owned logs closed, roots remained incomplete, and no later phase began.
 The checks retained their private evidence and remain duration-unqualified.
+
+## Fourth retained smoke: report serialization
+
+The fourth smoke completed both 150-second proxy phases, restart/reload controls, and post-load observations, then stopped before bypass finalization could be recorded. Its root remains incomplete. Offline replay of the retained audit and privacy checks reconciled 596 outcomes. The policy coverage report used integer generation keys, which the metadata-only evidence writer correctly rejected. The report now encodes generation labels as strings while preserving counts and strict writer validation. A regression sends the real policy coverage report through CampaignEvidence save/load; it failed on the original code and passes with the correction. Offline serialization of the retained finalization report also passed. These diagnostics do not qualify the short run or repair its original completion seal.
