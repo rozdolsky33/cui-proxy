@@ -95,3 +95,26 @@ class ResourceTests(unittest.TestCase):
         self.assertGreaterEqual(len(rows), 2)
         self.assertLess(rows[0]["elapsed_s"], rows[1]["elapsed_s"])
         self.assertTrue(all(row["runtime_available"] for row in rows))
+
+    def test_resource_poll_retains_start_and_end_bounds(self):
+        from soak_resources import ResourceMonitor
+        events = []
+        clock = iter([11.0, 11.25])
+        monitor = ResourceMonitor(lambda: {}, events.append, clock=lambda: next(clock))
+        monitor.started = 10.0
+        self.assertTrue(monitor._take(1))
+        self.assertEqual(events[0]["observation_started_s"], 11.0)
+        self.assertEqual(events[0]["observed_s"], 11.25)
+        self.assertEqual(events[0]["elapsed_s"], 1.25)
+
+    def test_backwards_resource_poll_clock_stops_admission(self):
+        import threading
+        from soak_resources import ResourceMonitor
+        events, stop = [], threading.Event()
+        clock = iter([11.0, 10.5])
+        monitor = ResourceMonitor(lambda: {}, events.append, phase_stop=stop, clock=lambda: next(clock))
+        monitor.started = 10.0
+        self.assertFalse(monitor._take(1))
+        self.assertTrue(stop.is_set())
+        self.assertIsInstance(monitor.failure, ValueError)
+        self.assertEqual(events, [])

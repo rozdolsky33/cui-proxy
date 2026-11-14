@@ -107,6 +107,7 @@ class ResourceMonitor:
         self.samples = 0
 
     def _take(self, slot):
+        observation_started = self.clock()
         error_kind = None
         try:
             sample = self.measure()
@@ -114,8 +115,17 @@ class ResourceMonitor:
         except Exception as error:
             row = resource_metadata({})
             error_kind = type(error).__name__
-        row.update(event="resource", slot=slot, elapsed_s=self.clock() - self.started)
-        row["observed_s"] = self.started + row["elapsed_s"]
+        observed = self.clock()
+        if (type(observation_started) not in (int, float) or not math.isfinite(observation_started)
+                or type(observed) not in (int, float) or not math.isfinite(observed)
+                or observation_started < self.started or observed < observation_started):
+            self.failure = ValueError("resource observation clock")
+            if self.phase_stop is not None:
+                self.phase_stop.set()
+            return False
+        row.update(event="resource", slot=slot, elapsed_s=observed - self.started)
+        row["observation_started_s"] = observation_started
+        row["observed_s"] = observed
         if error_kind is not None: row["sample_error"] = error_kind
         try:
             self.record(row)
