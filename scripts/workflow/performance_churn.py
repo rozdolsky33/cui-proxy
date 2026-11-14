@@ -4,8 +4,10 @@ This module only constructs cases and offered-load offsets. It does not run
 traffic, resolve boundary checks, or establish performance qualification.
 """
 import math
+import re
 
 from performance_workload import Workload
+from workflow_failure_metadata import failure_metadata
 
 
 class ChurnWorkload:
@@ -103,19 +105,20 @@ def resolve_records(rows, workload, size, mappings):
                 verified_new_pairs=len(verified), unresolved_indices=unresolved)
 
 
-def inspect_vault(directory, seed_binary):
+def inspect_vault(directory, seed_binary, *, observation_name="observed.json"):
+    if not isinstance(observation_name, str) or not re.fullmatch(r"[a-z0-9][a-z0-9_-]*\.json", observation_name):
+        raise ValueError("churn_observation_name")
     """Read a new private snapshot; never create or seed a missing vault."""
     import json
     import os
     from pathlib import Path
     import stat
     import subprocess
-    output = Path(directory) / "observed.json"
+    output = Path(directory) / observation_name
     if os.path.lexists(output):
         raise ValueError("churn_observation_exists")
     try:
-        result = subprocess.run([str(seed_binary), "inspect", str(directory)],
-                                capture_output=True, timeout=60)
+        result = subprocess.run([str(seed_binary), 'inspect', str(directory)] + ([observation_name] if observation_name != 'observed.json' else []), capture_output=True, timeout=60)
         if result.returncode:
             raise ValueError("churn_observation_command")
         descriptor = os.open(output, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
@@ -294,6 +297,8 @@ def run_phase(binary, seed_binary, workload, *, size=1048576, duration=600,
         raise ChurnPhaseFailure(report) from error
 
 
+
+
 def main(argv=None):
     import argparse
     import sys
@@ -347,7 +352,8 @@ def main(argv=None):
                 phase["repetition"] = repetition
                 report["measurements"].append(phase)
                 phase.update(summarize_outcomes(phase["records"]))
-    except BaseException:
+    except BaseException as error:
+        report['failure_metadata'] = failure_metadata(error)
         report["setup_failure"] = "churn_run_failed"
         code = 1
     try:

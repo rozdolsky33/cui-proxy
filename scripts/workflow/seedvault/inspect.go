@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"syscall"
 
 	"cui-proxy/internal/vault"
@@ -37,7 +38,19 @@ func readPrivateObservationInput(path string, maximum int64) ([]byte, error) {
 
 // inspect observes an existing isolated vault without admitting or creating pairs.
 // A private snapshot avoids reopening a path that the running proxy may replace.
-func inspect(dir string) (int, error) {
+func inspect(dir string, observationNames ...string) (int, error) {
+	if len(observationNames) > 1 {
+		return 0, errors.New("invalid observation name")
+	}
+	observationName := "observed.json"
+	if len(observationNames) == 1 {
+		observationName = observationNames[0]
+	}
+	validName, _ := regexp.MatchString(`^[a-z0-9][a-z0-9_-]*\.json$`, observationName)
+	if !validName {
+		return 0, errors.New("invalid observation name")
+	}
+
 	info, err := os.Lstat(dir)
 	if err != nil {
 		return 0, err
@@ -90,7 +103,7 @@ func inspect(dir string) (int, error) {
 		Population int               `json:"population"`
 		Mappings   map[string]string `json:"mappings"`
 	}{v.Len(), mappings}
-	output, err := os.OpenFile(filepath.Join(dir, "observed.json"), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	output, err := os.OpenFile(filepath.Join(dir, observationName), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
 		return 0, err
 	}

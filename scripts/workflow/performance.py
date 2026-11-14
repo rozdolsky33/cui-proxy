@@ -8,6 +8,8 @@ import sys
 
 _BACKEND_CHILD = "--upstream" in sys.argv
 
+from soak_receipts import ReceiptStore, receipt_id
+
 def backend_stage(stage):
     if _BACKEND_CHILD: print("backend_stage=" + stage, flush=True)
 
@@ -37,6 +39,7 @@ from urllib.parse import urlsplit
 import harness
 from performance_stats import OUTCOMES, summarize_outcomes, summarize_pairs
 from performance_workload import Workload, PROSE, encode
+from retained_directory import run_directory
 
 backend_stage("imports")
 
@@ -98,6 +101,21 @@ def relay_timings(started_s, prefix_ms, send_started_s, send_finished_s):
 def values_from_body(body, *, allow_attachments=False):
     values = []
     for item in body["input"]:
+        if isinstance(item.get("content"), list):
+            parts = [part for part in item["content"] if part.get("type") not in ("input_image", "input_file")]
+            if len(parts) != 1 or parts != item["content"]:
+                values.extend(values_from_body({"input": [dict(item, content=[part]) for part in parts]}))
+                continue
+        if item.get("type") in ("function_call_output", "custom_tool_call_output"):
+            if isinstance(item.get("output"), list):
+                values.extend(values_from_body({"input": [
+                    {"role": "user", "content": [part]} for part in item["output"]
+                    if part.get("type") not in ("input_image", "input_file")]}))
+                continue
+            if item["type"] == "custom_tool_call_output":
+                item = dict(item, type="function_call_output")
+        if item.get("type") in ("function_call", "reasoning", "compaction"):
+            continue
         if allow_attachments and item.get("type") != "function_call_output":
             content = item.get("content", [])
             if content and content[0].get("type") in ("input_image", "input_file"):
@@ -142,21 +160,59 @@ class FakeBackend:
     """The real runner runs this in a separate process without the oracle."""
     def __init__(self, delay=1.0, interval=0.02):
         self.delay, self.interval = delay, interval
+        self.receipts = ReceiptStore()
 
     def __enter__(self):
         outer = self
         class Handler(http.server.BaseHTTPRequestHandler):
             def log_message(self, *_): pass
+            def do_GET(self):
+                if self.path.startswith("/benchmark/receipt/"):
+                    prefix, lookup = "/benchmark/receipt/", outer.receipts.get
+                elif self.path.startswith("/benchmark/activity/"):
+                    prefix, lookup = "/benchmark/activity/", outer.receipts.activity
+                else:
+                    self.send_error(404)
+                    return
+                try:
+                    row = lookup(self.path[len(prefix):])
+                except ValueError:
+                    self.send_error(400)
+                    return
+                body = json.dumps(row, separators=(",", ":")).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                self.wfile.flush()
+
             def do_POST(self):
                 try:
+                    receipt_key = self.headers.get("X-Benchmark-Receipt-ID")
+                    outer.receipts.record(receipt_key, None)
                     length = int(self.headers.get("Content-Length", "0"))
                     if not 0 < length <= 12 * 1024 * 1024:
                         self.send_error(400); return
                     raw = self.rfile.read(length)
+                    outer.receipts.complete_body(receipt_key, raw)
+                    fault = self.headers.get("X-Benchmark-Fault")
+                    if fault is not None:
+                        from soak_faults import send_fault_response
+                        if send_fault_response(self, fault, hashlib.sha256(raw).hexdigest()):
+                            return
                     values = values_from_body(json.loads(raw), allow_attachments=self.headers.get("X-Benchmark-Text-Only-Reply") == "1")
                     if self.headers.get("X-Benchmark-Text-Only-Reply") == "1":
                         values = values[:40]
                     if len(values) < 2: values *= 2
+                    tool_call = None
+                    scenario = self.headers.get("X-Benchmark-Tool-Scenario")
+                    if scenario is not None:
+                        call_id = self.headers.get("X-Benchmark-Tool-Call-ID")
+                        if scenario not in ("W02", "W03", "W04") or not call_id or len(call_id) > 128:
+                            raise ValueError("soak_tool_selection")
+                        from soak_semantics import build_tool_call
+                        tool_call = build_tool_call(scenario, values, call_id)
                     chunks = stream_chunks(values)
                     time.sleep(outer.delay)
                     self.send_response(200)
@@ -165,20 +221,27 @@ class FakeBackend:
                     if self.headers.get("X-Benchmark-Text-Layout") == "1":
                         self.send_header("X-Benchmark-Text-Layout-SHA256", text_layout_hash(raw))
                     self.end_headers()
-                    send_started = []
-                    send_finished = []
-                    for chunk in chunks:
-                        event = dict(type="response.output_text.delta", delta=chunk)
-                        send_started.append(time.monotonic())
-                        self.wfile.write(b"data: " + encode(event) + b"\n\n")
+                    if tool_call is not None:
+                        from soak_sender import send_tool_stream
+                        send_tool_stream(self.wfile, tool_call, outer.interval)
+                    else:
+                        send_started = []
+                        send_finished = []
+                        for chunk in chunks:
+                            event = dict(type="response.output_text.delta", delta=chunk)
+                            send_started.append(time.monotonic())
+                            self.wfile.write(b"data: " + encode(event) + b"\n\n")
+                            self.wfile.flush()
+                            send_finished.append(time.monotonic())
+                            time.sleep(outer.interval)
+                        self.wfile.write(b"data: " + encode(dict(type="response.completed", benchmark_send_started_s=send_started, benchmark_send_finished_s=send_finished)) + b"\n\n")
                         self.wfile.flush()
-                        send_finished.append(time.monotonic())
-                        time.sleep(outer.interval)
-                    self.wfile.write(b"data: " + encode(dict(type="response.completed", benchmark_send_started_s=send_started, benchmark_send_finished_s=send_finished)) + b"\n\n")
-                    self.wfile.flush()
                 except (BrokenPipeError, ConnectionResetError, OSError): pass
                 except (KeyError, ValueError, TypeError):
                     self.close_connection = True
+                finally:
+                    outer.receipts.finish(self.headers.get("X-Benchmark-Receipt-ID"),
+                                          disconnected=getattr(self, "benchmark_disconnected", False))
         backend_stage("binding")
         self.server = _LoopbackHTTPServer(("127.0.0.1", 0), Handler)
         backend_stage("bound")
@@ -274,7 +337,11 @@ def failure_outcome(status, body):
     return "unexpected_proxy_refusal" if status < 500 else "upstream_failure"
 
 
-def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None, *, defer_boundary=False):
+def request_headers(case, expected_layout_hash=None):
+    return {'Content-Type': 'application/json', 'Authorization': 'Bearer benchmark-only', 'X-Benchmark-Text-Layout': '1' if expected_layout_hash is not None else '0', 'session_id': case.get('benchmark_session', ''), 'X-Benchmark-Text-Only-Reply': '1' if case.get('benchmark_text_only') else '0', **({"X-Benchmark-Tool-Scenario": case["benchmark_tool_scenario"], "X-Benchmark-Tool-Call-ID": case.get("benchmark_tool_call_id", "")} if "benchmark_tool_scenario" in case else {}), **({"X-Benchmark-Fault": case["benchmark_fault"]} if "benchmark_fault" in case else {}), "X-Benchmark-Receipt-ID": receipt_id(case["operation_id"])}
+
+
+def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None, *, defer_boundary=False, observer_factory=None):
     if defer_boundary and (expected_hash is not None or expected_layout_hash is not None):
         raise ValueError("deferred_boundary_arguments")
     start = time.monotonic()
@@ -294,16 +361,21 @@ def request(url, case, expected_hash=None, timeout=45, expected_layout_hash=None
     conn.response_class = Response
     expected = response_text(case.get("occurrences", ["page", "page"]))
     chunks = stream_chunks(case.get('occurrences', ['page', 'page']))
-    observer = StreamObserver(expected, prefix_lengths=[
-        sum(map(len, chunks[:i + 1])) for i in range(len(chunks))])
+    observer = StreamObserver(expected, prefix_lengths=[sum(map(len, chunks[:i + 1])) for i in range(len(chunks))]) if observer_factory is None else observer_factory()
     try:
         conn.connect()
         remaining = deadline - time.monotonic()
         if remaining <= 0: raise TimeoutError()
         conn.sock.settimeout(remaining)
-        conn.request("POST", "/v1/responses", body=case["body"], headers={'Content-Type': 'application/json', 'Authorization': 'Bearer benchmark-only', 'X-Benchmark-Text-Layout': '1' if expected_layout_hash is not None else '0', 'session_id': case.get('benchmark_session', ''), 'X-Benchmark-Text-Only-Reply': '1' if case.get('benchmark_text_only') else '0'})
+        conn.request("POST", "/v1/responses", body=case["body"], headers=request_headers(case, expected_layout_hash))
         response = conn.getresponse()
         row["status"] = response.status
+        server_request_id = response.getheader("X-Cui-Proxy-Request-Id")
+        if isinstance(server_request_id, str) and len(server_request_id) == 16 and all(c in "0123456789abcdef" for c in server_request_id):
+            row["server_request_id"] = server_request_id
+        observed_digest = response.getheader("X-Benchmark-Body-SHA256")
+        if isinstance(observed_digest, str) and len(observed_digest) == 64 and all(c in "0123456789abcdef" for c in observed_digest):
+            row["boundary_sha256"] = observed_digest
         boundary_ok = expected_hash is None or response.getheader("X-Benchmark-Body-SHA256") == expected_hash
         boundary_ok = boundary_ok and (expected_layout_hash is None or response.getheader("X-Benchmark-Text-Layout-SHA256") == expected_layout_hash)
         if defer_boundary:
@@ -410,6 +482,7 @@ REPORT_KEYS = frozenset("""
  os architecture hardware_model logical_cpus memory_bytes go_version load_average on_ac low_power
  before after runner_sha256 generator_sha256
 """.split()) | OUTCOMES | frozenset({"admission", "active", "queued", "reserved_input_bytes", "admission_wait"})
+REPORT_KEYS = REPORT_KEYS | {'failure_metadata', 'exception_types', 'workflow_lines', 'server_request_id'}
 
 # Closed numeric workload-stage aggregates; raw-content keys remain forbidden.
 REPORT_KEYS |= frozenset({"request_stage_samples", "text_requests", "image_requests", "requests", "samples_ms", "coverage", "mapping_checkpoint"})
@@ -439,6 +512,11 @@ REPORT_KEYS.add("fixture_manifest_sha256")
 def write_report(path, report):
     allowed_top = {"schema_version", "settings", "environment", "source", "executable_sha256",
                    "workload", "measurements", "comparison", "performance_qualified", "unmet_requirements", "setup_failure"}
+    allowed_top.add('failure_metadata')
+    if 'failure_metadata' in report:
+        from workflow_failure_metadata import valid_failure_metadata
+        if not valid_failure_metadata(report['failure_metadata']):
+            raise ValueError('invalid_failure_metadata')
     allowed_top.update({"completed", "error_kind"})
     if set(report) - allowed_top: raise ValueError("invalid report fields")
     forbidden = {"body", "input", "output", "originals", "occurrences", "near_misses", "oracle", "image", "credentials"}
@@ -542,13 +620,14 @@ def prepare(directory, workload, seed_binary, proxy_port, ui_port, upstream_url,
 
 
 class Environment(harness.Environment):
-    def __init__(self, binary, seed_binary, workload, size, correlate=False):
+    def __init__(self, binary, seed_binary, workload, size, correlate=False, retained_directory=None):
         self.correlate = correlate
         super().__init__(binary)
         self.seed_binary, self.workload, self.size = seed_binary, workload, size
+        self.retained_directory = retained_directory
 
     def __enter__(self):
-        self.temp = tempfile.TemporaryDirectory(prefix="cui-performance-")
+        self.temp = run_directory(self.retained_directory)
         self.directory = Path(self.temp.name)
         try:
             backend_dir = self.directory / "backend"

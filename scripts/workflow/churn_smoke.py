@@ -41,6 +41,15 @@ def validate_report(report):
 
 
 def _metadata(report):
+    from workflow_failure_metadata import SAFE_FAILURE_TYPES
+    diagnostic = report.get('failure_metadata', {})
+    if isinstance(diagnostic, dict):
+        types = diagnostic.get('exception_types', [])
+        lines = diagnostic.get('workflow_lines', [])
+        if isinstance(types, list) and 0 < len(types) <= 3 and all(isinstance(x, str) and x in SAFE_FAILURE_TYPES for x in types):
+            print('smoke_failure_types', ','.join(types))
+        if isinstance(lines, list) and 0 < len(lines) <= 12 and all(type(x) is int and 0 < x < 100000 for x in lines):
+            print('smoke_failure_lines', ','.join(map(str, lines)))
     phases = report.get("measurements", [])
     print("smoke_retained_phases", len(phases))
     for index, phase in enumerate(phases):

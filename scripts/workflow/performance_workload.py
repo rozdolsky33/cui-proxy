@@ -42,15 +42,7 @@ class Workload:
         used_dictionary = min(dictionary_count, mappings // 10)
         self.pairs = [["secret", v] for v in self.dictionary[:used_dictionary]]
         for n in range(mappings - used_dictionary):
-            i = n % self.regex_count
-            sequence = n // self.regex_count
-            if i % 50 < 20:
-                value = f"field{i:03d}=Memo{i:03d}X{sequence:06d}End"
-            elif i % 50 < 40:
-                value = f"Memo{i:03d}X{sequence:06d}End"
-            else:
-                value = f"Quote{i:03d}X{sequence:06d}End"
-            self.pairs.append(["secret", value])
+            self.pairs.append(self._population_pair(n))
 
     def metadata(self):
         return dict(generator_version=1, seed=self.seed, tier=self.tier,
@@ -89,3 +81,19 @@ class Workload:
             raise ValueError("payload size mismatch")
         return dict(operation_id=f"case-{serial}-size-{size}", body=wire,
                     occurrences=values, near_misses=misses, supported=True)
+
+    def _population_pair(self, n):
+        i = n % self.regex_count
+        sequence = n // self.regex_count
+        if i % 50 < 20:
+            value = f'field{i:03d}=Memo{i:03d}X{sequence:06d}End'
+        elif i % 50 < 40:
+            value = f'Memo{i:03d}X{sequence:06d}End'
+        else:
+            value = f'Quote{i:03d}X{sequence:06d}End'
+        return ['secret', value]
+
+    def churn_value(self, index):
+        if type(index) is not int or index < 0:
+            raise ValueError("workload_churn_index")
+        return self._population_pair(len(self.pairs) + index)[1]

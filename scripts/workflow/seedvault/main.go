@@ -63,8 +63,8 @@ func seed(dir string) (int, error) {
 }
 
 func main() {
-	if len(os.Args) == 3 && os.Args[1] == "inspect" {
-		count, err := inspect(os.Args[2])
+	if (len(os.Args) == 3 || len(os.Args) == 4) && os.Args[1] == "inspect" {
+		count, err := inspect(os.Args[2], os.Args[3:]...)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "vault observation failed")
 			os.Exit(1)
