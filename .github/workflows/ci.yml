@@ -175,6 +175,8 @@ jobs:
               capture(["git", "fetch", "--no-tags", "--depth=1", "origin", base], "fetch")
               capture(["git", "worktree", "add", "--detach", str(base_tree), base], "worktree")
               created = True
+              capture(["git", "diff", "HEAD", "--exit-code", "--quiet"], "candidate-source-clean")
+              capture(["git", "-C", str(base_tree), "diff", "HEAD", "--exit-code", "--quiet"], "base-source-clean")
               if harness(root) != harness(base_tree):
                   report.write_text(json.dumps(dict(schema_version=1, report_only=True,
                       performance_qualified=False, status="unavailable", reason="benchmark_harness_changed",

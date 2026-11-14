@@ -208,22 +208,44 @@ def build_command(job, binary, seed_binary, fixtures, report, profile):
 
 
 def _group_running(pgid):
+    permission_error = None
     try:
         os.killpg(pgid, 0)
     except ProcessLookupError:
         return False
-    # Zombies hold no sockets or resources and may await adoption/reaping briefly.
+    except PermissionError as error:
+        # Darwin can reject signalling a group containing only zombies.
+        # Require a successful process-table check before accepting its exit.
+        permission_error = error
     try:
-        result = subprocess.run(["ps", "-axo", "pgid=,stat="], stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, text=True)
-    except OSError:
+        result = subprocess.run(["ps", "-axo", "pgid=,stat="],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                text=True, timeout=1)
+    except (OSError, subprocess.SubprocessError):
+        if permission_error is not None:
+            raise permission_error
         return True
     if result.returncode != 0:
+        if permission_error is not None:
+            raise permission_error
         return True
+    seen = False
+    running = False
     for line in result.stdout.splitlines():
+        if not line.strip():
+            continue
         fields = line.split()
-        if len(fields) == 2 and fields[0] == str(pgid) and not fields[1].startswith("Z"):
+        if len(fields) != 2 or not fields[0].isdigit():
+            if permission_error is not None:
+                raise permission_error
             return True
+        seen = True
+        if fields[0] == str(pgid) and not fields[1].startswith("Z"):
+            running = True
+    if not seen or running:
+        if permission_error is not None:
+            raise permission_error
+        return True
     return False
 
 
@@ -247,6 +269,10 @@ def _terminate_group(process):
             os.killpg(process.pid, sig)
         except ProcessLookupError:
             return
+        except PermissionError:
+            if not _group_running(process.pid):
+                return
+            raise
         if _wait_group_exit(process):
             return
     raise RuntimeError("owned process group did not exit")

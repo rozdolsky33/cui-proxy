@@ -88,10 +88,7 @@ class CampaignTests(unittest.TestCase):
 
 
     def test_real_interrupt_removes_descendant_that_ignores_soft_signals(self):
-        import sys
-        for attempt in range(10 if sys.platform == "darwin" else 1):
-            with self.subTest(attempt=attempt):
-                self._assert_owned_descendant_cleanup(True)
+        self._assert_owned_descendant_cleanup(True)
 
     def test_successful_leader_cannot_leave_owned_descendant_running(self):
         self._assert_owned_descendant_cleanup(False)
