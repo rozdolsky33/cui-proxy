@@ -60,6 +60,7 @@ func (d *regexDetector) parallelCostly() bool { return d.costly }
 func (d *dictDetector) parallelCostly() bool  { return d.re != nil }
 
 func scanCandidates(ds []Detector, s string) []Span {
+	folded, prepared := prepareFoldedText(ds, s)
 	workers := 1
 	if len(s) >= 4096 && len(ds) >= 8 && parallelEligible(ds) {
 		limit := min(4, runtime.GOMAXPROCS(0), len(ds))
@@ -76,7 +77,9 @@ func scanCandidates(ds []Detector, s string) []Span {
 	if workers == 1 {
 		var all []Span
 		for _, d := range ds {
-			all = append(all, d.Find(s)...)
+			if !skipFolded(d, folded, prepared) {
+				all = append(all, d.Find(s)...)
+			}
 		}
 		return all
 	}
@@ -100,7 +103,9 @@ func scanCandidates(ds []Detector, s string) []Span {
 			if index >= len(ds) {
 				break
 			}
-			results[index] = ds[index].Find(s)
+			if !skipFolded(ds[index], folded, prepared) {
+				results[index] = ds[index].Find(s)
+			}
 		}
 		complete = true
 	}

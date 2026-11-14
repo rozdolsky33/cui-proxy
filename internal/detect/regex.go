@@ -9,6 +9,7 @@ import (
 type regexDetector struct {
 	name, class string
 	required    string
+	folded      string
 	costly      bool
 	re          *regexp.Regexp
 	refine      refiner // nil: accept every match
@@ -24,7 +25,7 @@ func newRegex(name, class, pattern, validate string) (*regexDetector, error) {
 	if err != nil {
 		return nil, fmt.Errorf("detect: rule %q: bad pattern: %w", name, err)
 	}
-	d := &regexDetector{name: name, class: class, re: re, required: detectorLiteral(re), costly: regexCostly(re)}
+	d := &regexDetector{name: name, class: class, re: re, required: detectorLiteral(re), costly: regexCostly(re), folded: foldedDetectorLiteral(re)}
 	if validate != "" {
 		r, ok := refiners[validate]
 		if !ok {
