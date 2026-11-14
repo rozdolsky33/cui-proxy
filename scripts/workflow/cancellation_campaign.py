@@ -52,6 +52,7 @@ def trial_plans(index):
         selected = []
         for serial in range(index * 100, (index + 1) * 100):
             plan = plan_request(client, serial, "fixed")
+            plan["churn_indices"] = []
             if plan["category"] == category:
                 selected.append(plan)
                 if len(selected) == len(roles):
