@@ -112,6 +112,15 @@ class ExecutorTests(unittest.TestCase):
         with patch("performance.http.client.HTTPConnection", return_value=connection):
             row = request("http://127.0.0.1:1", {"body": b"{}", "occurrences": [], "operation_id": "audit"}, observer_factory=lambda: observer)
         self.assertEqual(row["server_request_id"], "a" * 16)
+        import json
+        import tempfile
+        from pathlib import Path
+        from performance import write_report
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'report.json'
+            write_report(path, {'measurements': [{'records': [row]}]})
+            retained = json.loads(path.read_text())['measurements'][0]['records'][0]
+            self.assertEqual(retained['server_request_id'], row['server_request_id'])
 
     def test_new_churn_mapping_remains_pending_until_persisted_snapshot(self):
         row = {"outcome": "boundary_pending", "boundary_sha256": "a" * 64, "operation_id": "new"}

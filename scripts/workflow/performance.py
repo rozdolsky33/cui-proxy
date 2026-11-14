@@ -482,7 +482,7 @@ REPORT_KEYS = frozenset("""
  os architecture hardware_model logical_cpus memory_bytes go_version load_average on_ac low_power
  before after runner_sha256 generator_sha256
 """.split()) | OUTCOMES | frozenset({"admission", "active", "queued", "reserved_input_bytes", "admission_wait"})
-REPORT_KEYS = REPORT_KEYS | {'failure_metadata', 'exception_types', 'workflow_lines'}
+REPORT_KEYS = REPORT_KEYS | {'failure_metadata', 'exception_types', 'workflow_lines', 'server_request_id'}
 
 # Closed numeric workload-stage aggregates; raw-content keys remain forbidden.
 REPORT_KEYS |= frozenset({"request_stage_samples", "text_requests", "image_requests", "requests", "samples_ms", "coverage", "mapping_checkpoint"})
