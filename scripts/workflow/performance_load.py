@@ -69,9 +69,16 @@ def mixed_closed_loop(operation, *, text_count=None, duration=None, clock=time.m
                 finish()
                 break
     with concurrent.futures.ThreadPoolExecutor(max_workers=clients) as pool:
-        futures = [pool.submit(client, index) for index in range(clients)]
-        for future in futures:
-            future.result()
+        try:
+            futures = [pool.submit(client, index) for index in range(clients)]
+            for future in futures:
+                future.result()
+        except BaseException:
+            # Stop dispatch before executor teardown waits for running workers.
+            # Abort startup too: an interrupt can occur before every submit.
+            stop.set()
+            barrier.abort()
+            raise
     rows = [row for arm in arms for row in arm]
     window = duration if duration is not None and (not state['aborted']) else state['end'] - state['start']
     text_rows = [row for row in rows if row['workload_kind'] == 'text']

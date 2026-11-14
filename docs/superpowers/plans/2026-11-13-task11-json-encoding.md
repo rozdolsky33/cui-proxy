@@ -30,5 +30,5 @@
 ### Task 3: Integration and continuation
 - [x] Update PR46 integration and record evidence/limitations/next step.
 - [x] Full race/workflow/lint/HTTP/manual checks.
-- [ ] Fresh whole-branch review; one material RED/GREEN fix pass; archive own rulings.
-- [ ] Push/PR, pass required exact-head gates, merge and sync clean main; continue Task11 acceptance work.
+- [x] Fresh whole-branch review found no actionable issues; archived rulings at /private/tmp/cui-task11-json-execution-archive/decisions.md.
+- [x] PR47 merged after all exact-head gates; main synchronized; full-sample latency qualification follows.

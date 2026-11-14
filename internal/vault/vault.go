@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 
 	"cui-proxy/internal/synth"
@@ -175,7 +176,12 @@ func (v *Vault) noteReal(class, real string) {
 func (v *Vault) reserve(class, real string) {
 	v.noteReal(class, real)
 	for _, f := range forms(class, real) {
-		v.reals[f] = struct{}{}
+		// Detected values can be views into a much larger request string.
+		// Keep only the reserved bytes, and never replace an owned key with
+		// a new request-backed spelling of the same value.
+		if _, exists := v.reals[f]; !exists {
+			v.reals[strings.Clone(f)] = struct{}{}
+		}
 	}
 }
 
@@ -210,6 +216,8 @@ func (v *Vault) Changes() uint64 {
 
 // insert adds a mapping. fk is class + "\x00" + real (exact spelling).
 func (v *Vault) insert(fk, real, syn string) {
+	// Reverse mappings outlive the request that supplied this substring.
+	real = strings.Clone(real)
 	class, _ := splitKey(fk)
 	v.reserve(class, real)
 	v.changes++
