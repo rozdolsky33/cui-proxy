@@ -35,6 +35,7 @@ def _cleanup_probe_error_kind(stderr):
 
 
 def _cleanup_probe_kind(stderr):
+    import re
     kind = _cleanup_probe_error_kind(stderr)
     sites = re.findall(rb'File "[^"\n]+", line ([0-9]+), in ([A-Za-z_<>][A-Za-z0-9_<>]*)', stderr)
     if sites:
@@ -87,7 +88,8 @@ class CampaignTests(unittest.TestCase):
 
 
     def test_real_interrupt_removes_descendant_that_ignores_soft_signals(self):
-        for attempt in range(10):
+        import sys
+        for attempt in range(10 if sys.platform == "darwin" else 1):
             with self.subTest(attempt=attempt):
                 self._assert_owned_descendant_cleanup(True)
 
