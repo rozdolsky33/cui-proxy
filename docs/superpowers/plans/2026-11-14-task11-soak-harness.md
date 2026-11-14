@@ -11,9 +11,10 @@ first complete pair. Do not stop the reference process merely to run tests.
 Write invariant tests for exact complete-cycle category/scenario counts,
 equal normal-size weighting, stable unique identities, invalid input rejection,
 100/minute due indices, finite values, bounded capacity and retained backlog.
-During the next quiet gap, run captured tests and observe RED before adding
-implementation. Then implement `soak_schedule.py`, run GREEN and the workflow
-suite. Expected: all tests pass without wall-clock sleeps or subprocesses.
+Run only this pure in-process metadata unit module during reference timing,
+with captured duration; it starts no build, proxy or extraction workload. Observe
+RED before implementation, then implement `soak_schedule.py` and run GREEN.
+Run the full workflow suite during the next quiet gap. Expected: all tests pass without wall-clock sleeps or subprocesses.
 This metadata layer does not establish semantic completion or soak acceptance.
 
 ## Task 2: Normal-policy semantic fixtures and backend scripts
