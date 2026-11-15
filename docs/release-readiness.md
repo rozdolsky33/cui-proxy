@@ -50,3 +50,7 @@ Publish only safe summaries: versions, rule names/counts, test names, aggregate 
 ## Assessment
 
 The repository has stronger correctness and recovery evidence than its initial implementation, including explicit protocol limits and fail-closed validation. Everyday four-agent efficiency remains unproven until the pending measurements pass. No revised numeric rating or production-equivalence claim is justified by unit tests alone. Prioritize the first reproducible failed user-visible criterion; do not replace it with unrelated tuning.
+
+## Latest isolated upgrade evidence
+
+[The November 15 packaging and upgrade/rollback check](verification-results/2026-11-15-task12-upgrade-rollback.md) passed for macOS arm64, preserving old and newly issued mappings through rollback. It records the unavailable baseline preflight endpoint and missing embedded worktree revision explicitly. Full performance qualification remains open.

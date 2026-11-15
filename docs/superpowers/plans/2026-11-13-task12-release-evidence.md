@@ -39,7 +39,7 @@ Interfaces: parser consumes captured Go benchmark lines; comparator consumes fiv
 
 Files: docs/release-readiness.md, docs/vault-recovery.md, docs/install.md, roadmap completion records.
 - [x] Record release evidence identity, required gates, on-demand/pre-release long qualification, safe retention policy, compatibility matrix and measured limitations.
-- [ ] Verify packaging/upgrade/running binary/dependency preflight/rollback against existing isolated correctness harnesses; no user installation modifications.
+- [x] Verify packaging/upgrade/running binary/dependency preflight/rollback against existing isolated correctness harnesses; no user installation modifications. See [the isolated verification record](../../verification-results/2026-11-15-task12-upgrade-rollback.md).
 - [ ] Record all unmet acceptance items and reassess ratings without treating diagnostics as qualification.
 - [ ] Run full appropriate regression/docs gates; independent review, one material RED/GREEN fix pass; authorized PR/CI/merge and clean-main sync.
 
