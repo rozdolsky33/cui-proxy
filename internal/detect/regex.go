@@ -13,9 +13,10 @@ type regexDetector struct {
 	costly       bool
 	boundedWidth int
 	re           *regexp.Regexp
-	refine       refiner // nil: accept every match
-	find         finder  // if set, replaces refine: may return several spans per candidate
-	group        bool    // report capture group 1 instead of the whole match
+	refine       refiner              // nil: accept every match
+	find         finder               // if set, replaces refine: may return several spans per candidate
+	group        bool                 // report capture group 1 instead of the whole match
+	candidates   func(string) [][]int // exact matcher for selected fixed built-ins
 }
 
 // A finder turns a regex candidate text[s:e] into zero or more spans.
@@ -80,6 +81,8 @@ func (d *regexDetector) Find(s string) []Span {
 	var ms [][]int
 	if d.group {
 		ms = d.groupMatches(s)
+	} else if d.candidates != nil {
+		ms = d.candidates(s)
 	} else {
 		ms = boundedMatches(d.re, s, d.boundedWidth)
 	}
