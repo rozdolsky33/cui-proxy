@@ -153,4 +153,23 @@ class CancellationProbeSequenceTests(unittest.TestCase):
             self.assertTrue(driver.cleaned)
 
 
+    def test_failed_observation_retains_operations_after_cleanup(self):
+        class FailingDriver(FakeDriver):
+            def observe(self):
+                raise RuntimeError("observation_failed")
+            def cleanup(self):
+                super().cleanup()
+                self.saved = {"active": {"started_s": 1.0, "ended_s": 2.0,
+                                         "result": {"completed": False}}}
+            def snapshot_operations(self):
+                return self.saved
+        driver = FailingDriver()
+        retained = {}
+        with self.assertRaises(RuntimeError):
+            run_trial(driver, retained)
+        self.assertEqual(retained["operations"], driver.saved)
+        self.assertFalse(retained["completed"])
+
+
+
 if __name__ == "__main__": unittest.main()

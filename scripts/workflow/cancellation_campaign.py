@@ -45,6 +45,7 @@ def _paths(root):
         'failure': '.cancellation-failure.json',
         'failure_log': '.cancellation-failure.log',
         'expected_complete': '.expected-complete-identity.json',
+        "failure_privacy": ".cancellation-failure-privacy.json",
     }
     paths = {key: root.parent / (root.name + suffix) for key, suffix in suffixes.items()}
     if not root.parent.is_dir() or any(os.path.lexists(path) for path in (root, *paths.values())):
@@ -103,6 +104,21 @@ def expected_corpus_identity(base, fixtures):
     return {**base, "corpus": proof}
 
 
+def retain_failure_privacy(paths, retained):
+    """Scan retained failure evidence without replacing the original failure."""
+    candidates = [paths[name] for name in ("log", "partial", "failure", "failure_log")]
+    env = retained.get("env")
+    if env is not None:
+        candidates.extend(Path(stream.name) for stream in env.logs)
+        candidates.append(Path(env.directory) / "audit.jsonl")
+    available = list(dict.fromkeys(path for path in candidates if path.is_file()))
+    try:
+        result = verify_log_privacy(available, retained.get("forbidden", set()))
+    except Exception as error:
+        result = {"privacy_verified": False, "error_kind": type(error).__name__}
+    _write(paths["failure_privacy"], result)
+
+
 def run_probe(options, *, clock=time.monotonic):
     root = Path(options.output).absolute()
     paths = _paths(root)
@@ -151,13 +167,15 @@ def run_probe(options, *, clock=time.monotonic):
                                "pid": child.pid, "start": current["start"]})
         proxy = next(identity for identity in identities if identity["role"] == "proxy")
         retained["children"] = identities
-        for index in range(3):
-            driver = NativeTrialDriver(env, controlled.execute, trial_plans(index), gate, proxy)
-            retained["drivers"].append(driver)
-            trial = {}
-            report["trials"].append(trial)
-            run_trial(driver, trial)
-        retained["forbidden"].update(metadata.forbidden_values)
+        try:
+            for index in range(3):
+                driver = NativeTrialDriver(env, controlled.execute, trial_plans(index), gate, proxy)
+                retained["drivers"].append(driver)
+                trial = {}
+                report["trials"].append(trial)
+                run_trial(driver, trial)
+        finally:
+            retained["forbidden"].update(metadata.forbidden_values)
         raise _DiagnosticComplete()
 
     try:
@@ -225,6 +243,7 @@ def run_probe(options, *, clock=time.monotonic):
         _write(paths["failure"], report)
         with paths["failure_log"].open("x", encoding="utf-8") as log:
             traceback.print_exc(file=log)
+        retain_failure_privacy(paths, retained)
         raise
     finally:
         soak_campaign.run_recorded_phase = original_phase

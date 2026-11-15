@@ -140,5 +140,43 @@ class CancellationCampaignTests(unittest.TestCase):
         self.assertEqual(marker.read_text(), "keep")
         self.assert_restored()
 
+    def test_failed_trial_records_privacy_verification(self):
+        self.fail_trial = 1
+        with self.assertRaises(RuntimeError):
+            self.execute()
+        paths = {name: Path(str(self.root) + suffix) for name, suffix in {"failure_privacy": ".cancellation-failure-privacy.json", "failure": ".cancellation-failure.json"}.items()}
+        privacy = json.loads(paths["failure_privacy"].read_text())
+        self.assertTrue(privacy["privacy_verified"])
+        self.assertFalse(json.loads(paths["failure"].read_text())["completed"])
+
+    def test_failure_privacy_scan_failure_preserves_original_error(self):
+        paths = campaign._paths(self.root)
+        paths["failure"].write_text("{}")
+        paths["failure_log"].write_text("retained failure")
+        with mock.patch.object(campaign, "verify_log_privacy", side_effect=ValueError("privacy_failure")) as scan:
+            campaign.retain_failure_privacy(paths, {"forbidden": set()})
+        metadata = json.loads(paths["failure_privacy"].read_text())
+        self.assertFalse(metadata["privacy_verified"])
+        self.assertEqual(metadata["error_kind"], "ValueError")
+        self.assertIn(paths["failure"], scan.call_args.args[0])
+        self.assertIn(paths["failure_log"], scan.call_args.args[0])
+
+
+    def test_failure_scan_error_keeps_original_trial_exception(self):
+        self.fail_trial = 1
+        original = campaign.retain_failure_privacy
+        def fail_scan(paths, retained):
+            with mock.patch.object(campaign, "verify_log_privacy", side_effect=ValueError("privacy_failure")):
+                return original(paths, retained)
+        with mock.patch.object(campaign, "retain_failure_privacy", side_effect=fail_scan):
+            with self.assertRaises(RuntimeError):
+                self.execute()
+        metadata = json.loads(Path(str(self.root) + ".cancellation-failure-privacy.json").read_text())
+        self.assertFalse(metadata["privacy_verified"])
+        self.assertFalse(Path(str(self.root) + ".cancellation-evaluation.json").exists())
+
+
+
 
 if __name__ == "__main__": unittest.main()
+

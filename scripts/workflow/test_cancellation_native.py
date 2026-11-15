@@ -126,4 +126,26 @@ class NativeDriverObservationTests(unittest.TestCase):
             with self.assertRaises(ValueError): parse_processes(text)
 
 
+    def test_supported_failure_retains_actual_outcome_after_cleanup(self):
+        from soak_phase import OperationFailure
+        self.driver.plans = {"survivor": {"identity": "failed-operation"}}
+        result = {"status": 503, "completed": False}
+        def execute(plan):
+            raise OperationFailure(result)
+        self.driver.execute = execute
+        try:
+            with self.assertRaises(OperationFailure):
+                self.driver.start("survivor")
+                self.driver.finish(self.driver.clock() + 45)
+        finally:
+            self.driver.cleanup()
+        saved = self.driver.snapshot_operations()
+        self.assertEqual(saved["survivor"]["result"], result)
+        self.assertIn("started_s", saved["survivor"])
+        self.assertIn("ended_s", saved["survivor"])
+        saved["survivor"]["result"]["status"] = 200
+        self.assertEqual(self.driver.operations["survivor"]["result"]["status"], 503)
+
+
+
 if __name__ == "__main__": unittest.main()

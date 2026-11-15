@@ -40,3 +40,7 @@ The successful private artifact root is `/private/tmp/cui-task11-cancellation-na
 Earlier failed diagnostic attempts remain retained and unqualified. Their fixes cover CLI exception propagation, current seed inspection compatibility, unrelated unknown process states, worker failure propagation, complete fixed-plan assignments, receipt operation IDs, native tuple/list and headerless-status representations, and independently attested corpus provenance. None relaxed the original numerical or fail-closed gates.
 
 Local workflow regressions passed before the successful native run. Final branch regression, documentation checks, independent review and CI are recorded with the integration PR.
+
+## Final review follow-up
+
+The independent branch review confirmed the retained three-trial artifact and identified two failure-path gaps. Failed trials now preserve available operation outcomes after worker cleanup, including supported-operation failures. Failed campaigns scan their available logs, audit, partial report, failure report and traceback, and retain a separate metadata-only privacy result. A failed privacy scan preserves the original trial failure and cannot publish qualification. Targeted regressions for these paths passed; required CI reruns the full suite. These changes do not alter the measured timing thresholds or the successful native evidence above.

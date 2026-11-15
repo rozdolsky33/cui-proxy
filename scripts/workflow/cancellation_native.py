@@ -202,6 +202,10 @@ class NativeTrialDriver:
         self.workers_joined = len(self.futures)
         return copy.deepcopy(self.operations), self.workers_joined
 
+    def snapshot_operations(self):
+        """Detach all observed outcomes after owned workers have been cleaned up."""
+        return copy.deepcopy(self.operations)
+
     def receipts(self, operations):
         started = self.clock()
         rows = {role: backend_evidence(self.env.upstream_url, "receipt", operations[role]["result"]["operation_id"], 5)

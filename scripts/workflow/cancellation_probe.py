@@ -118,7 +118,12 @@ def run_trial(driver, retained=None):
         report["final_helpers"] = driver.final_helpers()
         evaluate_trial_evidence(report)
     finally:
-        driver.cleanup()
+        try:
+            driver.cleanup()
+        finally:
+            snapshot = getattr(driver, "snapshot_operations", None)
+            if snapshot is not None:
+                report["operations"] = snapshot()
     report["completed"] = True
     return report
 
