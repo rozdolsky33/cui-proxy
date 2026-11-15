@@ -53,4 +53,4 @@ The repository has stronger correctness and recovery evidence than its initial i
 
 ## Latest isolated upgrade evidence
 
-[The November 15 packaging and upgrade/rollback check](verification-results/2026-11-15-task12-upgrade-rollback.md) passed for macOS arm64, preserving old and newly issued mappings through rollback. It records the unavailable baseline preflight endpoint and missing embedded worktree revision explicitly. Full performance qualification remains open.
+[The November 15 packaging and upgrade/rollback check](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/verification-results/2026-11-15-task12-upgrade-rollback.md) passed for macOS arm64, preserving old and newly issued mappings through rollback. It records the unavailable baseline preflight endpoint and missing embedded worktree revision explicitly. Full performance qualification remains open.
