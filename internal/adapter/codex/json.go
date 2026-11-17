@@ -3,6 +3,7 @@ package codex
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"unicode/utf8"
 
 	"cui-proxy/internal/adapter"
@@ -134,6 +135,9 @@ func (p *parser) str() *node {
 func decodeString(raw []byte, esc bool) string {
 	if body := raw[1 : len(raw)-1]; !esc && utf8.Valid(body) {
 		return string(body)
+	}
+	if s, ok := decodeSimpleString(raw[1 : len(raw)-1]); ok {
+		return s
 	}
 	var s string
 	_ = json.Unmarshal(raw, &s) // valid by contract
@@ -312,4 +316,46 @@ func writeQuote(b *bytes.Buffer, s string) {
 	enc.SetEscapeHTML(false)
 	_ = enc.Encode(s)
 	b.Truncate(b.Len() - 1)
+}
+
+// decodeSimpleString handles ordinary escapes in an already-validated JSON
+// string body. Unicode escapes and invalid UTF-8 retain encoding/json's exact
+// surrogate and replacement behavior through decodeString's fallback.
+func decodeSimpleString(body []byte) (string, bool) {
+	if !utf8.Valid(body) {
+		return "", false
+	}
+	var out strings.Builder
+	out.Grow(len(body))
+	for len(body) > 0 {
+		i := bytes.IndexByte(body, '\\')
+		if i < 0 {
+			out.Write(body)
+			break
+		}
+		if i+1 >= len(body) {
+			return "", false
+		}
+		var decoded byte
+		switch body[i+1] {
+		case '"', '\\', '/':
+			decoded = body[i+1]
+		case 'b':
+			decoded = '\b'
+		case 'f':
+			decoded = '\f'
+		case 'n':
+			decoded = '\n'
+		case 'r':
+			decoded = '\r'
+		case 't':
+			decoded = '\t'
+		default:
+			return "", false
+		}
+		out.Write(body[:i])
+		out.WriteByte(decoded)
+		body = body[i+2:]
+	}
+	return out.String(), true
 }
