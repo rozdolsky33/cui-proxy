@@ -132,6 +132,13 @@ much real sensitive data the rules catch.
 Exit criteria: the rates are published with the corpus description and
 method, and the documentation states detection coverage in those terms.
 
+Progress: [measured detection quality](docs/detection-quality.md) publishes
+false-negative and false-positive rates for the built-in families on a
+generated corpus, with the method, and a test fails when a detection change
+moves any count. The corpus was written inside the project. A corpus from
+outside it, or shapes drawn from de-identified real traffic, is still needed
+before this milestone is met.
+
 ### 6. Show resilience to upstream change
 
 The proxy depends on the Codex wire protocol, which this project does not

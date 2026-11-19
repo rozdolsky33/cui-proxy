@@ -267,6 +267,7 @@ See the [documentation status](docs/documentation-status.md) for that distinctio
 | Understand a blocked request | [docs/block-diagnostics.md](docs/block-diagnostics.md) |
 | Audit what the proxy decided | [docs/decision-log.md](docs/decision-log.md) |
 | Know what it cannot do | [docs/limitations.md](docs/limitations.md) |
+| See measured detection rates | [docs/detection-quality.md](docs/detection-quality.md) |
 | Test it against real Codex | [docs/verification.md](docs/verification.md) |
 | See why it works this way | [Design decisions (ADRs)](docs/adr/) |
 | Read the threat model, evidence and operating requirements | [docs/assurance.md](docs/assurance.md) |
