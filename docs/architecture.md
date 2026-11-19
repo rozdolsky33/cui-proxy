@@ -38,8 +38,10 @@ inside the local trust boundary.
 
 ```mermaid
 flowchart TD
-    A[Receive native client request] --> B[Route, encoding and metadata guards]
-    B --> C[Read bounded request body]
+    A[Receive native client request] --> B[Route, native-client, encoding and size guards]
+    B --> Q[Bounded admission]
+    Q --> M[Metadata inspection]
+    M --> C[Read bounded request body]
     C --> D[Codex adapter: parse supported JSON]
     D --> A1[Opt-in attachments: replace with local extracted text]
     A1 --> E[Detectors find spans; merge overlaps]
@@ -47,7 +49,9 @@ flowchart TD
     E --> F{Any blocking match?}
     F -->|Yes| X[Record blocked decision and reject]
     F -->|No| G[Vault supplies synthetics; verify restoration]
-    G --> H[Record forwarding decision]
+    G --> V[Checkpoint mappings in file mode]
+    V -->|Save fails| X
+    V --> H[Record forwarding decision]
     H --> I[Forward to configured upstream]
     I --> J[Validate response framing and encoding]
     J --> K[Restore supported SSE fields]
@@ -55,6 +59,11 @@ flowchart TD
     B -->|Guard fails| X
     D -->|Unsupported or invalid| X
 ```
+
+After the initial route, client, encoding and size guards, requests acquire
+[bounded admission](admission.md); overload can return 503 before metadata
+scanning or body reads. A slot remains charged through the
+response. File-vault persistence is required before forwarding.
 
 1. **Take the active configuration snapshot.** A request uses a consistent
    policy, sanitizer, and restorer. Rule reloads affect later requests.
@@ -132,9 +141,10 @@ the IPv4 overflow pool is treated more cautiously and can block.
 | `memory` | Mappings disappear on restart; an old conversation's synthetics may no longer restore |
 | `file` | Mappings are persisted encrypted with AES-256-GCM and a local key file; protect both files and preserve them together |
 
-File mode saves changed mappings periodically (every 30 seconds by default)
-and on graceful shutdown. An abrupt process or machine failure can lose changes
-since the last successful save; it is not a per-request durable transaction.
+File mode checkpoints mappings before forwarding and refuses requests if saving
+fails. Periodic and shutdown saves also retain unforwarded changes. Recovery
+depends on retaining the vault/key and successful filesystem operations; see
+[mapping lifetime and recovery](vault-recovery.md) for the precise boundary.
 
 The vault contains originals and is sensitive even though the decision log
 does not contain them. The [configuration guide](configuration.md) explains

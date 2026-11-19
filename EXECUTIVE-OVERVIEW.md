@@ -1,6 +1,6 @@
 # cui-proxy: Executive Overview
 
-*Current scope: v0.3.2, reviewed 2026-11-08. A high-level explanation of
+*Current scope: v0.7.0, reviewed 2026-11-19. A high-level explanation of
 what is implemented, how requests flow, and where the limits are. For
 settings and Git/SSH troubleshooting, use the
 [configuration walkthrough](docs/configuration.md). Live evidence is in
@@ -15,8 +15,8 @@ real context: host names, IP addresses, cloud resource IDs, configuration
 files, error output. In a government or regulated environment that context
 often contains **CUI, customer identifiers, internal topology and
 credentials**, and policy says it must not be sent to an external model
-service. The usual answers are bad ones: ban the tool (lose the productivity),
-or trust people to scrub every prompt by hand (they will miss things).
+service. Approved model environments, access controls and manual review remain necessary.
+This project explores an additional local masking layer for already-authorized use.
 
 ## 2. The idea in one sentence
 
@@ -73,8 +73,9 @@ Four moves:
    remain unchanged.
 3. **Model works on fakes.** The model reasons and answers using the fake
    values alongside the unchanged request content.
-4. **Restore.** As the answer streams back, the proxy swaps the fakes for the
-   real values, so commands the assistant proposes run against real systems.
+4. **Restore.** As the answer streams back, the proxy restores known, unchanged
+   replacements in supported fields. Modified replacements may not restore,
+   and generated commands still require normal permission and review.
 
 ---
 
@@ -82,9 +83,8 @@ Four moves:
 
 ### 5.1 Synthetic data, not blanks
 
-Replacing a value with `[REDACTED]` breaks the assistant: it can no longer
-tell two servers apart or write a working command. Instead the proxy
-substitutes **realistic, clearly non-real stand-ins**:
+The design aims to retain distinguishable references instead of replacing every
+value with the same blank. The proxy uses **synthetic stand-ins**:
 
 - IP addresses become addresses from ranges reserved for documentation
   (RFC 5737 / RFC 3849). IPv4 can fall back to `198.18.0.0/15`, a
@@ -93,14 +93,14 @@ substitutes **realistic, clearly non-real stand-ins**:
 - Host and mail names become names under the reserved `.example` domain.
 - Other identifiers become synthetic values. Some retain their shape;
   secrets and values unsafe to restore in place use opaque replacement tokens.
-- **Consistent within a session:** the same real value always maps to the
-  same fake one, so the model's reasoning stays coherent ("server A talks to
-  server B" still makes sense).
+- **Stable mappings while vault state is retained:** repeated recognized values
+  reuse their replacements. This preserves references, not all semantics: ordering,
+  literal character operations and model reasoning can change.
 
 ```mermaid
 flowchart LR
     real["Real value<br/>10.20.30.15"] --> proxy{"cui-proxy"}
-    proxy --> fake["Stand-in value<br/>192.0.2.7<br/>(reserved, never real)"]
+    proxy --> fake["Stand-in value<br/>192.0.2.7<br/>(documentation range)"]
     fake --> model["Model reasons<br/>about 192.0.2.7"]
     model --> back["Answer mentions<br/>192.0.2.7"]
     back --> proxy2{"cui-proxy"}
@@ -116,7 +116,9 @@ real value. That memory is the **vault**:
   and the answer can be restored.
 - **Memory by default:** a restart discards the mappings.
 - Optional **encrypted file mode** keeps mappings across restarts, with a
-  local key and periodic saves. A crash can lose changes since the last save.
+  local key and checkpoints before forwarding. Save failures block the request;
+  recovery still depends on the filesystem and retaining both vault and key.
+  See [mapping recovery](docs/vault-recovery.md).
 - Mappings and keys stay local; synthetic replacements are sent upstream.
 - Without it, the proxy could hide data but could not give the assistant a
   usable answer.
@@ -242,9 +244,10 @@ flowchart LR
 
 - **Live dashboard** (local only): requests as they happen, which rules fired
   and how often, the active configuration, and a "test a string" box to
-  preview what the rules do. It shows rule names and counts, never real
-  values.
-- **Decision log:** one line per request recording the decision (forwarded,
+  preview what the rules do. Activity views omit request bodies; configuration
+  views expose paths/patterns, and the test box displays entered text and results.
+  Use fabricated samples.
+- **Decision log:** when enabled and writing succeeds, records the decision (forwarded,
   sanitized, blocked), the reason, and the rule names. It never records the
   data itself, headers, or prompts. Entries are chained with hashes so that
   edits or missing entries in the middle of the log are detectable. A command
@@ -262,17 +265,17 @@ documentation says so.
 | | `sanitize` (default) | `strict` |
 |---|---|---|
 | Detection in supported content | Masked unless a rule explicitly blocks | Whole request refused |
-| Best for | Day-to-day engineering where masking is acceptable | Environments where policy forbids sending restricted data at all |
+| Best for | Day-to-day engineering where masking is acceptable | Authorized workflows that must refuse configured detections |
 | Audit failure | Warns by default; configurable to block | Blocks |
 | User experience | Supported flows continue; unsupported input and some metadata still block | Detections interrupt the turn; no per-value exception |
 
 ---
 
-## 9. Why this approach
+## 9. Design goals and direction
 
-- **Keeps the productivity:** the assistant still sees realistic structure, so
-  it can still reason and write working commands. Blanking or banning loses
-  that.
+- **Preserve useful workflows:** synthetic references aim to retain enough
+  structure for coding tasks. Equivalent model reasoning and task success
+  have not been established by paired live-model trials.
 - **Works with the tools people already use:** a supported configuration
   setting, no patches, no changes to the assistant.
 - **Local, with no new data custody:** nothing is sent to a third-party
@@ -280,11 +283,19 @@ documentation says so.
 - **Sanitizer failures block by default:** strict mode is available when
   policy demands it.
 - **Adaptable and extensible:** the organization's own dictionary and rules;
-  new assistants arrive as adapters.
+  additional assistants would require new adapters and compatibility validation.
 - **Reviewable:** small single binary, open source, and the audit trail lets a
   reviewer see what was decided and why.
 
 ## 10. Honest status
+
+The v0.7.0 stable channel supports a supervised text/code trial. Bounded
+admission, mapping checkpoints and protocol regression tests are implemented;
+sustained four-agent performance is not qualified. The corrected benchmark
+artifact missed the 150 ms p95 target at 151.50 ms, and the paired soak has not
+passed. See [release readiness](docs/release-readiness.md). Future multi-agent
+efficiency remains a goal, not an operating guarantee.
+
 
 - **Not a compliance control.** GOVSEC / ISSM approval for the use case is
   still required before any such data goes through it.
@@ -299,8 +310,9 @@ documentation says so.
   0.167.0 with `gpt-6-astra` completed greetings, IP/OCID restoration, a shell
   tool round trip. See
   [verification results](docs/verification.md) for the tested scope.
-- **Coverage is limited.** Images/files/audio and unsupported successful
-  response formats are rejected. Credential headers are forwarded unscanned.
+- **Coverage is limited.** Attachments are blocked by default. Opt-in extraction
+  converts supported inline PDFs/images to text, losing visual semantics; audio
+  and unsupported attachment/response formats are rejected. Credential headers are forwarded unscanned.
   Vendor encrypted reasoning is not scanned; its shape is checked while any
   rule blocks. Websocket and compaction coverage is not established by the
   recorded smoke tests. See [limitations](docs/limitations.md).

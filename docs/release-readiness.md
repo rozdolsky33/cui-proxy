@@ -4,9 +4,9 @@ A successful build or healthy dashboard does not establish four-agent performanc
 
 ## Current status
 
-A stable-channel [v0.7.0 text-only release](early-trial.md) is available with attachments blocked. It does not close the outstanding performance or sustained-load gates.
+A stable-channel [v0.7.0 text-only release](early-trial.md) is intended for supervised use with attachment blocking enabled in the operator’s configuration. It does not close the outstanding performance or sustained-load gates.
 
-The deterministic protocol, attachment policy, restoration, recovery and bounded-admission checks are implemented. Four-client mixed-load performance and the sustained four-hour workload remain open. The latest vault memory fix and workload interruption fix are integrated in [PR 48](https://github.com/rozdolsky33/cui-proxy/pull/48); their diagnostics do not close those acceptance gates.
+The deterministic protocol, attachment policy, restoration, recovery and bounded-admission checks are implemented. Four-client mixed-load performance and the sustained four-hour workload remain open. The decoder optimization is integrated in [PR 57](https://github.com/rozdolsky33/cui-proxy/pull/57). Its corrected-build four-client 1 MiB repetition measured 151.50 ms p95 added first-byte latency against the unchanged 150 ms target. Earlier passing artifacts and native cancellation checks do not close this failure or the outstanding paired soak.
 
 | Capability | Evidence and boundary |
 | --- | --- |
@@ -28,7 +28,7 @@ Correctness and security gates must pass on the exact candidate head before inte
 
 Timing on shared CI runners is diagnostic. After correctness and packaging checks, CI runs five alternating base/candidate pairs of `BenchmarkRequestWalk`, ten iterations each, with two Go scheduler threads and the same generated 768 KiB normal-tier fixture. It records executable/source identities, fixture counts and signed median latency/allocation changes. A changed benchmark harness is explicitly unavailable; skipped, malformed, interrupted or unequal-work measurements cannot become a completed comparison. Raw logs remain private to the runner; the numeric summary artifact is retained for seven days. Compare individual samples with equal work and retain allocation increases and latency regressions. Do not turn runner variance into an arbitrary numeric merge gate. The [reference workload contract](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/superpowers/specs/2026-11-10-daily-use-workload-contract.md) owns the actual release thresholds and matched-run protocol.
 
-Run full qualification on demand and before a release that changes detection, transformation, streaming, vault lifetime/persistence, extraction, admission or their configuration. Repeat affected measurements after fixes; retain rejected and interrupted runs. Schedule a longer soak on the controlled reference machine when that machine is available, not as an unattended hosted-runner job with unbounded cost. A recurring calendar schedule has not been installed.
+Full release qualification requires measurements after changes to detection, transformation, streaming, vault lifetime/persistence, extraction, admission or their configuration. The v0.7.0 supervised trial has not met that standard: it retains the failed and missing gates above. Publishing a stable-channel package does not satisfy or waive them. Repeat affected measurements after fixes; retain rejected and interrupted runs. Schedule a longer soak on the controlled reference machine when that machine is available, not as an unattended hosted-runner job with unbounded cost. A recurring calendar schedule has not been installed.
 
 For the four-agent claim, require all three normal payload sizes, three repetitions, matched first-byte and logical-prefix stream timing, throughput, extraction/fairness, resource budgets, cancellations, recovery and the four-hour fixed/churn soak. Any failure or missing measurement leaves the claim open. See the contract for exact denominators and limits; do not substitute pooled percentiles or short diagnostics.
 

@@ -1,16 +1,16 @@
 # cui-proxy
 
-**v0.7.0 text-only release:** see the [v0.7.0 text-only guide](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/early-trial.md). Attachments are blocked for this trial; sustained multi-agent performance remains unqualified.
+**v0.7.0 text-only release:** see the [v0.7.0 text-only guide](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/early-trial.md). The recommended trial configuration blocks attachments; sustained multi-agent performance remains unqualified.
 
 **[Read the documentation](https://rozdolsky33.github.io/cui-proxy/)** ·
 [Quick start](https://rozdolsky33.github.io/cui-proxy/quickstart/) ·
 [Configuration recipes](https://rozdolsky33.github.io/cui-proxy/recipes/) ·
 [Dashboard guide](https://rozdolsky33.github.io/cui-proxy/dashboard/)
 
-Local, fail-closed proxy for Codex CLI that replaces sensitive data with
-synthetic values before it reaches the model and restores the originals in
-streamed responses, so your coding agent's tool calls still run against real
-systems.
+Local proxy for Codex CLI that masks values recognized by configured rules in
+supported requests and restores known replacements in supported streamed
+responses. This can preserve usable tool arguments, but does not guarantee
+complete detection, unchanged model reasoning, or compatibility with every tool.
 
 It sits between Codex and the model backend. Detected values (IP addresses,
 OCIDs, emails, SSNs, card numbers, tokens, and your own dictionary of host
@@ -44,7 +44,7 @@ and it never stores or alters your upstream credentials.
 ## Quick start (macOS menu bar)
 
 The easiest way to run it: no terminal stays open, and one click opens the
-dashboard. Four steps, about two minutes.
+dashboard. The steps below require Homebrew and Apple’s Command Line Tools.
 
 **1. Install**
 
@@ -137,7 +137,7 @@ Look at the dashboard's *Blocked* column and the `cui-proxy` terminal (or
 
 ```mermaid
 flowchart LR
-    subgraph local["Your machine (everything here stays local)"]
+    subgraph local["Your machine (inspection and mappings)"]
         codex["Codex CLI"]
         subgraph proxy["cui-proxy  127.0.0.1:8787"]
             checks["Fail-closed checks<br/>route, size, headers,<br/>compression"]
@@ -183,10 +183,12 @@ In words:
 3. The masked request is forwarded over HTTPS; unmatched content and
    documented inspection exceptions remain unchanged.
 4. As the response streams back, the restorer replaces synthetic values with
-   the real ones from the vault, so tool calls run against your real systems.
+   originals from the vault in supported fields. Modified replacements may not
+   restore; review generated commands before execution.
 
-The dashboard and the menu-bar app only ever see metadata (rule names and
-counts), never real values. Your upstream credentials pass through unchanged
+Activity views show metadata rather than request bodies. Dashboard configuration
+views expose paths and patterns; Test a string shows supplied text and its result.
+Use fabricated samples and review screens before sharing them. Your upstream credentials pass through unchanged
 and are never stored.
 
 ## Everyday use
@@ -211,7 +213,7 @@ All commands and flags: [Commands](docs/configuration.md#commands).
 
 ## Decision log
 
-Every request leaves one line in a log file on disk: **forwarded**, **sanitized**
+When audit logging is enabled and the write succeeds, a request decision is recorded on disk: **forwarded**, **sanitized**
 or **blocked**, why, and which rules matched. It never contains the data
 itself, headers, prompts, URLs or account ids. Lines are hash-chained, so an
 edited, reordered or missing line in the middle is detectable.
@@ -246,7 +248,7 @@ Read these before relying on it. The full list is in [docs/limitations.md](docs/
 
 The [documentation site](https://rozdolsky33.github.io/cui-proxy/) provides a searchable
 manual with tutorials, copyable configurations, dashboard screenshots and a
-request-lifecycle walkthrough. Operator guides below describe v0.5.0. On macOS, **Open Documentation** in the menu bar opens the bundled offline manual and **Online Documentation** opens the published pages for the installed version. Dated specs, plans and spikes are
+request-lifecycle walkthrough. Operator guides describe the v0.7.0 release scope. On macOS, **Open Documentation** in the menu bar opens the bundled offline manual and **Online Documentation** opens the published pages for the installed version. Dated specs, plans and spikes are
 historical records; ADR proposals include features that have not shipped.
 See the [documentation status](docs/documentation-status.md) for that distinction.
 
