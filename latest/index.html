@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.7.0-beta.1/">
+        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.7.0/">
       
       
       
@@ -1218,7 +1218,7 @@
   <span class="md-ellipsis">
     
   
-    Text-only early trial
+    Text-only use
   
 
     
@@ -1720,10 +1720,13 @@
 <div class="hero">
 <p class="eyebrow">The cui-proxy operator guide</p>
 <h1 id="real-systems-less-exposure">Real systems. Less exposure.<a class="headerlink" href="#real-systems-less-exposure" title="Permanent link">&para;</a></h1>
-<p class="lead">A local, fail-closed proxy for Codex CLI that replaces sensitive data with synthetic values before it reaches the model and restores the originals in streamed responses, so your coding agent's tool calls still run against real systems.</p>
+<p class="lead">Local proxy for Codex CLI that masks values recognized by configured rules in supported requests and restores known replacements in supported streamed responses. This can preserve usable tool arguments, but does not guarantee complete detection, unchanged model reasoning, or compatibility with every tool.</p>
 <p><a class="md-button md-button--primary" href="quickstart/">Get started</a>
 <a class="md-button" href="architecture/">Follow a request</a></p>
 </div>
+<p>For supervised text/code use, start with the <a href="early-trial/">v0.7.0 guide</a>.
+Sustained four-agent performance and live-model task quality remain unqualified;
+see <a href="release-readiness/">release readiness</a>. Stable distribution is not a performance certification.</p>
 <h2 id="find-your-next-step">Find your next step<a class="headerlink" href="#find-your-next-step" title="Permanent link">&para;</a></h2>
 <div class="grid cards">
 <ul>
@@ -1825,7 +1828,7 @@ before using it with sensitive material; CUI use still requires the relevant
 GOVSEC / ISSM approval.</p>
 </div>
 <h2 id="about-this-manual">About this manual<a class="headerlink" href="#about-this-manual" title="Permanent link">&para;</a></h2>
-<p>These guides describe <strong>v0.5.0</strong>, including <a href="attachments/">PDF/image text extraction</a>
+<p>These guides describe <strong>v0.7.0</strong>, including <a href="attachments/">PDF/image text extraction</a>
 and the menu bar's <a href="menubar/#offline-documentation">offline manual</a>.
 Use the version selector in the header to read the guide for a different
 release: <code>latest</code> is the newest release and <code>dev</code> follows the main branch. The

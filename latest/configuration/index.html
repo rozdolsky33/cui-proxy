@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.7.0-beta.1/configuration/">
+        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.7.0/configuration/">
       
       
         <link rel="prev" href="../protocol-support/">
@@ -1437,7 +1437,7 @@
   <span class="md-ellipsis">
     
   
-    Text-only early trial
+    Text-only use
   
 
     
@@ -2072,7 +2072,7 @@
 
 
 <h1 id="configuration-walkthrough-and-reference">Configuration walkthrough and reference<a class="headerlink" href="#configuration-walkthrough-and-reference" title="Permanent link">&para;</a></h1>
-<p>Checked against v0.5.0 on 2026-11-08. This guide describes implemented
+<p>Reviewed for v0.7.0 on 2026-11-19. This guide describes implemented
 settings. Planned approval/account allowlists in the ADRs are not available.</p>
 <p>Start with <a href="#which-file-to-edit">which file to edit</a>, then
 <a href="#sanitize-strict-and-overrides">choose a policy</a>. For a blocked Git operation,
@@ -2270,7 +2270,7 @@ than the sanitize profile's default <code>warn</code>.</p>
 </tr>
 <tr>
 <td>Allow one public value while keeping the same detector</td>
-<td>No <code>allow</code>, <code>exclude</code>, exceptions list, or <code>action: allow</code> in v0.5.0</td>
+<td>No <code>allow</code>, <code>exclude</code>, exceptions list, or <code>action: allow</code> in v0.7.0</td>
 </tr>
 <tr>
 <td>Disable just <code>builtin.email</code></td>
@@ -2709,7 +2709,8 @@ a second signal closes at once.</p>
   <code>CUIV2</code>) in <code>vault.file</code>, keyed by <code>vault.key_file</code> (32 bytes, created with
   mode 0600 on first run; a key file with wider permissions is refused). The
   vault checkpoints mappings before forwarding and saves other changes every
-  30 seconds and on shutdown. A vault file that
+  30 seconds and on shutdown; these background saves supplement the required
+  checkpoint before forwarding. A vault file that
   cannot be read (wrong key, missing key file, older format, corruption) stops
   startup; it is never silently replaced. Retire the vault only after draining cooperating agents and
   deciding that its histories will never resume. Only one process may own a file vault: a lifetime lock

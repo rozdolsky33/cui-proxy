@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.7.0-beta.1/limitations/">
+        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.7.0/limitations/">
       
       
         <link rel="prev" href="../architecture/">
@@ -1213,7 +1213,7 @@
   <span class="md-ellipsis">
     
   
-    Text-only early trial
+    Text-only use
   
 
     
@@ -1732,7 +1732,12 @@
 <li>Usernames and local paths (for example in the <code>&lt;environment_context&gt;</code>
   block Codex sends: cwd, shell, home directory) are not detected by the
   builtin set. Put the ones that matter in a dictionary.</li>
-<li>Memory-mode restarts lose all mappings (see Vault).</li>
+<li>Memory-mode restarts lose all mappings. File mode checkpoints before
+  forwarding and blocks on save failure; preserve the vault/key together. See
+  <a href="../vault-recovery/">vault recovery</a>.</li>
+<li><a href="../admission/">Admission limits</a> can refuse excess work with HTTP 503; they
+  do not cap total memory or vault growth. Sustained four-agent operation is
+  not qualified; see <a href="../release-readiness/">release readiness</a>.</li>
 <li>Without a blocking rule, <code>tools[].name</code> and some protocol identifier fields
   are passed through unscanned so that the protocol keeps working (unknown
   <code>include</code> values are scanned, not skipped). When any rule blocks they are

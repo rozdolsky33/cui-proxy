@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.7.0-beta.1/early-trial/">
+        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.7.0/early-trial/">
       
       
         <link rel="prev" href="../vault-recovery/">
@@ -27,7 +27,7 @@
     
     
       
-        <title>Text-only early trial - cui-proxy</title>
+        <title>Text-only use - cui-proxy</title>
       
     
     
@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#text-only-early-trial-v070-beta1" class="md-skip">
+        <a href="#text-only-use-v070" class="md-skip">
           Skip to content
         </a>
       
@@ -112,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Text-only early trial
+              Text-only use
             
           </span>
         </div>
@@ -1227,7 +1227,7 @@
   <span class="md-ellipsis">
     
   
-    Text-only early trial
+    Text-only use
   
 
     
@@ -1245,7 +1245,7 @@
   <span class="md-ellipsis">
     
   
-    Text-only early trial
+    Text-only use
   
 
     
@@ -1271,10 +1271,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#install-the-trial-explicitly" class="md-nav__link">
+  <a href="#install-with-homebrew-or-a-pinned-installer" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install the trial explicitly
+        Install with Homebrew or a pinned installer
       
     </span>
   </a>
@@ -1758,10 +1758,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#install-the-trial-explicitly" class="md-nav__link">
+  <a href="#install-with-homebrew-or-a-pinned-installer" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install the trial explicitly
+        Install with Homebrew or a pinned installer
       
     </span>
   </a>
@@ -1837,21 +1837,28 @@
   
 
 
-<h1 id="text-only-early-trial-v070-beta1">Text-only early trial: v0.7.0-beta.1<a class="headerlink" href="#text-only-early-trial-v070-beta1" title="Permanent link">&para;</a></h1>
-<p>This is an opt-in prerelease for supervised text and code workflows. It is not a production-readiness claim, a supported four-agent operating envelope, or a promise of equivalent model reasoning. Multi-agent performance qualification continues separately.</p>
-<h2 id="install-the-trial-explicitly">Install the trial explicitly<a class="headerlink" href="#install-the-trial-explicitly" title="Permanent link">&para;</a></h2>
-<p>The stable release and Homebrew formula stay on the stable channel. Download the pinned installer, inspect it, and install into a separate directory so the current installation remains available:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://raw.githubusercontent.com/rozdolsky33/cui-proxy/v0.7.0-beta.1/install.sh<span class="w"> </span>-o<span class="w"> </span>cui-proxy-trial-install.sh
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nv">CUI_PROXY_VERSION</span><span class="o">=</span>v0.7.0-beta.1<span class="w"> </span><span class="nv">INSTALL_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$HOME</span><span class="s2">/.local/cui-proxy-trial"</span><span class="w"> </span>sh<span class="w"> </span>cui-proxy-trial-install.sh
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="s2">"</span><span class="nv">$HOME</span><span class="s2">/.local/cui-proxy-trial/cui-proxy"</span><span class="w"> </span>version
+<h1 id="text-only-use-v070">Text-only use: v0.7.0<a class="headerlink" href="#text-only-use-v070" title="Permanent link">&para;</a></h1>
+<p>This release is available on the stable installation channel for supervised text and code workflows. It is not a production-readiness claim, a supported four-agent operating envelope, or a promise of equivalent model reasoning. Multi-agent performance qualification continues separately.</p>
+<h2 id="install-with-homebrew-or-a-pinned-installer">Install with Homebrew or a pinned installer<a class="headerlink" href="#install-with-homebrew-or-a-pinned-installer" title="Permanent link">&para;</a></h2>
+<p>Install or upgrade through Homebrew:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>brew<span class="w"> </span>install<span class="w"> </span>rozdolsky33/tap/cui-proxy
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># For an existing Homebrew installation:</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>brew<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>brew<span class="w"> </span>upgrade<span class="w"> </span>cui-proxy
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>cui-proxy<span class="w"> </span>version
+</code></pre></div>
+<p>Confirm the installed version is <code>v0.7.0</code>. If an older proxy process is still running, drain its active requests and restart it with the intended binary and preserved configuration/vault/key; upgrading a formula does not necessarily replace a running process.</p>
+<p>Alternatively, download the pinned installer, inspect it, and install into a separate directory so the current installation remains available:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://raw.githubusercontent.com/rozdolsky33/cui-proxy/v0.7.0/install.sh<span class="w"> </span>-o<span class="w"> </span>cui-proxy-trial-install.sh
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nv">CUI_PROXY_VERSION</span><span class="o">=</span>v0.7.0<span class="w"> </span><span class="nv">INSTALL_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$HOME</span><span class="s2">/.local/cui-proxy-trial"</span><span class="w"> </span>sh<span class="w"> </span>cui-proxy-trial-install.sh
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="s2">"</span><span class="nv">$HOME</span><span class="s2">/.local/cui-proxy-trial/cui-proxy"</span><span class="w"> </span>version
 </code></pre></div>
 <p>Read the downloaded script before running it. The installer verifies the selected archive against the release checksums. Archives cover macOS and Linux on amd64 and arm64; this does not mean every operating system has completed a native trial. The installed binary also contains the offline manual.</p>
 <p>Do not start a second proxy against a vault already owned by a running process. For an existing installation, follow <a href="../release-readiness/#upgrade-and-rollback-with-active-histories">upgrade and rollback</a>. Preserve a consistent vault and key together before changing versions. A separate installation directory does not create a separate vault or configuration automatically.</p>
 <h2 id="required-trial-policy">Required trial policy<a class="headerlink" href="#required-trial-policy" title="Permanent link">&para;</a></h2>
 <p>In the configuration you intend to use, set:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">policy</span><span class="p">:</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">attachments</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">block</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">on_error</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">block</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">policy</span><span class="p">:</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">attachments</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">block</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">on_error</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">block</span>
 </code></pre></div>
 <p>The distributed example already uses these values. An upgrade does not overwrite an existing configuration: check your effective settings explicitly. Keep your existing detection rules and dictionaries; do not replace your entire configuration with this policy fragment.</p>
 <p>Validate the complete configuration with <code>cui-proxy check-config -config /path/to/config.yaml</code>, using the trial binary's absolute path if another version is on PATH. A valid configuration is not proof of complete protection or performance qualification.</p>
@@ -1865,7 +1872,7 @@
 </ol>
 <h2 id="what-passed-and-what-remains-open">What passed, and what remains open<a class="headerlink" href="#what-passed-and-what-remains-open" title="Permanent link">&para;</a></h2>
 <p>Repository correctness checks, race tests, differential decoder fuzzing, static analysis, independent review and PR CI passed for the merged decoder change. Its original artifact passed all 36 scheduled text tests. A standalone rebuild corrected a Go VCS-stamping mismatch without changing the application source, and passed native cancellation/cleanup verification.</p>
-<p>However, the corrected artifact's first four-client 1 MiB text repetition measured <strong>151.50 ms p95 added first-byte latency</strong>, above the unchanged <strong>150 ms</strong> target. This is a text-only performance failure: blocking extraction does not resolve it. The successful and failed runs remain distinct; the prerelease is not advertised as performance-qualified. The release-packaged binaries also have their own build identities, rather than inheriting benchmark results by name.</p>
+<p>However, the corrected artifact's first four-client 1 MiB text repetition measured <strong>151.50 ms p95 added first-byte latency</strong>, above the unchanged <strong>150 ms</strong> target. This is a text-only performance failure: blocking extraction does not resolve it. The successful and failed runs remain distinct; the release is not advertised as performance-qualified. The release-packaged binaries also have their own build identities, rather than inheriting benchmark results by name.</p>
 <p>The sustained paired soak has not passed. Continuous unattended operation and four-agent efficiency remain unqualified; eight/sixteen-client measurements are capacity exploration only. Live-model task quality remains unmeasured. See <a href="../release-readiness/">release readiness</a> and <a href="../protocol-support/">protocol support</a> for the full boundaries.</p>
 <h2 id="upgrade-rollback-and-feedback">Upgrade, rollback and feedback<a class="headerlink" href="#upgrade-rollback-and-feedback" title="Permanent link">&para;</a></h2>
 <p>Drain active requests before switching executables. Confirm which binary the actual running process uses, especially with the menu-bar helper. Rollback requires compatible configuration and a vault/key containing all mappings needed by active histories; a stale backup can lose newer mappings. See <a href="../vault-recovery/">vault recovery</a>.</p>

@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.7.0-beta.1/assurance/">
+        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.7.0/assurance/">
       
       
         <link rel="prev" href="../glossary/">
@@ -1213,7 +1213,7 @@
   <span class="md-ellipsis">
     
   
-    Text-only early trial
+    Text-only use
   
 
     
@@ -1974,12 +1974,16 @@ These checks do not establish detection accuracy for arbitrary customer data.</p
   inspection exceptions. A malicious client can bypass the proxy entirely.</li>
 <li>Restoration does not validate a model's reasoning or make generated commands
   safe. Keep Codex tool permissions and normal human review in place.</li>
-<li>Memory-mode restarts lose mappings. File mode checkpoints every 30 seconds
-  and on graceful shutdown; abrupt termination or storage failure can lose
-  recent mappings. Preserve the key and vault together, and begin a fresh
-  client conversation after losing state.</li>
-<li>Vault growth and aggregate concurrency are not globally bounded. Per-request
-  limits and bounded parsing do not replace OS resource controls.</li>
+<li>Memory-mode restarts lose mappings. File mode checkpoints mappings before
+  forwarding and refuses the request if saving fails. Preserve the key and
+  vault together; lost state cannot be recovered from the key alone. See
+  <a href="../vault-recovery/">vault recovery</a> for filesystem assumptions and repair.</li>
+<li><a href="../admission/">Admission</a> bounds active and queued API requests and reserved
+  input bytes. Vault growth, connection counts and total process memory are
+  not globally capped; these controls do not replace OS resource controls.</li>
+<li>Sustained four-agent performance and paired live-model task quality remain
+  unqualified. See <a href="../release-readiness/">release readiness</a> for retained
+  evidence and failed or outstanding gates.</li>
 <li>Audit chains are tamper-evident, not externally anchored. A writer who owns
   the files can rewrite an entire chain or remove its newest tail.</li>
 <li>Long-session compaction, websocket transport and arbitrary future response
