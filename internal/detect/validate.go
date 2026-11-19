@@ -55,13 +55,18 @@ func ipv4Refine(text string, s, e int) (int, int, bool) {
 }
 
 // trimTail drops trailing '.' and a single trailing ':' that the permissive
-// candidate pattern picked up (e.g. "fe80::1." at the end of a sentence).
+// candidate pattern picked up (e.g. "fe80::1." at the end of a sentence). The
+// colon is dropped after a hex digit ("fe80::1:") and after an address that
+// itself ends in "::" ("fe80:::" is "fe80::" followed by a colon); a bare
+// trailing "::" is part of the address and stays.
 func trimTail(text string, s, e int) int {
 	for e > s && text[e-1] == '.' {
 		e--
 	}
-	if e-s >= 2 && text[e-1] == ':' && text[e-2] != ':' {
-		e--
+	if e-s >= 2 && text[e-1] == ':' {
+		if text[e-2] != ':' || e-s >= 3 && text[e-3] == ':' {
+			e--
+		}
 	}
 	return e
 }
