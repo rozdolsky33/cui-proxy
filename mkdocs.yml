@@ -99,6 +99,7 @@ nav:
       - Install and upgrade: install.md
       - End-to-end tutorial: tutorial.md
       - Connect Codex: codex.md
+      - Isolate Codex to a project: isolation.md
       - Protocol support: protocol-support.md
   - Configure:
       - Configuration walkthrough: configuration.md

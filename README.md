@@ -246,6 +246,9 @@ Read these before relying on it. The full list is in [docs/limitations.md](docs/
 
 ## Documentation
 
+For local file access restrictions, see [Isolate Codex to a project](docs/isolation.md),
+including the difference between workspace write protection and restricting reads.
+
 The [documentation site](https://rozdolsky33.github.io/cui-proxy/) provides a searchable
 manual with tutorials, copyable configurations, dashboard screenshots and a
 request-lifecycle walkthrough. Operator guides describe the v0.7.0 release scope. On macOS, **Open Documentation** in the menu bar opens the bundled offline manual and **Online Documentation** opens the published pages for the installed version. Dated specs, plans and spikes are
