@@ -48,7 +48,12 @@
 - Usernames and local paths (for example in the `<environment_context>`
   block Codex sends: cwd, shell, home directory) are not detected by the
   builtin set. Put the ones that matter in a dictionary.
-- Memory-mode restarts lose all mappings (see Vault).
+- Memory-mode restarts lose all mappings. File mode checkpoints before
+  forwarding and blocks on save failure; preserve the vault/key together. See
+  [vault recovery](vault-recovery.md).
+- [Admission limits](admission.md) can refuse excess work with HTTP 503; they
+  do not cap total memory or vault growth. Sustained four-agent operation is
+  not qualified; see [release readiness](release-readiness.md).
 - Without a blocking rule, `tools[].name` and some protocol identifier fields
   are passed through unscanned so that the protocol keeps working (unknown
   `include` values are scanned, not skipped). When any rule blocks they are

@@ -1,6 +1,6 @@
 # Install and uninstall
 
-For the opt-in text-only prerelease, follow the [early-trial guide](early-trial.md). Stable installation commands below do not opt you into beta releases.
+For v0.7.0 text-only setup, attachment blocking and known limits, follow the [text-only guide](early-trial.md). This release is available through the stable installation commands below.
 
 ## Install (all options)
 
@@ -33,7 +33,7 @@ The installer downloads the release archive for your OS and CPU, **verifies
 its sha256 against the release's `checksums.txt`**, and installs the single
 `cui-proxy` binary into `/usr/local/bin` if you can write there, otherwise
 `~/.local/bin`. It never uses `sudo` and touches nothing else. Options:
-`INSTALL_DIR=/some/dir` and `CUI_PROXY_VERSION=v0.5.0`.
+`INSTALL_DIR=/some/dir` and `CUI_PROXY_VERSION=v0.7.0`.
 
 Prefer to read it first?
 

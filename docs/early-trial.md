@@ -1,14 +1,25 @@
-# Text-only early trial: v0.7.0-beta.1
+# Text-only use: v0.7.0
 
-This is an opt-in prerelease for supervised text and code workflows. It is not a production-readiness claim, a supported four-agent operating envelope, or a promise of equivalent model reasoning. Multi-agent performance qualification continues separately.
+This release is available on the stable installation channel for supervised text and code workflows. It is not a production-readiness claim, a supported four-agent operating envelope, or a promise of equivalent model reasoning. Multi-agent performance qualification continues separately.
 
-## Install the trial explicitly
+## Install with Homebrew or a pinned installer
 
-The stable release and Homebrew formula stay on the stable channel. Download the pinned installer, inspect it, and install into a separate directory so the current installation remains available:
+Install or upgrade through Homebrew:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/rozdolsky33/cui-proxy/v0.7.0-beta.1/install.sh -o cui-proxy-trial-install.sh
-CUI_PROXY_VERSION=v0.7.0-beta.1 INSTALL_DIR="$HOME/.local/cui-proxy-trial" sh cui-proxy-trial-install.sh
+brew install rozdolsky33/tap/cui-proxy
+# For an existing Homebrew installation:
+brew update && brew upgrade cui-proxy
+cui-proxy version
+```
+
+Confirm the installed version is `v0.7.0`. If an older proxy process is still running, drain its active requests and restart it with the intended binary and preserved configuration/vault/key; upgrading a formula does not necessarily replace a running process.
+
+Alternatively, download the pinned installer, inspect it, and install into a separate directory so the current installation remains available:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/rozdolsky33/cui-proxy/v0.7.0/install.sh -o cui-proxy-trial-install.sh
+CUI_PROXY_VERSION=v0.7.0 INSTALL_DIR="$HOME/.local/cui-proxy-trial" sh cui-proxy-trial-install.sh
 "$HOME/.local/cui-proxy-trial/cui-proxy" version
 ```
 
@@ -43,7 +54,7 @@ Requests carrying recognized image or file attachments are refused rather than s
 
 Repository correctness checks, race tests, differential decoder fuzzing, static analysis, independent review and PR CI passed for the merged decoder change. Its original artifact passed all 36 scheduled text tests. A standalone rebuild corrected a Go VCS-stamping mismatch without changing the application source, and passed native cancellation/cleanup verification.
 
-However, the corrected artifact's first four-client 1 MiB text repetition measured **151.50 ms p95 added first-byte latency**, above the unchanged **150 ms** target. This is a text-only performance failure: blocking extraction does not resolve it. The successful and failed runs remain distinct; the prerelease is not advertised as performance-qualified. The release-packaged binaries also have their own build identities, rather than inheriting benchmark results by name.
+However, the corrected artifact's first four-client 1 MiB text repetition measured **151.50 ms p95 added first-byte latency**, above the unchanged **150 ms** target. This is a text-only performance failure: blocking extraction does not resolve it. The successful and failed runs remain distinct; the release is not advertised as performance-qualified. The release-packaged binaries also have their own build identities, rather than inheriting benchmark results by name.
 
 The sustained paired soak has not passed. Continuous unattended operation and four-agent efficiency remain unqualified; eight/sixteen-client measurements are capacity exploration only. Live-model task quality remains unmeasured. See [release readiness](release-readiness.md) and [protocol support](protocol-support.md) for the full boundaries.
 

@@ -93,12 +93,16 @@ These checks do not establish detection accuracy for arbitrary customer data.
   inspection exceptions. A malicious client can bypass the proxy entirely.
 - Restoration does not validate a model's reasoning or make generated commands
   safe. Keep Codex tool permissions and normal human review in place.
-- Memory-mode restarts lose mappings. File mode checkpoints every 30 seconds
-  and on graceful shutdown; abrupt termination or storage failure can lose
-  recent mappings. Preserve the key and vault together, and begin a fresh
-  client conversation after losing state.
-- Vault growth and aggregate concurrency are not globally bounded. Per-request
-  limits and bounded parsing do not replace OS resource controls.
+- Memory-mode restarts lose mappings. File mode checkpoints mappings before
+  forwarding and refuses the request if saving fails. Preserve the key and
+  vault together; lost state cannot be recovered from the key alone. See
+  [vault recovery](vault-recovery.md) for filesystem assumptions and repair.
+- [Admission](admission.md) bounds active and queued API requests and reserved
+  input bytes. Vault growth, connection counts and total process memory are
+  not globally capped; these controls do not replace OS resource controls.
+- Sustained four-agent performance and paired live-model task quality remain
+  unqualified. See [release readiness](release-readiness.md) for retained
+  evidence and failed or outstanding gates.
 - Audit chains are tamper-evident, not externally anchored. A writer who owns
   the files can rewrite an entire chain or remove its newest tail.
 - Long-session compaction, websocket transport and arbitrary future response

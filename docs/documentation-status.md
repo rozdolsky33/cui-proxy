@@ -1,6 +1,6 @@
 # Documentation status
 
-Reviewed for v0.5.0 on 2026-11-08. It includes workspace metadata sanitization,
+Reviewed for the v0.7.0 release scope on 2026-11-19. It includes workspace metadata sanitization,
 value-free accounting, and the JSON escape dataflow repair. The configuration
 walkthrough covers defaults, override limits, the separate Git/SSH execution
 path, and the fixed argument buffering limits.
@@ -9,11 +9,25 @@ path, and the fixed argument buffering limits.
 [offline manual](menubar.md#offline-documentation) are available from v0.4.0. It adds an opt-in
 setting, local PDF/OCR extraction, and persisted attachment diagnostics. Real
 Poppler extraction/rendering and controlled OCR-process tests were exercised;
-actual Tesseract recognition was not verified on the development machine.
+that initial check did not verify actual Tesseract recognition. Later extraction
+measurements are separate dated evidence, not a general OCR accuracy guarantee.
 
 The menu bar's [**Online Documentation**](menubar.md#offline-documentation) item
 and the versioned documentation site (`latest/`, `dev/` and one folder per
 release) are available from v0.5.0.
+
+## Implemented behavior versus qualification
+
+The operator guides describe implemented behavior, including [bounded admission](admission.md),
+[checkpoint-before-forward persistence](vault-recovery.md), and the
+[protocol matrix](protocol-support.md). The [v0.7.0 guide](early-trial.md) recommends
+a supervised text-only trial. Sustained four-agent efficiency, the paired soak,
+and equivalent live-model task quality have not been established.
+[Release readiness](release-readiness.md) records the remaining gates.
+
+The original goal remains useful day-to-day agent work with reduced exposure.
+Plans and ADRs explain that direction; they are not promises of shipped controls
+or a schedule. A stable version number identifies the distribution channel.
 
 ## Current operator documentation
 

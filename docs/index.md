@@ -9,12 +9,16 @@ hide:
 
 # Real systems. Less exposure.
 
-<p class="lead">A local, fail-closed proxy for Codex CLI that replaces sensitive data with synthetic values before it reaches the model and restores the originals in streamed responses, so your coding agent's tool calls still run against real systems.</p>
+<p class="lead">Local proxy for Codex CLI that masks values recognized by configured rules in supported requests and restores known replacements in supported streamed responses. This can preserve usable tool arguments, but does not guarantee complete detection, unchanged model reasoning, or compatibility with every tool.</p>
 
 [Get started](quickstart.md){ .md-button .md-button--primary }
 [Follow a request](architecture.md){ .md-button }
 
 </div>
+
+For supervised text/code use, start with the [v0.7.0 guide](early-trial.md).
+Sustained four-agent performance and live-model task quality remain unqualified;
+see [release readiness](release-readiness.md). Stable distribution is not a performance certification.
 
 ## Find your next step
 
@@ -96,7 +100,7 @@ can recognize; your dictionaries and regex rules extend their coverage.
 
 ## About this manual
 
-These guides describe **v0.5.0**, including [PDF/image text extraction](attachments.md)
+These guides describe **v0.7.0**, including [PDF/image text extraction](attachments.md)
 and the menu bar's [offline manual](menubar.md#offline-documentation).
 Use the version selector in the header to read the guide for a different
 release: `latest` is the newest release and `dev` follows the main branch. The
