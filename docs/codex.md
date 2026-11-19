@@ -126,6 +126,10 @@ own fabricated end-to-end check before relying on it.
 
 ## Things routing does not change
 
+To restrict local file access, follow [Isolate Codex to a project](isolation.md).
+It covers workspace write protection, a custom profile that also restricts
+reads, and checks for parent-directory and symlink access.
+
 The proxy passes credential headers to the upstream unchanged. It does not sign
 you in, store credentials, grant tool execution permissions, configure SSH, or
 intercept every network connection from your computer. Shell tools, Git, MCP
