@@ -1213,7 +1213,7 @@
   <span class="md-ellipsis">
     
   
-    Text-only early trial
+    Text-only use
   
 
     
@@ -1866,8 +1866,10 @@ authentication or TLS. Other native processes running as the same OS user are
 inside the local trust boundary.</p>
 <h2 id="the-request-lifecycle">The request lifecycle<a class="headerlink" href="#the-request-lifecycle" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart TD
-    A[Receive native client request] --&gt; B[Route, encoding and metadata guards]
-    B --&gt; C[Read bounded request body]
+    A[Receive native client request] --&gt; B[Route, native-client, encoding and size guards]
+    B --&gt; Q[Bounded admission]
+    Q --&gt; M[Metadata inspection]
+    M --&gt; C[Read bounded request body]
     C --&gt; D[Codex adapter: parse supported JSON]
     D --&gt; A1[Opt-in attachments: replace with local extracted text]
     A1 --&gt; E[Detectors find spans; merge overlaps]
@@ -1875,13 +1877,19 @@ inside the local trust boundary.</p>
     E --&gt; F{Any blocking match?}
     F --&gt;|Yes| X[Record blocked decision and reject]
     F --&gt;|No| G[Vault supplies synthetics; verify restoration]
-    G --&gt; H[Record forwarding decision]
+    G --&gt; V[Checkpoint mappings in file mode]
+    V --&gt;|Save fails| X
+    V --&gt; H[Record forwarding decision]
     H --&gt; I[Forward to configured upstream]
     I --&gt; J[Validate response framing and encoding]
     J --&gt; K[Restore supported SSE fields]
     K --&gt; L[Return restored stream to client]
     B --&gt;|Guard fails| X
     D --&gt;|Unsupported or invalid| X</code></pre>
+<p>After the initial route, client, encoding and size guards, requests acquire
+<a href="../admission/">bounded admission</a>; overload can return 503 before metadata
+scanning or body reads. A slot remains charged through the
+response. File-vault persistence is required before forwarding.</p>
 <ol>
 <li><strong>Take the active configuration snapshot.</strong> A request uses a consistent
    policy, sanitizer, and restorer. Rule reloads affect later requests.</li>
@@ -2007,9 +2015,10 @@ the IPv4 overflow pool is treated more cautiously and can block.</p>
 </tr>
 </tbody>
 </table>
-<p>File mode saves changed mappings periodically (every 30 seconds by default)
-and on graceful shutdown. An abrupt process or machine failure can lose changes
-since the last successful save; it is not a per-request durable transaction.</p>
+<p>File mode checkpoints mappings before forwarding and refuses requests if saving
+fails. Periodic and shutdown saves also retain unforwarded changes. Recovery
+depends on retaining the vault/key and successful filesystem operations; see
+<a href="../vault-recovery/">mapping lifetime and recovery</a> for the precise boundary.</p>
 <p>The vault contains originals and is sensitive even though the decision log
 does not contain them. The <a href="../configuration/">configuration guide</a> explains
 file paths and restart requirements; <a href="../rules/#replacement-classes">rules</a>

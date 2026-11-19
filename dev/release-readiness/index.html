@@ -1218,7 +1218,7 @@
   <span class="md-ellipsis">
     
   
-    Text-only early trial
+    Text-only use
   
 
     
@@ -1862,8 +1862,8 @@
 <h1 id="release-readiness-and-operating-limits">Release readiness and operating limits<a class="headerlink" href="#release-readiness-and-operating-limits" title="Permanent link">&para;</a></h1>
 <p>A successful build or healthy dashboard does not establish four-agent performance or safe restoration of old histories. Tie every release claim to the tested binary and retained evidence below.</p>
 <h2 id="current-status">Current status<a class="headerlink" href="#current-status" title="Permanent link">&para;</a></h2>
-<p>An opt-in <a href="../early-trial/">v0.7.0-beta.1 text-only early trial</a> is available with attachments blocked. It does not close the outstanding performance or sustained-load gates.</p>
-<p>The deterministic protocol, attachment policy, restoration, recovery and bounded-admission checks are implemented. Four-client mixed-load performance and the sustained four-hour workload remain open. The latest vault memory fix and workload interruption fix are integrated in <a href="https://github.com/rozdolsky33/cui-proxy/pull/48">PR 48</a>; their diagnostics do not close those acceptance gates.</p>
+<p>A stable-channel <a href="../early-trial/">v0.7.0 text-only release</a> is intended for supervised use with attachment blocking enabled in the operator’s configuration. It does not close the outstanding performance or sustained-load gates.</p>
+<p>The deterministic protocol, attachment policy, restoration, recovery and bounded-admission checks are implemented. Four-client mixed-load performance and the sustained four-hour workload remain open. The decoder optimization is integrated in <a href="https://github.com/rozdolsky33/cui-proxy/pull/57">PR 57</a>. Its corrected-build four-client 1 MiB repetition measured 151.50 ms p95 added first-byte latency against the unchanged 150 ms target. Earlier passing artifacts and native cancellation checks do not close this failure or the outstanding paired soak.</p>
 <table>
 <thead>
 <tr>
@@ -1914,7 +1914,7 @@
 <p>Record the full source revision, clean/dirty state, optimized build flags, Go version, executable SHA-256, platform and architecture. Record fixture/generator versions, controlled workload settings, policy revision identifier, vault cardinality, dependency versions, power state and competing-load checks. Keep configuration contents and raw input/output values private.</p>
 <p>Correctness and security gates must pass on the exact candidate head before integration: workflow regressions, Go race tests, vet/staticcheck, vulnerability analysis, fuzz smoke, documentation and packaging. A skipped publication job is not a failed test; a skipped required acceptance measurement is still missing evidence.</p>
 <p>Timing on shared CI runners is diagnostic. After correctness and packaging checks, CI runs five alternating base/candidate pairs of <code>BenchmarkRequestWalk</code>, ten iterations each, with two Go scheduler threads and the same generated 768 KiB normal-tier fixture. It records executable/source identities, fixture counts and signed median latency/allocation changes. A changed benchmark harness is explicitly unavailable; skipped, malformed, interrupted or unequal-work measurements cannot become a completed comparison. Raw logs remain private to the runner; the numeric summary artifact is retained for seven days. Compare individual samples with equal work and retain allocation increases and latency regressions. Do not turn runner variance into an arbitrary numeric merge gate. The <a href="https://github.com/rozdolsky33/cui-proxy/blob/main/docs/superpowers/specs/2026-11-10-daily-use-workload-contract.md">reference workload contract</a> owns the actual release thresholds and matched-run protocol.</p>
-<p>Run full qualification on demand and before a release that changes detection, transformation, streaming, vault lifetime/persistence, extraction, admission or their configuration. Repeat affected measurements after fixes; retain rejected and interrupted runs. Schedule a longer soak on the controlled reference machine when that machine is available, not as an unattended hosted-runner job with unbounded cost. A recurring calendar schedule has not been installed.</p>
+<p>Full release qualification requires measurements after changes to detection, transformation, streaming, vault lifetime/persistence, extraction, admission or their configuration. The v0.7.0 supervised trial has not met that standard: it retains the failed and missing gates above. Publishing a stable-channel package does not satisfy or waive them. Repeat affected measurements after fixes; retain rejected and interrupted runs. Schedule a longer soak on the controlled reference machine when that machine is available, not as an unattended hosted-runner job with unbounded cost. A recurring calendar schedule has not been installed.</p>
 <p>For the four-agent claim, require all three normal payload sizes, three repetitions, matched first-byte and logical-prefix stream timing, throughput, extraction/fairness, resource budgets, cancellations, recovery and the four-hour fixed/churn soak. Any failure or missing measurement leaves the claim open. See the contract for exact denominators and limits; do not substitute pooled percentiles or short diagnostics.</p>
 <h2 id="upgrade-and-rollback-with-active-histories">Upgrade and rollback with active histories<a class="headerlink" href="#upgrade-and-rollback-with-active-histories" title="Permanent link">&para;</a></h2>
 <ol>
@@ -1968,7 +1968,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../early-trial/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Text-only early trial">
+          <a href="../early-trial/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Text-only use">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1978,7 +1978,7 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Text-only early trial
+                Text-only use
               </div>
             </div>
           </a>
