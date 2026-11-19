@@ -41,7 +41,8 @@
 - Detection is pattern-based: the model receives whatever the patterns and
   your dictionary miss. This reduces exposure; it does not bound it. The
   `strict` profile refuses what is detected; it does not make detection
-  complete.
+  complete. [Measured detection quality](detection-quality.md) reports
+  false-negative and false-positive rates on a generated corpus.
 - Hostnames that merely encode an address, such as
   `ip-10-20-30-15.ec2.internal`, are not IP literals and are not detected.
   Add your own regex or dictionary rule for them.

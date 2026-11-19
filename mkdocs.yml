@@ -127,6 +127,7 @@ nav:
       - Life of a request: architecture.md
       - Capabilities and limitations: limitations.md
       - Glossary: glossary.md
+      - Measured detection quality: detection-quality.md
       - Security and assurance: assurance.md
       - Verification evidence: verification.md
       - Documentation status: documentation-status.md

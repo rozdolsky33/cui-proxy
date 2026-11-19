@@ -1,0 +1,3135 @@
+{
+  "seed": 20261119,
+  "values_per_variant": 40,
+  "samples": 80680,
+  "positive_variants": [
+    {
+      "family": "card",
+      "group": "14-digit-spaces",
+      "claimed": true,
+      "total": 1040,
+      "full": 1040,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1040
+    },
+    {
+      "family": "card",
+      "group": "15-digit-spaces",
+      "claimed": true,
+      "total": 1040,
+      "full": 1040,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1040
+    },
+    {
+      "family": "card",
+      "group": "16-digit-dashes",
+      "claimed": true,
+      "total": 1040,
+      "full": 1040,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1040
+    },
+    {
+      "family": "card",
+      "group": "16-digit-spaces",
+      "claimed": true,
+      "total": 1040,
+      "full": 1040,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1040
+    },
+    {
+      "family": "card",
+      "group": "16-digit-unseparated",
+      "claimed": true,
+      "total": 1040,
+      "full": 1040,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 0
+    },
+    {
+      "family": "cidr",
+      "group": "ipv4-prefix",
+      "claimed": true,
+      "total": 1040,
+      "full": 1040,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1040
+    },
+    {
+      "family": "cidr",
+      "group": "ipv6-prefix",
+      "claimed": true,
+      "total": 1040,
+      "full": 1040,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1040
+    },
+    {
+      "family": "email",
+      "group": "apostrophe-local",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "email",
+      "group": "digits-in-local",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "email",
+      "group": "dotted-local",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "email",
+      "group": "hyphen-underscore",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "email",
+      "group": "hyphenated-domain",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "email",
+      "group": "long-tld",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "email",
+      "group": "mixed-case",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "email",
+      "group": "plus-tag",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "email",
+      "group": "simple",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "email",
+      "group": "single-letter-local",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "email",
+      "group": "subdomain",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "ipv4",
+      "group": "general",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "ipv4",
+      "group": "private-range",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "ipv4",
+      "group": "single-digit-octets",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "ipv6",
+      "group": "compressed-end",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "ipv6",
+      "group": "compressed-middle",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "ipv6",
+      "group": "compressed-start",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "ipv6",
+      "group": "full-padded",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "ipv6",
+      "group": "full-unpadded",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "ipv6",
+      "group": "ipv4-mapped",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "ipv6",
+      "group": "short",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "ipv6",
+      "group": "uppercase",
+      "claimed": true,
+      "total": 1120,
+      "full": 1120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1120
+    },
+    {
+      "family": "ocid",
+      "group": "no-region",
+      "claimed": true,
+      "total": 1040,
+      "full": 1040,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1040
+    },
+    {
+      "family": "ocid",
+      "group": "other-realm",
+      "claimed": true,
+      "total": 1040,
+      "full": 1040,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1040
+    },
+    {
+      "family": "ocid",
+      "group": "regional",
+      "claimed": true,
+      "total": 1040,
+      "full": 1040,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1040
+    },
+    {
+      "family": "secret",
+      "group": "bearer-lowercase-scheme",
+      "claimed": false,
+      "total": 1080,
+      "full": 1080,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1080
+    },
+    {
+      "family": "secret",
+      "group": "bearer-token",
+      "claimed": true,
+      "total": 1080,
+      "full": 1080,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1080
+    },
+    {
+      "family": "secret",
+      "group": "jwt",
+      "claimed": true,
+      "total": 1040,
+      "full": 1040,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1040
+    },
+    {
+      "family": "secret",
+      "group": "private-key-ec",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "secret",
+      "group": "private-key-encrypted",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "secret",
+      "group": "private-key-escaped-newlines",
+      "claimed": true,
+      "total": 1040,
+      "full": 1040,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1040
+    },
+    {
+      "family": "secret",
+      "group": "private-key-openssh",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "secret",
+      "group": "private-key-pkcs8",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "secret",
+      "group": "private-key-rsa",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ssn",
+      "group": "dashed",
+      "claimed": true,
+      "total": 1040,
+      "full": 1040,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1040
+    },
+    {
+      "family": "ssn",
+      "group": "spaced",
+      "claimed": false,
+      "total": 1040,
+      "full": 0,
+      "partial": 0,
+      "missed": 1040,
+      "as_family": 0
+    },
+    {
+      "family": "ssn",
+      "group": "unseparated",
+      "claimed": false,
+      "total": 1040,
+      "full": 0,
+      "partial": 0,
+      "missed": 1040,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "access-key-id-style",
+      "claimed": false,
+      "total": 1040,
+      "full": 0,
+      "partial": 0,
+      "missed": 1040,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "hex-32",
+      "claimed": false,
+      "total": 1040,
+      "full": 0,
+      "partial": 26,
+      "missed": 1014,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "prefixed-dash-token",
+      "claimed": false,
+      "total": 1040,
+      "full": 0,
+      "partial": 0,
+      "missed": 1040,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "prefixed-underscore-token",
+      "claimed": false,
+      "total": 1040,
+      "full": 0,
+      "partial": 0,
+      "missed": 1040,
+      "as_family": 0
+    }
+  ],
+  "positive_contexts": [
+    {
+      "family": "card",
+      "group": "angle-brackets",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "backticks",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "colon-after",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "comma-list",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "env-assignment",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "escaped-json",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "hyphen-suffix",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "json-string",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "log-field",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "markdown-link",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "non-ascii-neighbors",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "own-line",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "parentheses",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "path-segment",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "prose",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "semicolon-after",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "sentence-end",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "shell-argument",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "single-quoted",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "tab-separated",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "tight-commas",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "typographic-quotes",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "underscore-suffix",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "url-query",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "xml-attribute",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "card",
+      "group": "yaml-value",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "cidr",
+      "group": "angle-brackets",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "backticks",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "colon-after",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "comma-list",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "env-assignment",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "escaped-json",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "hyphen-suffix",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "json-string",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "log-field",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "markdown-link",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "non-ascii-neighbors",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "own-line",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "parentheses",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "path-segment",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "prose",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "semicolon-after",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "sentence-end",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "shell-argument",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "single-quoted",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "tab-separated",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "tight-commas",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "typographic-quotes",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "underscore-suffix",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "url-query",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "xml-attribute",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "cidr",
+      "group": "yaml-value",
+      "claimed": true,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "email",
+      "group": "angle-brackets",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "backticks",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "colon-after",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "comma-list",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "display-name",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "env-assignment",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "escaped-json",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "hyphen-suffix",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "json-string",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "log-field",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "mailto",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "markdown-link",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "non-ascii-neighbors",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "own-line",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "parentheses",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "path-segment",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "prose",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "semicolon-after",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "sentence-end",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "shell-argument",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "single-quoted",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "tab-separated",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "tight-commas",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "typographic-quotes",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "underscore-suffix",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "url-query",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "xml-attribute",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "email",
+      "group": "yaml-value",
+      "claimed": true,
+      "total": 440,
+      "full": 440,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 440
+    },
+    {
+      "family": "ipv4",
+      "group": "angle-brackets",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "backticks",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "colon-after",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "comma-list",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "env-assignment",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "escaped-json",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "hyphen-suffix",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "in-url",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "json-string",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "log-field",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "markdown-link",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "non-ascii-neighbors",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "own-line",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "parentheses",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "path-segment",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "prose",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "semicolon-after",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "sentence-end",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "shell-argument",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "single-quoted",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "tab-separated",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "tight-commas",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "typographic-quotes",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "underscore-suffix",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "url-query",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "with-port",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "xml-attribute",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv4",
+      "group": "yaml-value",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ipv6",
+      "group": "angle-brackets",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "backticks",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "bracketed-port",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "colon-after",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "comma-list",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "env-assignment",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "escaped-json",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "hyphen-suffix",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "in-url",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "json-string",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "log-field",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "markdown-link",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "non-ascii-neighbors",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "own-line",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "parentheses",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "path-segment",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "prose",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "semicolon-after",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "sentence-end",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "shell-argument",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "single-quoted",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "tab-separated",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "tight-commas",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "typographic-quotes",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "underscore-suffix",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "url-query",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "xml-attribute",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ipv6",
+      "group": "yaml-value",
+      "claimed": true,
+      "total": 320,
+      "full": 320,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 320
+    },
+    {
+      "family": "ocid",
+      "group": "angle-brackets",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "backticks",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "colon-after",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "comma-list",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "env-assignment",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "escaped-json",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "hyphen-suffix",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "json-string",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "log-field",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "markdown-link",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "non-ascii-neighbors",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "own-line",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "parentheses",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "path-segment",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "prose",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "semicolon-after",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "sentence-end",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "shell-argument",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "single-quoted",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "tab-separated",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "tight-commas",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "typographic-quotes",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "underscore-suffix",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "url-query",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "xml-attribute",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "ocid",
+      "group": "yaml-value",
+      "claimed": true,
+      "total": 120,
+      "full": 120,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 120
+    },
+    {
+      "family": "secret",
+      "group": "after-prose",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 200
+    },
+    {
+      "family": "secret",
+      "group": "angle-brackets",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "authorization-header",
+      "claimed": false,
+      "total": 80,
+      "full": 80,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 80
+    },
+    {
+      "family": "secret",
+      "group": "backticks",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "colon-after",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "comma-list",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "env-assignment",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "escaped-json",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "hyphen-suffix",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "json-string",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "log-field",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "markdown-link",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "non-ascii-neighbors",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "own-line",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "own-lines",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 200
+    },
+    {
+      "family": "secret",
+      "group": "parentheses",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "path-segment",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "prose",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "semicolon-after",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "sentence-end",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "shell-argument",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "single-quoted",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "tab-separated",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "tight-commas",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "typographic-quotes",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "underscore-suffix",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "url-query",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "xml-attribute",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "secret",
+      "group": "yaml-block",
+      "claimed": true,
+      "total": 200,
+      "full": 200,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 200
+    },
+    {
+      "family": "secret",
+      "group": "yaml-value",
+      "claimed": false,
+      "total": 160,
+      "full": 160,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 160
+    },
+    {
+      "family": "ssn",
+      "group": "angle-brackets",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "backticks",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "colon-after",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "comma-list",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "env-assignment",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "escaped-json",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "hyphen-suffix",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "json-string",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "log-field",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "markdown-link",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "non-ascii-neighbors",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "own-line",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "parentheses",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "path-segment",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "prose",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "semicolon-after",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "sentence-end",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "shell-argument",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "single-quoted",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "tab-separated",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "tight-commas",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "typographic-quotes",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "underscore-suffix",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "url-query",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "xml-attribute",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "ssn",
+      "group": "yaml-value",
+      "claimed": false,
+      "total": 120,
+      "full": 40,
+      "partial": 0,
+      "missed": 80,
+      "as_family": 40
+    },
+    {
+      "family": "token-not-covered",
+      "group": "angle-brackets",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "backticks",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "colon-after",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "comma-list",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "env-assignment",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "escaped-json",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "hyphen-suffix",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "json-string",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "log-field",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "markdown-link",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "non-ascii-neighbors",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "own-line",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "parentheses",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "path-segment",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "prose",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "semicolon-after",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "sentence-end",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "shell-argument",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "single-quoted",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "tab-separated",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "tight-commas",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "typographic-quotes",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "underscore-suffix",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "url-query",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "xml-attribute",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    },
+    {
+      "family": "token-not-covered",
+      "group": "yaml-value",
+      "claimed": false,
+      "total": 160,
+      "full": 0,
+      "partial": 1,
+      "missed": 159,
+      "as_family": 0
+    }
+  ],
+  "negative_variants": [
+    {
+      "family": "benign",
+      "group": "commit-hash-40",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "benign",
+      "group": "digest-64",
+      "total": 1040,
+      "flagged": 26
+    },
+    {
+      "family": "benign",
+      "group": "epoch-milliseconds",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "benign",
+      "group": "epoch-seconds",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "benign",
+      "group": "hex-color",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "benign",
+      "group": "integer-16",
+      "total": 1040,
+      "flagged": 442
+    },
+    {
+      "family": "benign",
+      "group": "iso-timestamp",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "benign",
+      "group": "order-number-12",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "benign",
+      "group": "phone-international",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "benign",
+      "group": "semantic-version",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "benign",
+      "group": "uuid",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "card",
+      "group": "16-digit-dashes-bad-checksum",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "card",
+      "group": "16-digit-spaces-bad-checksum",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "cidr",
+      "group": "fraction",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "cidr",
+      "group": "slash-date",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "email",
+      "group": "at-mention",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "email",
+      "group": "package-at-version",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "ipv4",
+      "group": "decimal-number",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "ipv4",
+      "group": "dotted-date",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "ipv4",
+      "group": "five-single-digits",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "ipv4",
+      "group": "octet-over-255",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "ipv4",
+      "group": "three-part-version",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "ipv6",
+      "group": "clock-time",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "ipv6",
+      "group": "mac-address",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "ipv6",
+      "group": "scope-operator",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "secret",
+      "group": "bearer-then-long-word",
+      "total": 1040,
+      "flagged": 1040
+    },
+    {
+      "family": "secret",
+      "group": "bearer-then-short-word",
+      "total": 1040,
+      "flagged": 125
+    },
+    {
+      "family": "secret",
+      "group": "certificate-block",
+      "total": 120,
+      "flagged": 0
+    },
+    {
+      "family": "secret",
+      "group": "dotted-identifier",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "secret",
+      "group": "public-key-block",
+      "total": 120,
+      "flagged": 0
+    },
+    {
+      "family": "ssn",
+      "group": "iso-date",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "ssn",
+      "group": "never-issued-area",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "ssn",
+      "group": "phone-3-3-4",
+      "total": 1040,
+      "flagged": 0
+    },
+    {
+      "family": "ssn",
+      "group": "zip-plus-four",
+      "total": 1040,
+      "flagged": 0
+    }
+  ]
+}
