@@ -1,6 +1,6 @@
 # cui-proxy
 
-**Opt-in text-only beta:** see the [v0.7.0-beta.1 early-trial guide](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/early-trial.md). Attachments are blocked for this trial; sustained multi-agent performance remains unqualified.
+**v0.7.0 text-only release:** see the [v0.7.0 text-only guide](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/early-trial.md). Attachments are blocked for this trial; sustained multi-agent performance remains unqualified.
 
 **[Read the documentation](https://rozdolsky33.github.io/cui-proxy/)** ·
 [Quick start](https://rozdolsky33.github.io/cui-proxy/quickstart/) ·

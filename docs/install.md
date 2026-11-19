@@ -1,6 +1,6 @@
 # Install and uninstall
 
-For the opt-in text-only prerelease, follow the [early-trial guide](early-trial.md). Stable installation commands below do not opt you into beta releases.
+For v0.7.0 text-only setup, attachment blocking and known limits, follow the [text-only guide](early-trial.md). This release is available through the stable installation commands below.
 
 ## Install (all options)
 
