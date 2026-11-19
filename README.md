@@ -258,6 +258,7 @@ See the [documentation status](docs/documentation-status.md) for that distinctio
 | I want to... | Read |
 |---|---|
 | Understand the purpose and current scope | [Executive overview](EXECUTIVE-OVERVIEW.md) |
+| See what stands between this release and 1.0 | [Roadmap](ROADMAP.md) |
 | Install, upgrade or uninstall (Homebrew, curl, manual) | [docs/install.md](docs/install.md) |
 | Use the menu-bar app | [docs/menubar.md](docs/menubar.md) |
 | Configure defaults, sanitize/strict, overrides, Git/SSH, reload and vault | [docs/configuration.md](docs/configuration.md) |
