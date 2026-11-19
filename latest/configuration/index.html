@@ -10,10 +10,10 @@
       
       
       
-        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.6.0/configuration/">
+        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.7.0-beta.1/configuration/">
       
       
-        <link rel="prev" href="../codex/">
+        <link rel="prev" href="../protocol-support/">
       
       
         <link rel="next" href="../rules/">
@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.618322db.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -397,6 +397,8 @@
       
         
       
+        
+      
     
     
     
@@ -550,6 +552,34 @@
     
   
     Connect Codex
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../protocol-support/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Protocol support
   
 
     
@@ -1086,6 +1116,16 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1286,6 +1326,146 @@
     
   
     Block diagnostics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../admission/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capacity and overload
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extraction-reuse/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repeated image extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vault-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mapping recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../early-trial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Text-only early trial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release-readiness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release readiness
   
 
     
@@ -2337,6 +2517,12 @@ there is no default upstream in the loader.</p>
 <td>Restart</td>
 </tr>
 <tr>
+<td><code>observability.correlate</code></td>
+<td><code>false</code></td>
+<td>Optional process-local session/workspace pseudonyms in the <a href="../dashboard/#optional-workload-correlation">metrics API</a>; no payload retention</td>
+<td>Reload</td>
+</tr>
+<tr>
 <td><code>rules</code></td>
 <td>Empty list</td>
 <td>Rules below; not merged with starter rules</td>
@@ -2502,7 +2688,7 @@ valid; otherwise the running rules stay and the error is shown. Requests
 already in flight finish with the rules they started with. The vault (and so
 every existing mapping) is kept.</p>
 <p>Applied on reload: <code>rules</code> (and dictionary contents), <code>policy.profile</code>, <code>policy.on_error</code>,
-<code>policy.max_body_bytes</code>.
+<code>policy.max_body_bytes</code>, <code>observability.correlate</code>.
 Need a restart (a reload logs <code>WARN restart required for: ...</code> and keeps the
 running values): <code>listen</code>, <code>ui.listen</code>, <code>upstreams</code>, <code>vault.*</code>,
 <code>allow_non_loopback</code>, all <code>audit.*</code> settings.</p>
@@ -2513,6 +2699,7 @@ and restart first. See <a href="../decision-log/">decision-log.md</a> for detail
 <p><code>SIGINT</code> / <code>SIGTERM</code> stop the proxy with a 10 s drain for in-flight requests;
 a second signal closes at once.</p>
 <h2 id="vault">Vault<a class="headerlink" href="#vault" title="Permanent link">&para;</a></h2>
+<p>File mode checkpoints mappings before forwarding and refuses requests if saving fails. See <a href="../vault-recovery/">mapping lifetime and recovery</a> for crash guarantees, storage repair, shared-agent boundaries and retention limits.</p>
 <ul>
 <li><code>vault.mode: memory</code> (default): mappings live only in the process, under a
   random key that never touches disk. After a restart, synthetic values in
@@ -2521,12 +2708,13 @@ a second signal closes at once.</p>
 <li><code>vault.mode: file</code>: mappings are stored encrypted (AES-256-GCM, file format
   <code>CUIV2</code>) in <code>vault.file</code>, keyed by <code>vault.key_file</code> (32 bytes, created with
   mode 0600 on first run; a key file with wider permissions is refused). The
-  vault is saved every 30 s when it changed and on shutdown. A vault file that
+  vault checkpoints mappings before forwarding and saves other changes every
+  30 seconds and on shutdown. A vault file that
   cannot be read (wrong key, missing key file, older format, corruption) stops
-  startup; it is never silently replaced. To start over, remove the vault
-  file yourself. Only one process may own a file vault: a lifetime lock
+  startup; it is never silently replaced. Retire the vault only after draining cooperating agents and
+  deciding that its histories will never resume. Only one process may own a file vault: a lifetime lock
   prevents stale writers from overwriting mappings. Keep its parent directory
-  private. A crash can still lose changes since the last periodic save.</li>
+  private. Unforwarded changes can be lost on a crash; mappings exposed upstream are checkpointed before forwarding in file mode. See <a href="../vault-recovery/">mapping recovery</a>.</li>
 </ul>
 <h3 id="synthetic-address-pool">Synthetic address pool<a class="headerlink" href="#synthetic-address-pool" title="Permanent link">&para;</a></h3>
 <p>IPv4 (and CIDR) synthetics come from the 762 RFC 5737 documentation
@@ -2595,7 +2783,7 @@ used up, the vault falls back to an overflow pool of 130,048 addresses in
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../codex/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Connect Codex">
+          <a href="../protocol-support/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Protocol support">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -2605,7 +2793,7 @@ used up, the vault falls back to an overflow pool of 130,048 addresses in
                 Previous
               </span>
               <div class="md-ellipsis">
-                Connect Codex
+                Protocol support
               </div>
             </div>
           </a>
@@ -2659,10 +2847,10 @@ used up, the vault falls back to an overflow pool of 130,048 addresses in
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.footer", "navigation.tracking", "search.highlight", "content.code.copy", "content.action.edit", "toc.follow"], "search": "../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.footer", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>
