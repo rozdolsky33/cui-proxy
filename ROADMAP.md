@@ -113,6 +113,10 @@ Exit criteria: one external review is complete, its findings are fixed or
 documented as limitations, and a summary is published without sensitive
 detail.
 
+Progress: the [review guide](docs/security-review.md) gives a reviewer the
+claims to attack, a map of the code, the known limitations, safe test setups
+and the reporting route. No external reviewer has been engaged yet.
+
 ### 5. Measure detection quality
 
 Unit tests show that the rules do what was intended. They do not show how

@@ -18,6 +18,12 @@ cross-origin / DNS-rebinding problem.
 **Never include real sensitive data (CUI, customer identifiers, credentials,
 real tokens) in a report.** Use made-up values that have the same shape.
 
+## Reviewing the project
+
+If you want to look for problems deliberately, the
+[review guide](docs/security-review.md) lists the claims to attack, where the
+code is, what is already known, and how to test without real data.
+
 ## Supported versions
 
 Only the latest release is supported.
