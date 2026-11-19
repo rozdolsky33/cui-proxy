@@ -133,3 +133,4 @@ nav:
   - Contribute:
       - Build and release: development.md
       - Maintain the documentation: contributing-docs.md
+      - Review the security: security-review.md
