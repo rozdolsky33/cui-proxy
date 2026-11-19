@@ -4,6 +4,8 @@ A successful build or healthy dashboard does not establish four-agent performanc
 
 ## Current status
 
+An opt-in [v0.7.0-beta.1 text-only early trial](early-trial.md) is available with attachments blocked. It does not close the outstanding performance or sustained-load gates.
+
 The deterministic protocol, attachment policy, restoration, recovery and bounded-admission checks are implemented. Four-client mixed-load performance and the sustained four-hour workload remain open. The latest vault memory fix and workload interruption fix are integrated in [PR 48](https://github.com/rozdolsky33/cui-proxy/pull/48); their diagnostics do not close those acceptance gates.
 
 | Capability | Evidence and boundary |

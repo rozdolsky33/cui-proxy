@@ -118,6 +118,7 @@ nav:
       - Capacity and overload: admission.md
       - Repeated image extraction: extraction-reuse.md
       - Mapping recovery: vault-recovery.md
+      - Text-only early trial: early-trial.md
       - Release readiness: release-readiness.md
   - Understand:
       - Life of a request: architecture.md
