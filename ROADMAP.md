@@ -50,6 +50,13 @@ reference workload contract, or the supported claim is narrowed in the
 documentation to what the evidence shows. The target is not moved to fit a
 result.
 
+Progress: the proxy now flushes event-stream headers before the first
+restored event, which removed a first-byte delay found while investigating
+the failed gate. See the
+[diagnostic summary](docs/verification-results/2026-11-19-sse-header-flush.md).
+All three gates remain open until the reference-machine campaign and soak are
+rerun and the live run is budgeted.
+
 ### 2. Stabilize the interfaces
 
 Fourteen tags were published in the first thirteen days. Nothing has been
@@ -65,6 +72,10 @@ stable long enough for an operator to rely on it.
 
 Exit criteria: the policy is published, and two consecutive releases ship
 without a breaking change to a declared-stable interface.
+
+Progress: the [compatibility and upgrade policy](docs/compatibility.md) is
+published and tests lock the declared interfaces. The two-release count
+starts with the first release after v0.7.0.
 
 ### 3. Trial with outside users
 

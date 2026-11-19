@@ -121,6 +121,7 @@ nav:
       - Mapping recovery: vault-recovery.md
       - Text-only use: early-trial.md
       - Release readiness: release-readiness.md
+      - Compatibility and upgrades: compatibility.md
   - Understand:
       - Life of a request: architecture.md
       - Capabilities and limitations: limitations.md
