@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: A sensitive value got past the proxy
+    url: https://github.com/rozdolsky33/cui-proxy/security/advisories/new
+    about: Report a leak or a bypass privately. Do not open a public issue for it.
+  - name: Documentation
+    url: https://rozdolsky33.github.io/cui-proxy/
+    about: Install, configuration, troubleshooting and known limitations.

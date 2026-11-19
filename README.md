@@ -277,6 +277,7 @@ model, verification evidence, operating requirements, and remaining limits.
 
 ## Support
 
+- Trying it in your own work: [join the operator trial](docs/trial.md) and tell us what goes wrong.
 - Questions, bugs, feature requests: [GitHub issues](https://github.com/rozdolsky33/cui-proxy/issues).
   **Never paste real sensitive data into an issue or log excerpt**; use made-up values of the same shape.
 - Security problems (a way around the protections, a leak): report privately, see [SECURITY.md](SECURITY.md).

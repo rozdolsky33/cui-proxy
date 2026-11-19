@@ -120,6 +120,7 @@ nav:
       - Repeated image extraction: extraction-reuse.md
       - Mapping recovery: vault-recovery.md
       - Text-only use: early-trial.md
+      - Join the operator trial: trial.md
       - Release readiness: release-readiness.md
       - Compatibility and upgrades: compatibility.md
   - Understand:

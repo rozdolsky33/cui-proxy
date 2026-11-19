@@ -90,6 +90,11 @@ Exit criteria: at least five outside operators have each used the proxy for
 four weeks or more, and their reports are triaged with no open report of a
 sensitive value reaching the upstream.
 
+Progress: the [trial guide](docs/trial.md) and issue forms for enrollment,
+false positives, bugs and install problems are in place. No outside operator
+has enrolled yet. Enrollment issues carry the `trial` label, and each one
+counts toward the criterion once its operator has reported for four weeks.
+
 ### 4. Independent adversarial review
 
 Earlier review findings are recorded under
