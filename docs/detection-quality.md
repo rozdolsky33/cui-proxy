@@ -16,14 +16,14 @@ Measured on the detectors at the commit that last changed
 | Family | Shapes tested | Samples | Not fully masked | False-negative rate |
 |---|---|---|---|---|
 | `ipv4` | 3 | 3,360 | 0 | 0.0% |
-| `ipv6` | 8 | 8,960 | 40 | 0.4% |
+| `ipv6` | 8 | 8,960 | 0 | 0.0% |
 | `cidr` | 2 | 2,080 | 0 | 0.0% |
-| `email` | 11 | 12,320 | 1,120 | 9.1% |
+| `email` | 11 | 12,320 | 0 | 0.0% |
 | `ssn` | 1 | 1,040 | 0 | 0.0% |
 | `card` | 5 | 5,200 | 0 | 0.0% |
 | `secret` | 8 | 3,760 | 0 | 0.0% |
 | `ocid` | 3 | 3,120 | 0 | 0.0% |
-| All | 41 | 39,840 | 1,160 | 2.9% |
+| All | 41 | 39,840 | 0 | 0.0% |
 
 | Look-alikes of | Shapes tested | Samples | Flagged | False-positive rate |
 |---|---|---|---|---|
@@ -39,20 +39,24 @@ Measured on the detectors at the commit that last changed
 
 Every shape counts equally in these totals. A family's rate therefore
 depends on which shapes were chosen, not on how often each occurs in real
-work. The `email` rate comes from one shape out of eleven, and the `secret`
-false-positive rate from two shapes out of five.
+work. The `secret` false-positive rate, for example, comes from two shapes
+out of five.
 
 ## Values that were not fully masked
 
 A value counts as fully masked only when every byte of it falls inside a
 detected span. Anything less would forward part of the value.
 
-| Family | Shape | Samples | Result |
-|---|---|---|---|
-| `email` | An apostrophe in the local part, such as a name written with one | 1,120 | All partly masked. The text before the apostrophe was left in place. |
-| `ipv6` | An address ending in `::` that is directly followed by a colon | 40 of 1,120 for that shape | Missed. The other 27 contexts for the same shape were fully masked. |
+In the current baseline, every documented shape was fully masked in every
+context it was placed in.
 
-Every other documented shape was fully masked in every context it was placed in.
+The first run of this measurement found two shapes that were not. Both were
+fixed before these figures were published, each with a regression test:
+
+| Family | Shape | Samples affected | What happened |
+|---|---|---|---|
+| `email` | An apostrophe in the local part, such as a name written with one | 1,120 of 1,120 | Partly masked. The text before the apostrophe was left in place. |
+| `ipv6` | An address ending in `::` that is directly followed by a colon | 40 of 1,120 for that shape | Missed in that one context. |
 
 Unseparated 16-digit card numbers were fully masked, as an opaque `secret`
 token and not as a `card`. The [rules guide](rules.md#the-built-in-bundle)

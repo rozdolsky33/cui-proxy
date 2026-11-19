@@ -135,7 +135,8 @@ method, and the documentation states detection coverage in those terms.
 Progress: [measured detection quality](docs/detection-quality.md) publishes
 false-negative and false-positive rates for the built-in families on a
 generated corpus, with the method, and a test fails when a detection change
-moves any count. The corpus was written inside the project. A corpus from
+moves any count. The first run found two shapes that were not fully masked,
+and both are fixed. The corpus was written inside the project. A corpus from
 outside it, or shapes drawn from de-identified real traffic, is still needed
 before this milestone is met.
 

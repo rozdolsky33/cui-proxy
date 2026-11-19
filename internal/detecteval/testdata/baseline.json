@@ -78,10 +78,10 @@
       "group": "apostrophe-local",
       "claimed": true,
       "total": 1120,
-      "full": 0,
-      "partial": 1120,
+      "full": 1120,
+      "partial": 0,
       "missed": 0,
-      "as_family": 0
+      "as_family": 1120
     },
     {
       "family": "email",
@@ -218,10 +218,10 @@
       "group": "compressed-end",
       "claimed": true,
       "total": 1120,
-      "full": 1080,
+      "full": 1120,
       "partial": 0,
-      "missed": 40,
-      "as_family": 1080
+      "missed": 0,
+      "as_family": 1120
     },
     {
       "family": "ipv6",
@@ -1010,280 +1010,280 @@
       "group": "angle-brackets",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "backticks",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "colon-after",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "comma-list",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "display-name",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "env-assignment",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "escaped-json",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "hyphen-suffix",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "json-string",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "log-field",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "mailto",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "markdown-link",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "non-ascii-neighbors",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "own-line",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "parentheses",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "path-segment",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "prose",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "semicolon-after",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "sentence-end",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "shell-argument",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "single-quoted",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "tab-separated",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "tight-commas",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "typographic-quotes",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "underscore-suffix",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "url-query",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "xml-attribute",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "email",
       "group": "yaml-value",
       "claimed": true,
       "total": 440,
-      "full": 400,
-      "partial": 40,
+      "full": 440,
+      "partial": 0,
       "missed": 0,
-      "as_family": 400
+      "as_family": 440
     },
     {
       "family": "ipv4",
@@ -1600,10 +1600,10 @@
       "group": "colon-after",
       "claimed": true,
       "total": 320,
-      "full": 280,
+      "full": 320,
       "partial": 0,
-      "missed": 40,
-      "as_family": 280
+      "missed": 0,
+      "as_family": 320
     },
     {
       "family": "ipv6",
