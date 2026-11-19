@@ -47,6 +47,8 @@ jobs:
   # A separate job so the tap token is visible only to the script that needs
   # it, never to the build or test steps above.
   tap:
+    # Prereleases are opt-in; never advance the stable Homebrew formula.
+    if: ${{ !contains(github.ref_name, '-') }}
     needs: release
     runs-on: ubuntu-latest
     timeout-minutes: 10

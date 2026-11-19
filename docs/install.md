@@ -1,5 +1,7 @@
 # Install and uninstall
 
+For the opt-in text-only prerelease, follow the [early-trial guide](early-trial.md). Stable installation commands below do not opt you into beta releases.
+
 ## Install (all options)
 
 ### Homebrew (macOS and Linux)
