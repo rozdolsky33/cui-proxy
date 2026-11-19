@@ -671,8 +671,9 @@ func (h *handler) forward(x *exchange, r *http.Request, route adapter.Route, bod
 	return h.stream(x, r, responseBody, rest)
 }
 
-// stream restores the event stream body into the client, flushing after
-// every event. It reports whether the client connection must be aborted.
+// stream restores the event stream body into the client, flushing the
+// response headers first and then after every event. It reports whether the
+// client connection must be aborted.
 // The caller closes body.
 func (h *handler) stream(x *exchange, r *http.Request, body io.Reader, rest *transform.Restorer) bool {
 	rw := h.d.Adapter.NewResponseRewriter(rest)
@@ -706,6 +707,12 @@ func (h *handler) stream(x *exchange, r *http.Request, body io.Reader, rest *tra
 		x.entry.Blocked = reasonStreamRewrite
 		h.d.Logf("cui-proxy: response stream cut (%s); connection aborted", what)
 		return true
+	}
+	// Send the status and headers now. Restoration may hold the first events
+	// back until a synthetic's right boundary is known; the client should not
+	// wait that long to learn that the response has started.
+	if err := rc.Flush(); err != nil {
+		return fail("write")
 	}
 	for {
 		ev, err := rd.Next()
