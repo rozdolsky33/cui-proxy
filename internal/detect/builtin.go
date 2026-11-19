@@ -19,7 +19,10 @@ var builtinDefs = []builtinDef{
 	{class: "secret", pattern: `\d{1,3}(?:\.\d{1,3}){3}\.\d{1,5}`, find: addrPortFind},
 	{class: "secret", pattern: `[0-9A-Fa-f:.]{3,}`, find: ipv6PortFind, candidates: ipv6Candidates},
 	{class: "cidr", pattern: `[0-9A-Fa-f:.]{3,}/\d{1,3}`, find: cidrFind},
-	{class: "email", pattern: `[\p{L}\p{N}._%+-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}`},
+	// An apostrophe is valid inside a local part (a name written with one).
+	// It is accepted only between local-part characters, so a quote that
+	// merely surrounds a mailbox stays outside the match.
+	{class: "email", pattern: `[\p{L}\p{N}._%+-]+(?:'[\p{L}\p{N}._%+-]+)*@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}`},
 	{class: "ssn", pattern: `\d{3}-\d{2}-\d{4}`, refine: ssnRefine},
 	{class: "card", pattern: `\d(?:[ -]?\d)*`, find: cardFind, candidates: cardCandidates},
 	// An unseparated digit run with a Luhn hit is masked whole, as a secret.
