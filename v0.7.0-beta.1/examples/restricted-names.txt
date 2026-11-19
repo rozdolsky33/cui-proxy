@@ -1,2 +1,0 @@
-# Fabricated name used to demonstrate an explicit blocking rule.
-restricted-demo-project
