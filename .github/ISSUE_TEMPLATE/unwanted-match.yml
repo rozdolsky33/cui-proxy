@@ -1,0 +1,55 @@
+name: Something was masked or blocked that should not have been
+description: A false positive, or a block that stopped ordinary work.
+title: "False positive: "
+labels: ["false-positive", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If a sensitive value **reached the upstream**, stop and [report it privately](https://github.com/rozdolsky33/cui-proxy/security/advisories/new) instead.
+        Do not disable the rule or switch to forwarding on error to work around a block.
+  - type: input
+    id: version
+    attributes:
+      label: cui-proxy version
+    validations:
+      required: true
+  - type: dropdown
+    id: effect
+    attributes:
+      label: What happened
+      options:
+        - A value was replaced that is not sensitive
+        - The request was blocked
+        - A restored response was wrong or a tool call failed
+    validations:
+      required: true
+  - type: input
+    id: rule
+    attributes:
+      label: Rule name and class
+      description: From `cui-proxy explain REQUEST-ID` or the dashboard. Rule names appear in public here, so check that yours does not reveal anything.
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: A made-up example that triggers it
+      description: Invent a value with the same shape as the one that matched. Confirm it reproduces with `cui-proxy test-rules` before posting. Never paste the real value or real output.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: How it affected your work
+      description: How often it happens, and what you did next.
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before you submit
+      options:
+        - label: This report contains no real sensitive data. Every example value is made up, and I have read the rule names and paths in it before posting.
+          required: true

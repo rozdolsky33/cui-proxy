@@ -1,0 +1,79 @@
+name: Join the operator trial
+description: Tell us you are trying cui-proxy in your own work. One issue per operator.
+title: "Trial: "
+labels: ["trial"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for trying cui-proxy. Read [the trial guide](https://rozdolsky33.github.io/cui-proxy/dev/trial/) first.
+        This issue is public. Do not name your employer, customers or projects.
+        Add one short comment here each week; the guide lists what to include.
+  - type: input
+    id: version
+    attributes:
+      label: cui-proxy version
+      description: Output of `cui-proxy version`.
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system and architecture
+      options:
+        - macOS arm64
+        - macOS amd64
+        - Linux amd64
+        - Linux arm64
+        - Other (say which below)
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How you installed it
+      options:
+        - Homebrew
+        - curl installer
+        - Manual download
+        - Built from source
+    validations:
+      required: true
+  - type: input
+    id: codex
+    attributes:
+      label: Codex CLI version
+    validations:
+      required: true
+  - type: dropdown
+    id: profile
+    attributes:
+      label: Policy profile
+      options:
+        - sanitize
+        - strict
+    validations:
+      required: true
+  - type: input
+    id: start
+    attributes:
+      label: Date you started using it
+      placeholder: "2026-11-24"
+    validations:
+      required: true
+  - type: textarea
+    id: use
+    attributes:
+      label: What you use it for
+      description: In general terms, for example "daily coding sessions with cloud CLI output". Say roughly how many custom rules and dictionary entries you run, not what they are.
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before you submit
+      options:
+        - label: My configuration sets `policy.attachments` and `policy.on_error` to `block`, as the trial guide requires.
+          required: true
+        - label: This report contains no real sensitive data. Every example value is made up, and I have read the rule names and paths in it before posting.
+          required: true

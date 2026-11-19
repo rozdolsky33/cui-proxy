@@ -1,0 +1,68 @@
+name: Install, upgrade or rollback problem
+description: Installing, upgrading, rolling back or starting the proxy did not work.
+title: "Install: "
+labels: ["install", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If startup refuses your vault, keep the vault and key files as they are. Do not delete them to get the proxy to start.
+  - type: input
+    id: from
+    attributes:
+      label: Version you had before
+      description: Write "none" for a first install.
+    validations:
+      required: true
+  - type: input
+    id: to
+    attributes:
+      label: Version you were installing
+    validations:
+      required: true
+  - type: dropdown
+    id: method
+    attributes:
+      label: Method
+      options:
+        - Homebrew
+        - curl installer
+        - Manual download
+        - Built from source
+        - Menu-bar app install
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system and architecture
+    validations:
+      required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Where it failed
+      options:
+        - Download or checksum
+        - Installation
+        - check-config
+        - Startup
+        - Vault or key
+        - After a rollback
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Include the error message. Replace home directory paths and anything else that identifies you.
+      render: text
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before you submit
+      options:
+        - label: This report contains no real sensitive data. Every example value is made up, and I have read the rule names and paths in it before posting.
+          required: true

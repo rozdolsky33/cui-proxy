@@ -1,0 +1,60 @@
+name: Bug or performance problem
+description: Something failed, hung or was noticeably slow.
+title: "Bug: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If a sensitive value **reached the upstream**, stop and [report it privately](https://github.com/rozdolsky33/cui-proxy/security/advisories/new) instead.
+  - type: input
+    id: version
+    attributes:
+      label: cui-proxy version
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Operating system, architecture and Codex CLI version
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of problem
+      options:
+        - Error or unexpected block
+        - Slow first response or slow streaming
+        - Crash or hang
+        - Dashboard or menu-bar app
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected
+      description: Include the error class and reason from the error message. Leave out request and response content.
+    validations:
+      required: true
+  - type: textarea
+    id: explain
+    attributes:
+      label: Output of cui-proxy explain REQUEST-ID
+      description: Optional. The decision log holds rule names, counts and timing, never values. Read it before pasting.
+      render: text
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce with made-up data
+      description: For slowness, give the rough size of the conversation, how many agents were running, and how long the delay was.
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before you submit
+      options:
+        - label: This report contains no real sensitive data. Every example value is made up, and I have read the rule names and paths in it before posting.
+          required: true
