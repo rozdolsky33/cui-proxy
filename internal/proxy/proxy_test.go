@@ -839,6 +839,64 @@ func TestStreamFlushedPerEvent(t *testing.T) {
 	}
 }
 
+// The client must see the response start as soon as the upstream's event-stream
+// headers pass the response guard, not when the first restored event is
+// released: restoration can hold early events back while it waits for a
+// synthetic's right boundary.
+func TestStreamHeadersFlushedBeforeFirstEvent(t *testing.T) {
+	release := make(chan struct{})
+	h := newHarness(t, func(w http.ResponseWriter, r *http.Request) {
+		sseHeaders(w)
+		w.(http.Flusher).Flush()
+		select {
+		case <-release:
+		case <-r.Context().Done():
+			return
+		case <-time.After(waitLimit):
+			return
+		}
+		writeEvent(w, "response.created", evCreated)
+		writeEvent(w, "response.completed", evCompleted)
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), waitLimit)
+	defer cancel()
+	type result struct {
+		res *http.Response
+		err error
+	}
+	got := make(chan result, 1)
+	go func() {
+		res, err := h.client.Do(h.req("POST", "/v1/responses", userBody("hi")).WithContext(ctx))
+		got <- result{res, err}
+	}()
+	var r result
+	select {
+	case r = <-got:
+	case <-time.After(2 * time.Second):
+		close(release)
+		r = <-got
+		if r.err == nil {
+			r.res.Body.Close()
+		}
+		t.Fatal("response headers were withheld until the first event")
+	}
+	if r.err != nil {
+		t.Fatal(r.err)
+	}
+	defer r.res.Body.Close()
+	if r.res.StatusCode != http.StatusOK || r.res.Header.Get("Content-Type") != "text/event-stream" {
+		t.Fatalf("status %d, Content-Type %q", r.res.StatusCode, r.res.Header.Get("Content-Type"))
+	}
+	close(release)
+	rd := sse.NewReader(r.res.Body)
+	for _, want := range []string{"response.created", "response.completed"} {
+		e, err := rd.Next()
+		if err != nil || e.Name != want {
+			t.Fatalf("event %q: got %q %v", want, e.Name, err)
+		}
+	}
+}
+
 // ---- extra tests (rulings P3-P11) ----
 
 func TestAcceptEncodingIdentityUpstream(t *testing.T) {
