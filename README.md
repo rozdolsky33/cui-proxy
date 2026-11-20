@@ -261,6 +261,7 @@ See the [documentation status](docs/documentation-status.md) for that distinctio
 | See what stands between this release and 1.0 | [Roadmap](ROADMAP.md) |
 | Know what a release may change | [docs/compatibility.md](docs/compatibility.md) |
 | See which Codex versions were checked | [docs/upstream-changes.md](docs/upstream-changes.md) |
+| Contribute or review changes | [CONTRIBUTING.md](CONTRIBUTING.md), [docs/maintaining.md](docs/maintaining.md) |
 | Install, upgrade or uninstall (Homebrew, curl, manual) | [docs/install.md](docs/install.md) |
 | Use the menu-bar app | [docs/menubar.md](docs/menubar.md) |
 | Configure defaults, sanitize/strict, overrides, Git/SSH, reload and vault | [docs/configuration.md](docs/configuration.md) |

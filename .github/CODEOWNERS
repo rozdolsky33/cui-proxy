@@ -1,0 +1,27 @@
+# Paths where a mistake can let an original value reach the model service, a
+# log or the dashboard, or can corrupt a restored tool call. A change here
+# needs a review from someone other than its author; see docs/maintaining.md
+# for what that review checks and for how the rule is enforced.
+#
+# Keep this list in step with the "Sensitive paths" table in
+# docs/maintaining.md.
+
+/internal/adapter/      @rozdolsky33
+/internal/detect/       @rozdolsky33
+/internal/transform/    @rozdolsky33
+/internal/synth/        @rozdolsky33
+/internal/sse/          @rozdolsky33
+/internal/proxy/        @rozdolsky33
+/internal/vault/        @rozdolsky33
+/internal/attachment/   @rozdolsky33
+/internal/decisionlog/  @rozdolsky33
+/internal/audit/        @rozdolsky33
+/internal/ui/           @rozdolsky33
+
+# Release and supply path, and the files that set these rules.
+/.github/               @rozdolsky33
+/scripts/package.sh     @rozdolsky33
+/scripts/make-formula.sh @rozdolsky33
+/scripts/update-tap.sh  @rozdolsky33
+/install.sh             @rozdolsky33
+/SECURITY.md            @rozdolsky33

@@ -136,3 +136,4 @@ nav:
       - Build and release: development.md
       - Maintain the documentation: contributing-docs.md
       - Review the security: security-review.md
+      - Maintain the project: maintaining.md
