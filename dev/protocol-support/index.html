@@ -1043,6 +1043,8 @@
       
         
       
+        
+      
     
     
     
@@ -1439,6 +1441,34 @@
     
   
     Compatibility and upgrades
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upstream-changes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Codex client changes
   
 
     
@@ -1995,6 +2025,8 @@ differently about synthetic values, even when every round trip is lossless.</p>
 Run <code>go test ./internal/adapter/codex ./internal/proxy ./internal/sse</code> with output
 captured as described in <a href="../verification/">verification</a>. The deterministic HTTP
 workflow corpus in <code>scripts/workflow/</code> remains the end-to-end boundary check.</p>
+<p><a href="../upstream-changes/">Codex client changes</a> lists the client versions checked
+against this adapter and how a change in the client is noticed and handled.</p>
 <h2 id="routes-and-transports">Routes and transports<a class="headerlink" href="#routes-and-transports" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2111,6 +2143,11 @@ workflow corpus in <code>scripts/workflow/</code> remains the end-to-end boundar
 <td>Tool schema describing image/file types</td>
 <td>Schema text is scanned, not treated as an attachment</td>
 <td><code>TestNestedToolSchemasNotBlocked</code></td>
+</tr>
+<tr>
+<td>Tool definitions in an <code>additional_tools</code> input item (Codex 0.166.0 and later)</td>
+<td>Scanned like top-level tools; schema property names are not treated as attachments, and attachment keys elsewhere in the item are refused</td>
+<td><code>TestAdditionalToolsInputItemScanned</code>, <code>TestAdditionalToolsSchemaPropertyNamesNotBlocked</code>, <code>TestToolSchemaExemptionLimitedToAdditionalToolsItems</code></td>
 </tr>
 <tr>
 <td>Invalid JSON, excessive nesting, unsupported binary content</td>
