@@ -18,6 +18,9 @@ The project has one maintainer. Expect replies within days, not hours, and see
 - **Open an issue first for anything large.** A new detector family, a new
   client or a change to a [stable interface](docs/compatibility.md) should be
   discussed before code is written.
+- **New clients and platforms are not being added yet.**
+  [Adding a client or feature](docs/adding-scope.md) says why and what an
+  addition will need.
 
 ## Build and test
 
