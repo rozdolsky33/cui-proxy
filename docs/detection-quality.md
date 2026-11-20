@@ -93,7 +93,7 @@ that length:
 | 19 digits | 4; 50 or 56 to 58; 60, 62 to 65 or 67; 30, 35, 36, 38 or 39 |
 
 The limits on 13 to 15 digit slices shipped in v0.7.2 and took 18-digit
-integers to 27.5%. The limits on longer slices came after it.
+integers to 27.5%. The limits on longer slices shipped in v0.7.3.
 
 A 20-digit integer is too long to be a card as a whole, but it holds 35
 slices of card length. It was flagged in 40.0% of samples before the limits
