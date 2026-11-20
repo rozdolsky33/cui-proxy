@@ -82,6 +82,7 @@ Changes to sensitive paths since this rule was written:
 | 2026-11-19 | [62](https://github.com/rozdolsky33/cui-proxy/pull/62) | `internal/proxy`: response headers are sent before the first event |
 | 2026-11-19 | [67](https://github.com/rozdolsky33/cui-proxy/pull/67) | `internal/detect`: two address shapes that were not fully masked |
 | 2026-11-19 | [68](https://github.com/rozdolsky33/cui-proxy/pull/68) | `internal/adapter`: tool definitions accepted in a second place in the request |
+| 2026-11-19 | [73](https://github.com/rozdolsky33/cui-proxy/pull/73) | `internal/detect`: ordinary words after `Bearer` are no longer masked, and neither is a word-shaped token outside an `Authorization` header |
 
 Everything merged before this table was started is also unreviewed by anyone
 outside the project. The [security review guide](security-review.md) covers
