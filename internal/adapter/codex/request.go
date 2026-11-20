@@ -205,7 +205,7 @@ type scope struct {
 	attachments attachmentContext // direct parts of a validated attachment-bearing envelope
 	inner       bool              // inside JSON carried in a string: nothing opaque, no binary checks
 	schema      bool              // inside a tool/format schema: no binary checks
-	tools       bool              // under top-level tools
+	tools       bool              // under top-level tools or an additional_tools item
 	depth       int               // containers enclosing the value
 }
 
@@ -284,7 +284,10 @@ func (w reqWalker) object(n *node, sc scope) error {
 			}
 			continue
 		}
-		tools := sc.tools || sc.pos == posTop && k == "tools"
+		// Tool definitions arrive in top-level tools or, from newer clients,
+		// in an input item of type additional_tools.
+		tools := sc.tools || sc.pos == posTop && k == "tools" ||
+			!sc.inner && sc.pos == posItem && k == "tools" && itemType(n) == "additional_tools"
 		schema := sc.schema || !sc.inner && (k == "parameters" || k == "format" || k == "schema") &&
 			(sc.tools || sc.pos == posText)
 		ac := attachmentNone
