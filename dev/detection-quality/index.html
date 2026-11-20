@@ -1636,6 +1636,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Harmless values that were flagged">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-word-bearer-followed-by-ordinary-words" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The word Bearer followed by ordinary words
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2050,6 +2067,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Harmless values that were flagged">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-word-bearer-followed-by-ordinary-words" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The word Bearer followed by ordinary words
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2186,8 +2220,8 @@ before relying on them.</p>
 </tr>
 <tr>
 <td><code>secret</code></td>
-<td>8</td>
-<td>3,760</td>
+<td>10</td>
+<td>4,880</td>
 <td>0</td>
 <td>0.0%</td>
 </tr>
@@ -2200,8 +2234,8 @@ before relying on them.</p>
 </tr>
 <tr>
 <td>All</td>
-<td>41</td>
-<td>39,840</td>
+<td>43</td>
+<td>40,960</td>
 <td>0</td>
 <td>0.0%</td>
 </tr>
@@ -2264,8 +2298,8 @@ before relying on them.</p>
 <td><code>secret</code></td>
 <td>5</td>
 <td>3,360</td>
-<td>1,165</td>
-<td>34.7%</td>
+<td>0</td>
+<td>0.0%</td>
 </tr>
 <tr>
 <td>Other ordinary values</td>
@@ -2278,15 +2312,15 @@ before relying on them.</p>
 <td>All</td>
 <td>34</td>
 <td>33,520</td>
-<td>1,633</td>
-<td>4.9%</td>
+<td>468</td>
+<td>1.4%</td>
 </tr>
 </tbody>
 </table>
 <p>Every shape counts equally in these totals. A family's rate therefore
 depends on which shapes were chosen, not on how often each occurs in real
-work. The <code>secret</code> false-positive rate, for example, comes from two shapes
-out of five.</p>
+work. The rate for other ordinary values, for example, comes from two shapes
+out of eleven.</p>
 <h2 id="values-that-were-not-fully-masked">Values that were not fully masked<a class="headerlink" href="#values-that-were-not-fully-masked" title="Permanent link">&para;</a></h2>
 <p>A value counts as fully masked only when every byte of it falls inside a
 detected span. Anything less would forward part of the value.</p>
@@ -2333,18 +2367,6 @@ describes that behavior.</p>
 </thead>
 <tbody>
 <tr>
-<td>The word <code>Bearer</code> followed by an ordinary word of eight or more letters</td>
-<td>1,040</td>
-<td>1,040</td>
-<td>100.0%</td>
-</tr>
-<tr>
-<td>The word <code>Bearer</code> followed by a word of three to seven letters</td>
-<td>1,040</td>
-<td>125</td>
-<td>12.0%</td>
-</tr>
-<tr>
 <td>A 16-digit integer that is not a card number</td>
 <td>1,040</td>
 <td>442</td>
@@ -2358,10 +2380,22 @@ describes that behavior.</p>
 </tr>
 </tbody>
 </table>
-<p>The second row is flagged when characters directly after the short word,
-such as a suffix, a path or a full stop, extend it to eight token characters. The integer and digest rows follow from the
-documented rule that a long digit run containing a checksum hit is masked.</p>
-<p>These 30 look-alike shapes were never flagged:</p>
+<p>Both rows follow from the documented rule that a long digit run containing a
+checksum hit is masked.</p>
+<h3 id="the-word-bearer-followed-by-ordinary-words">The word <code>Bearer</code> followed by ordinary words<a class="headerlink" href="#the-word-bearer-followed-by-ordinary-words" title="Permanent link">&para;</a></h3>
+<p>Earlier baselines flagged the word <code>Bearer</code> followed by an ordinary word:
+every sample with a word of eight or more letters, and 12.0% of samples with
+a shorter word. Text such as "Bearer authentication is required" was masked.</p>
+<p>The detector now skips text after <code>Bearer</code> that reads as words: no digit,
+and each run of letters at most 20 long and all lower case, all upper case
+or capitalized. Both shapes are now flagged in 0 of 1,040 samples.</p>
+<p>This has a cost. A real token that is itself word-shaped, such as a
+hand-chosen lower-case phrase, is no longer masked after <code>Bearer</code> unless it
+is the value of an <code>Authorization</code> header or field. In that position
+everything after <code>Bearer</code> is still masked. The table of
+<a href="#shapes-the-built-in-set-does-not-cover">shapes not covered</a> measures the
+uncovered case.</p>
+<p>These 32 look-alike shapes were never flagged:</p>
 <ul>
 <li><strong>Addresses:</strong> an octet above 255, three-part and five-part version
   numbers, decimal numbers, dotted dates, MAC addresses, clock times, scope
@@ -2370,7 +2404,8 @@ documented rule that a long digit run containing a checksum hit is masked.</p>
 <li><strong>Social Security numbers:</strong> phone numbers, ISO dates, ZIP+4 codes and
   area numbers that are never issued.</li>
 <li><strong>Cards:</strong> 16-digit grouped numbers with a wrong checksum.</li>
-<li><strong>Secrets:</strong> certificate blocks, public-key blocks and dotted identifiers.</li>
+<li><strong>Secrets:</strong> the word <code>Bearer</code> followed by an ordinary word, certificate
+  blocks, public-key blocks and dotted identifiers.</li>
 <li><strong>Other:</strong> UUIDs, 40-character commit hashes, epoch seconds and
   milliseconds, semantic versions, ISO timestamps, international phone
   numbers, 12-digit order numbers and hex colors.</li>
@@ -2402,6 +2437,11 @@ defect in a documented claim. If they matter to you, add
 <td>Token after a lowercase <code>bearer</code> scheme word</td>
 <td>1,080</td>
 <td>1,080</td>
+</tr>
+<tr>
+<td>Word-shaped token after <code>Bearer</code>, outside an <code>Authorization</code> header</td>
+<td>1,040</td>
+<td>0</td>
 </tr>
 <tr>
 <td>Access-key-ID style token</td>
@@ -2453,8 +2493,8 @@ corpus of this kind can measure them:</p>
   punctuation directly before or after, and non-ASCII neighbors. There are
   35 contexts in total. Values that span lines use three multi-line
   contexts.</li>
-<li><strong>Scale.</strong> 40 values per shape. 48 positive shapes and 34 negative shapes
-  give 80,680 samples.</li>
+<li><strong>Scale.</strong> 40 values per shape. 51 positive shapes and 34 negative shapes
+  give 82,840 samples.</li>
 <li><strong>Scoring.</strong> A positive is fully masked, partly masked or missed, by the
   bytes that detected spans cover. A negative is flagged when any span
   touches it.</li>

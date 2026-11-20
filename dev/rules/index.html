@@ -2260,7 +2260,7 @@ no individual built-in category toggle, exclusion list, or per-value allowlist.<
 <tr>
 <td><code>secret</code></td>
 <td>Tokens using the <code>Bearer</code> scheme, JWT-shaped tokens, private-key blocks, selected numeric runs and address/port tokens</td>
-<td>The bearer-token detector requires at least eight token characters; an unterminated private-key block is masked to end of text</td>
+<td>The bearer-token detector requires at least eight token characters, and outside an <code>Authorization</code> header it skips text that reads as ordinary words, so a word-shaped token there is not masked; an unterminated private-key block is masked to end of text</td>
 </tr>
 </tbody>
 </table>
