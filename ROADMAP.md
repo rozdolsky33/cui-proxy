@@ -1,6 +1,6 @@
 # Roadmap to 1.0
 
-Status as of 2026-11-19, release v0.7.0.
+Status as of 2026-11-19, release v0.7.1.
 
 cui-proxy is an early-stage, single-maintainer project. Its tests, fuzzing and
 CI are extensive for its age, but it was first committed on 2026-11-06, has
@@ -74,8 +74,8 @@ Exit criteria: the policy is published, and two consecutive releases ship
 without a breaking change to a declared-stable interface.
 
 Progress: the [compatibility and upgrade policy](docs/compatibility.md) is
-published and tests lock the declared interfaces. The two-release count
-starts with the first release after v0.7.0.
+published and tests lock the declared interfaces. v0.7.1 is the first release
+under the policy and makes no breaking change. One more is needed.
 
 ### 3. Trial with outside users
 
@@ -160,8 +160,9 @@ baseline, and a weekly workflow runs it against the newest client.
 [Codex client changes](docs/upstream-changes.md) holds the procedure, the
 checked versions and the first write-up: Codex 0.166.0 moved its tool
 definitions, the proxy stayed fail-closed, and the adapter was fixed the day
-the change was noticed. No release contains that fix yet, and the probe does
-not see real responses, so this milestone is not met.
+the change was noticed and released in v0.7.1 the same day. That meets the
+exit criteria. The change was a small one, and the probe does not see real
+responses, so a larger change or one on the response side is still untested.
 
 ### 7. Reduce single-maintainer risk
 
@@ -201,7 +202,7 @@ a test fails when a new adapter directory appears.
 - [ ] Five or more outside operators have used the proxy for four weeks each.
 - [ ] One external adversarial review is complete and its findings resolved.
 - [ ] Detection false-negative and false-positive rates are published.
-- [ ] One upstream protocol change has been handled fail-closed.
+- [x] One upstream protocol change has been handled fail-closed.
 - [ ] Security-sensitive changes get review from someone other than the author.
 
 ## What does not count as progress

@@ -27,7 +27,7 @@ can be trusted:
 | Outside operators have used the proxy for four weeks each | Trial is open. Nobody has enrolled |
 | An external adversarial review is complete | Review guide is published. No reviewer is engaged |
 | Detection rates are measured on a corpus from outside the project | Measured on a corpus written inside the project |
-| A client change has been handled and a fixed release published | Handled on `main`. No release contains the fix |
+| A client change has been handled and a fixed release published | Done in v0.7.1, for one small change |
 
 Until those are met, a request to widen scope is recorded and not built. A
 second client added now would double the code that has had no outside review,

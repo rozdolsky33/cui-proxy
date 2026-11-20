@@ -73,9 +73,9 @@ release is compatible in full.
 | Client | Date | Proxy | Result |
 |---|---|---|---|
 | `codex-cli 0.167.0` | 2026-11-07 | `main` at that date | [Live check](verification.md) against the signed-in service passed: text and one tool call. |
-| `codex-cli 0.166.0` | 2026-11-19 | `main` before the fix below | Probe passed. Found the tool-definition change described below. |
-| `codex-cli 0.170.0` | 2026-11-19 | `main` with the fix | Probe passed. Same request structure as 0.166.0. |
-| `codex-cli 0.171.0` | 2026-11-19 | `main` with the fix | Probe passed on a Linux runner. One new request header, described below. |
+| `codex-cli 0.166.0` | 2026-11-19 | v0.7.0 | Probe passed. Found the tool-definition change described below. |
+| `codex-cli 0.170.0` | 2026-11-19 | v0.7.1 | Probe passed. Same request structure as 0.166.0. |
+| `codex-cli 0.171.0` | 2026-11-19 | v0.7.1 | Probe passed on a Linux runner. One new request header, described below. |
 
 Each release from now on records the client version the probe passed with in
 its release notes.
@@ -118,8 +118,7 @@ its release notes.
   item the same way as those in top-level `tools`
   ([pull request 68](https://github.com/rozdolsky33/cui-proxy/pull/68)).
   Attachment fields outside a tool's parameter list are still refused.
-- **Time taken.** Noticed and fixed on `main` the same day. No release
-  contains the fix yet.
+- **Time taken.** Noticed, fixed and released in v0.7.1 on the same day.
 - **Not confirmed.** That tool servers' definitions also arrive in this item.
   The probe runs the client without tool servers.
 
