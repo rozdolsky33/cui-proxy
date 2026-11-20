@@ -2078,7 +2078,7 @@
 
 
 <h1 id="text-only-use-v070">Text-only use: v0.7.0<a class="headerlink" href="#text-only-use-v070" title="Permanent link">&para;</a></h1>
-<p>This release is available on the stable installation channel for supervised text and code workflows. It is not a production-readiness claim, a supported four-agent operating envelope, or a promise of equivalent model reasoning. Multi-agent performance qualification continues separately.</p>
+<p>v0.7.1 is the current patch release of v0.7.0. It fixes three defects and changes no setting. This release is available on the stable installation channel for supervised text and code workflows. It is not a production-readiness claim, a supported four-agent operating envelope, or a promise of equivalent model reasoning. Multi-agent performance qualification continues separately.</p>
 <h2 id="install-with-homebrew-or-a-pinned-installer">Install with Homebrew or a pinned installer<a class="headerlink" href="#install-with-homebrew-or-a-pinned-installer" title="Permanent link">&para;</a></h2>
 <p>Install or upgrade through Homebrew:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>brew<span class="w"> </span>install<span class="w"> </span>rozdolsky33/tap/cui-proxy
@@ -2086,10 +2086,10 @@
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>brew<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>brew<span class="w"> </span>upgrade<span class="w"> </span>cui-proxy
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>cui-proxy<span class="w"> </span>version
 </code></pre></div>
-<p>Confirm the installed version is <code>v0.7.0</code>. If an older proxy process is still running, drain its active requests and restart it with the intended binary and preserved configuration/vault/key; upgrading a formula does not necessarily replace a running process.</p>
+<p>Confirm the installed version is <code>v0.7.1</code>. If an older proxy process is still running, drain its active requests and restart it with the intended binary and preserved configuration/vault/key; upgrading a formula does not necessarily replace a running process.</p>
 <p>Alternatively, download the pinned installer, inspect it, and install into a separate directory so the current installation remains available:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://raw.githubusercontent.com/rozdolsky33/cui-proxy/v0.7.0/install.sh<span class="w"> </span>-o<span class="w"> </span>cui-proxy-trial-install.sh
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nv">CUI_PROXY_VERSION</span><span class="o">=</span>v0.7.0<span class="w"> </span><span class="nv">INSTALL_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$HOME</span><span class="s2">/.local/cui-proxy-trial"</span><span class="w"> </span>sh<span class="w"> </span>cui-proxy-trial-install.sh
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://raw.githubusercontent.com/rozdolsky33/cui-proxy/v0.7.1/install.sh<span class="w"> </span>-o<span class="w"> </span>cui-proxy-trial-install.sh
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nv">CUI_PROXY_VERSION</span><span class="o">=</span>v0.7.1<span class="w"> </span><span class="nv">INSTALL_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$HOME</span><span class="s2">/.local/cui-proxy-trial"</span><span class="w"> </span>sh<span class="w"> </span>cui-proxy-trial-install.sh
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="s2">"</span><span class="nv">$HOME</span><span class="s2">/.local/cui-proxy-trial/cui-proxy"</span><span class="w"> </span>version
 </code></pre></div>
 <p>Read the downloaded script before running it. The installer verifies the selected archive against the release checksums. Archives cover macOS and Linux on amd64 and arm64; this does not mean every operating system has completed a native trial. The installed binary also contains the offline manual.</p>
