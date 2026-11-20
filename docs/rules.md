@@ -69,7 +69,7 @@ no individual built-in category toggle, exclusion list, or per-value allowlist.
 
 Unseparated card-like digit runs and long numeric IDs containing a Luhn hit
 are masked as opaque secrets rather than preserving a card shape. Inside a
-longer run, a slice of 13 to 17 digits counts as a hit only when it starts
+longer run, a slice of 13 to 19 digits counts as a hit only when it starts
 like a card of that length; [measured detection quality](detection-quality.md#long-integers)
 lists the prefixes. Tcpdump-style
 dotted address/port tokens are masked whole, including the port. Five

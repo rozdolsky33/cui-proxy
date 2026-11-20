@@ -20,10 +20,10 @@ Measured on the detectors at the commit that last changed
 | `cidr` | 2 | 2,080 | 0 | 0.0% |
 | `email` | 11 | 12,320 | 0 | 0.0% |
 | `ssn` | 1 | 1,040 | 0 | 0.0% |
-| `card` | 8 | 8,320 | 0 | 0.0% |
+| `card` | 9 | 9,360 | 0 | 0.0% |
 | `secret` | 10 | 4,880 | 0 | 0.0% |
 | `ocid` | 3 | 3,120 | 0 | 0.0% |
-| All | 46 | 44,080 | 0 | 0.0% |
+| All | 47 | 45,120 | 0 | 0.0% |
 
 | Look-alikes of | Shapes tested | Samples | Flagged | False-positive rate |
 |---|---|---|---|---|
@@ -34,13 +34,13 @@ Measured on the detectors at the commit that last changed
 | `ssn` | 4 | 4,160 | 0 | 0.0% |
 | `card` | 2 | 2,080 | 0 | 0.0% |
 | `secret` | 5 | 3,360 | 0 | 0.0% |
-| Other ordinary values | 12 | 12,480 | 390 | 3.1% |
-| All | 35 | 34,560 | 390 | 1.1% |
+| Other ordinary values | 13 | 13,520 | 780 | 5.8% |
+| All | 36 | 35,600 | 780 | 2.2% |
 
 Every shape counts equally in these totals. A family's rate therefore
 depends on which shapes were chosen, not on how often each occurs in real
-work. The rate for other ordinary values, for example, comes from two shapes
-out of twelve.
+work. The rate for other ordinary values, for example, comes from three shapes
+out of thirteen.
 
 ## Values that were not fully masked
 
@@ -68,8 +68,9 @@ describes that behavior.
 |---|---|---|---|
 | A 16-digit integer | 1,040 | 208 | 20.0% |
 | An 18-digit integer | 1,040 | 182 | 17.5% |
+| A 20-digit integer | 1,040 | 390 | 37.5% |
 
-Both rows follow from the documented rule that a long digit run containing a
+All three rows follow from the documented rule that a long digit run containing a
 checksum hit is masked.
 
 ### Long integers
@@ -79,7 +80,7 @@ when a slice of 13 to 19 digits inside it does. Earlier baselines flagged
 42.5% of 16-digit integers, and 60.0% of 18-digit integers measured the same
 way, because any slice starting with 3 to 6 counted.
 
-A slice of 13 to 17 digits now counts only when it starts like a card of
+A slice now counts only when it starts like a card of
 that length:
 
 | Slice length | Must start with |
@@ -88,23 +89,28 @@ that length:
 | 14 digits | 30, 36, 38 or 39 |
 | 15 digits | 34 or 37 |
 | 16 digits | 4; 50 to 58; 60, 62 to 65 or 67; 30, 35, 36, 38 or 39 |
-| 17 digits | 50 or 56 to 58; 60, 62 to 65 or 67; 30, 35, 36, 38 or 39 |
+| 17 or 18 digits | 50 or 56 to 58; 60, 62 to 65 or 67; 30, 35, 36, 38 or 39 |
+| 19 digits | 4; 50 or 56 to 58; 60, 62 to 65 or 67; 30, 35, 36, 38 or 39 |
 
-Slices of 18 and 19 digits still need only a first digit of 3 to 6. The
-limits on 13 to 15 digit slices shipped in v0.7.2 and took 18-digit integers
-to 27.5%. The limits on 16 and 17 digit slices came after it. A 64-character
+The limits on 13 to 15 digit slices shipped in v0.7.2 and took 18-digit
+integers to 27.5%. The limits on longer slices came after it.
+
+A 20-digit integer is too long to be a card as a whole, but it holds 35
+slices of card length. It was flagged in 40.0% of samples before the limits
+on 18 and 19 digit slices and in 37.5% after. By calculation, most of what
+remains comes from 13 and 16 digit slices, where real cards are common. A 64-character
 hexadecimal digest was flagged in 2.5% of samples for the same reason and is
 now flagged in none.
 
 The rate cannot reach zero with this kind of rule. One random 16-digit
 integer in ten passes the card checksum as a whole and cannot be told apart
-from an unseparated card number. With 40 values per shape, these two rates
+from an unseparated card number. With 40 values per shape, these rates
 are rough.
 
 This has a cost. A card number that starts with something outside the table,
 sitting inside a longer run of digits, was masked before and is not now. The
 table of [shapes not covered](#shapes-the-built-in-set-does-not-cover)
-measures two such cases. The prefix table follows the published ranges of
+measures three such cases. The prefix table follows the published ranges of
 the large card schemes. A smaller or national scheme with another prefix is
 not in it. The same number standing alone or written with separators is
 detected as before.
@@ -160,6 +166,7 @@ defect in a documented claim. If they matter to you, add
 | 32-character hexadecimal string | 1,040 | 0 |
 | 13-digit card-like number starting with 5 or 6, inside a longer digit run | 1,040 | 0 |
 | 16-digit card-like number starting with 31, 33, 59, 61, 66 or 69, inside a longer digit run | 1,040 | 26 |
+| 19-digit card-like number starting with 33, 51, 61 or 69, inside a longer digit run | 1,040 | 234 |
 
 The lowercase `bearer` form is not stated in the rules guide, and it was
 masked in every sample.
@@ -190,8 +197,8 @@ corpus of this kind can measure them:
   punctuation directly before or after, and non-ASCII neighbors. There are
   35 contexts in total. Values that span lines use three multi-line
   contexts.
-- **Scale.** 40 values per shape. 56 positive shapes and 35 negative shapes
-  give 89,080 samples.
+- **Scale.** 40 values per shape. 58 positive shapes and 36 negative shapes
+  give 92,200 samples.
 - **Scoring.** A positive is fully masked, partly masked or missed, by the
   bytes that detected spans cover. A negative is flagged when any span
   touches it.

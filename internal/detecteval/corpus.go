@@ -194,6 +194,10 @@ func card16(r *rng, prefix string) string {
 	return luhn(prefix + r.chars(digits, 15-len(prefix)))
 }
 
+func card19(r *rng, prefix string) string {
+	return luhn(prefix + r.chars(digits, 18-len(prefix)))
+}
+
 // notLuhn returns a 16-digit number that fails the Luhn test.
 func notLuhn(r *rng) string {
 	c := card16(r, "4")
@@ -331,6 +335,12 @@ func generators() []generator {
 		pos("card", "16-digit-other-prefix-inside-longer-run", false, general, func(r *rng) string {
 			return r.chars("789", 1) + card16(r, r.pick([]string{"31", "33", "59", "61", "66", "69"}))
 		}),
+		pos("card", "19-digit-inside-longer-run", true, general, func(r *rng) string {
+			return r.chars("789", 1) + card19(r, r.pick([]string{"4", "62", "6011", "35", "56"}))
+		}),
+		pos("card", "19-digit-other-prefix-inside-longer-run", false, general, func(r *rng) string {
+			return r.chars("789", 1) + card19(r, r.pick([]string{"51", "33", "61", "69"}))
+		}),
 		pos("card", "13-digit-other-prefix-inside-longer-run", false, general, func(r *rng) string {
 			return r.chars("789", 1) + luhn(r.pick([]string{"5", "6"})+r.chars(digits, 11))
 		}),
@@ -440,6 +450,7 @@ func generators() []generator {
 		}),
 		neg("benign", "phone-international", general, func(r *rng) string { return "+1" + r.chars("23456789", 1) + r.chars(digits, 9) }),
 		neg("benign", "order-number-12", general, func(r *rng) string { return r.chars("123456789", 1) + r.chars(digits, 11) }),
+		neg("benign", "integer-20", general, func(r *rng) string { return r.chars("123456789", 1) + r.chars(digits, 19) }),
 		neg("benign", "integer-18", general, func(r *rng) string { return r.chars("123456789", 1) + r.chars(digits, 17) }),
 		neg("benign", "integer-16", general, func(r *rng) string { return r.chars("123456789", 1) + r.chars(digits, 15) }),
 		neg("benign", "hex-color", general, func(r *rng) string { return "#" + r.chars(hexLower, 6) }),

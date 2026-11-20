@@ -300,8 +300,8 @@ func cardFind(text string, s, e int) [][2]int {
 //     Luhn-valid 13-digit millisecond timestamp such as 1700000000004 must
 //     not be masked);
 //   - a strict sub-window (13-19 digits, shorter than the group) starts with
-//     3-6, starts like a card of its length when it has 13-17 digits (see
-//     cardSlicePrefix), and is Luhn-valid.
+//     3-6, starts like a card of its length (see cardSlicePrefix), and is
+//     Luhn-valid.
 //
 // Masking the whole run (rather than a card-shaped synthetic) is the safe
 // direction: the token restores even when the run is glued to letters, '_',
@@ -362,10 +362,9 @@ func isUUID(c string) bool {
 //   - 14 digits: 30, 36, 38, 39.
 //   - 15 digits: 34, 37.
 //   - 16 digits: 4; 50-58; 60, 62-65, 67; 30, 35, 36, 38, 39.
-//   - 17 digits: the 16-digit list without 4 and 51-55, whose cards are not
-//     issued at that length.
-//
-// Windows of 18 and 19 digits keep the first-digit rule alone.
+//   - 17 and 18 digits: the 16-digit list without 4 and 51-55, whose cards
+//     are not issued at those lengths.
+//   - 19 digits: the 17-digit list and 4.
 func cardSlicePrefix(text string, st, n int) bool {
 	d0, d1 := text[st], text[st+1]
 	in := func(set string) bool {
@@ -383,12 +382,12 @@ func cardSlicePrefix(text string, st, n int) bool {
 		return d0 == '3' && in("0689")
 	case 15:
 		return d0 == '3' && in("47")
-	case 16, 17:
+	case 16, 17, 18, 19:
 		switch d0 {
 		case '3':
 			return in("05689")
 		case '4':
-			return n == 16
+			return n == 16 || n == 19
 		case '5':
 			if n == 16 {
 				return d1 != '9'
