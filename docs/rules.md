@@ -65,7 +65,7 @@ no individual built-in category toggle, exclusion list, or per-value allowlist.
 | `email` | Email-shaped text | Can match the user/host portion of an SSH remote |
 | `ssn` | Dashed US Social Security number shapes | Applies validity checks; a synthetically invalid `000` area is not a real SSN detector sample |
 | `card` | Separated card-like digit sequences | Uses Luhn validation and supported length checks |
-| `secret` | Tokens using the `Bearer` scheme, JWT-shaped tokens, private-key blocks, selected numeric runs and address/port tokens | The bearer-token detector requires at least eight token characters; an unterminated private-key block is masked to end of text |
+| `secret` | Tokens using the `Bearer` scheme, JWT-shaped tokens, private-key blocks, selected numeric runs and address/port tokens | The bearer-token detector requires at least eight token characters, and outside an `Authorization` header it skips text that reads as ordinary words, so a word-shaped token there is not masked; an unterminated private-key block is masked to end of text |
 
 Unseparated card-like digit runs and long numeric IDs containing a Luhn hit
 are masked as opaque secrets rather than preserving a card shape. Tcpdump-style

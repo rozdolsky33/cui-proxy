@@ -1,7 +1,7 @@
 {
   "seed": 20261119,
   "values_per_variant": 40,
-  "samples": 80680,
+  "samples": 82840,
   "positive_variants": [
     {
       "family": "card",
@@ -325,6 +325,16 @@
     },
     {
       "family": "secret",
+      "group": "bearer-letters-only-token",
+      "claimed": true,
+      "total": 1080,
+      "full": 1080,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 1080
+    },
+    {
+      "family": "secret",
       "group": "bearer-lowercase-scheme",
       "claimed": false,
       "total": 1080,
@@ -342,6 +352,26 @@
       "partial": 0,
       "missed": 0,
       "as_family": 1080
+    },
+    {
+      "family": "secret",
+      "group": "bearer-word-shaped-token-in-header",
+      "claimed": true,
+      "total": 40,
+      "full": 40,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 40
+    },
+    {
+      "family": "secret",
+      "group": "bearer-word-shaped-token-outside-header",
+      "claimed": false,
+      "total": 1040,
+      "full": 0,
+      "partial": 0,
+      "missed": 1040,
+      "as_family": 0
     },
     {
       "family": "secret",
@@ -2119,131 +2149,131 @@
       "family": "secret",
       "group": "angle-brackets",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "authorization-header",
       "claimed": false,
-      "total": 80,
-      "full": 80,
+      "total": 160,
+      "full": 160,
       "partial": 0,
       "missed": 0,
-      "as_family": 80
+      "as_family": 160
     },
     {
       "family": "secret",
       "group": "backticks",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "colon-after",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "comma-list",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "env-assignment",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "escaped-json",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "hyphen-suffix",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "json-string",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "log-field",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "markdown-link",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "non-ascii-neighbors",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "own-line",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
@@ -2259,131 +2289,131 @@
       "family": "secret",
       "group": "parentheses",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "path-segment",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "prose",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "semicolon-after",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "sentence-end",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "shell-argument",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "single-quoted",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "tab-separated",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "tight-commas",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "typographic-quotes",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "underscore-suffix",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "url-query",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
       "group": "xml-attribute",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "secret",
@@ -2399,11 +2429,11 @@
       "family": "secret",
       "group": "yaml-value",
       "claimed": false,
-      "total": 160,
-      "full": 160,
+      "total": 240,
+      "full": 200,
       "partial": 0,
-      "missed": 0,
-      "as_family": 160
+      "missed": 40,
+      "as_family": 200
     },
     {
       "family": "ssn",
@@ -3081,13 +3111,13 @@
       "family": "secret",
       "group": "bearer-then-long-word",
       "total": 1040,
-      "flagged": 1040
+      "flagged": 0
     },
     {
       "family": "secret",
       "group": "bearer-then-short-word",
       "total": 1040,
-      "flagged": 125
+      "flagged": 0
     },
     {
       "family": "secret",

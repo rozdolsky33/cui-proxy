@@ -29,8 +29,10 @@ var builtinDefs = []builtinDef{
 	{class: "secret", pattern: `\d(?:[ -]?\d)*`, find: cardRunFind, candidates: cardCandidates},
 	// secrets: the span is the token/blob itself, not the "Bearer" keyword.
 	// Bearer tokens need at least 8 token-charset characters after "Bearer ":
-	// short enough to catch opaque tokens, long enough to skip prose ("Bearer token").
-	{class: "secret", pattern: `(?i)\bbearer\s+([A-Za-z0-9._~+/=-]{8,})`, group: true},
+	// short enough to catch opaque tokens, long enough to skip "Bearer token".
+	// bearerRefine skips longer prose ("Bearer authentication") outside an
+	// Authorization header.
+	{class: "secret", pattern: `(?i)\bbearer\s+([A-Za-z0-9._~+/=-]{8,})`, group: true, refine: bearerRefine},
 	{class: "secret", pattern: `\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+`},
 	// An unterminated block (truncated body) runs to the end of the text: fail closed.
 	{class: "secret", pattern: `-----BEGIN [A-Z ]*PRIVATE KEY(?: BLOCK)?-----(?s:.*?)(?:-----END [A-Z ]*PRIVATE KEY(?: BLOCK)?-----|\z)`},

@@ -321,6 +321,9 @@ func generators() []generator {
 		pos("card", "16-digit-unseparated", true, general, func(r *rng) string { return card16(r, "4") }),
 
 		led(pos("secret", "bearer-token", true, bearerctx, func(r *rng) string { return r.chars(b64url, r.between(24, 48)) }), "Bearer "),
+		led(pos("secret", "bearer-letters-only-token", true, bearerctx, func(r *rng) string { return r.chars(lower+upper, r.between(24, 48)) }), "Bearer "),
+		led(pos("secret", "bearer-word-shaped-token-in-header", true, []context{{"authorization-header", "Authorization: ", ""}}, func(r *rng) string { return word(r, 8, 16) }), "Bearer "),
+		led(pos("secret", "bearer-word-shaped-token-outside-header", false, general, func(r *rng) string { return word(r, 8, 16) }), "Bearer "),
 		led(pos("secret", "bearer-lowercase-scheme", false, bearerctx, func(r *rng) string { return r.chars(b64url, r.between(24, 48)) }), "bearer "),
 		pos("secret", "jwt", true, general, jwt),
 		pos("secret", "private-key-pkcs8", true, multiline, func(r *rng) string { return pem(r, privateKey) }),

@@ -21,9 +21,9 @@ Measured on the detectors at the commit that last changed
 | `email` | 11 | 12,320 | 0 | 0.0% |
 | `ssn` | 1 | 1,040 | 0 | 0.0% |
 | `card` | 5 | 5,200 | 0 | 0.0% |
-| `secret` | 8 | 3,760 | 0 | 0.0% |
+| `secret` | 10 | 4,880 | 0 | 0.0% |
 | `ocid` | 3 | 3,120 | 0 | 0.0% |
-| All | 41 | 39,840 | 0 | 0.0% |
+| All | 43 | 40,960 | 0 | 0.0% |
 
 | Look-alikes of | Shapes tested | Samples | Flagged | False-positive rate |
 |---|---|---|---|---|
@@ -33,14 +33,14 @@ Measured on the detectors at the commit that last changed
 | `email` | 2 | 2,080 | 0 | 0.0% |
 | `ssn` | 4 | 4,160 | 0 | 0.0% |
 | `card` | 2 | 2,080 | 0 | 0.0% |
-| `secret` | 5 | 3,360 | 1,165 | 34.7% |
+| `secret` | 5 | 3,360 | 0 | 0.0% |
 | Other ordinary values | 11 | 11,440 | 468 | 4.1% |
-| All | 34 | 33,520 | 1,633 | 4.9% |
+| All | 34 | 33,520 | 468 | 1.4% |
 
 Every shape counts equally in these totals. A family's rate therefore
 depends on which shapes were chosen, not on how often each occurs in real
-work. The `secret` false-positive rate, for example, comes from two shapes
-out of five.
+work. The rate for other ordinary values, for example, comes from two shapes
+out of eleven.
 
 ## Values that were not fully masked
 
@@ -66,16 +66,30 @@ describes that behavior.
 
 | Shape | Samples | Flagged | Rate |
 |---|---|---|---|
-| The word `Bearer` followed by an ordinary word of eight or more letters | 1,040 | 1,040 | 100.0% |
-| The word `Bearer` followed by a word of three to seven letters | 1,040 | 125 | 12.0% |
 | A 16-digit integer that is not a card number | 1,040 | 442 | 42.5% |
 | A 64-character hexadecimal digest | 1,040 | 26 | 2.5% |
 
-The second row is flagged when characters directly after the short word,
-such as a suffix, a path or a full stop, extend it to eight token characters. The integer and digest rows follow from the
-documented rule that a long digit run containing a checksum hit is masked.
+Both rows follow from the documented rule that a long digit run containing a
+checksum hit is masked.
 
-These 30 look-alike shapes were never flagged:
+### The word `Bearer` followed by ordinary words
+
+Earlier baselines flagged the word `Bearer` followed by an ordinary word:
+every sample with a word of eight or more letters, and 12.0% of samples with
+a shorter word. Text such as "Bearer authentication is required" was masked.
+
+The detector now skips text after `Bearer` that reads as words: no digit,
+and each run of letters at most 20 long and all lower case, all upper case
+or capitalized. Both shapes are now flagged in 0 of 1,040 samples.
+
+This has a cost. A real token that is itself word-shaped, such as a
+hand-chosen lower-case phrase, is no longer masked after `Bearer` unless it
+is the value of an `Authorization` header or field. In that position
+everything after `Bearer` is still masked. The table of
+[shapes not covered](#shapes-the-built-in-set-does-not-cover) measures the
+uncovered case.
+
+These 32 look-alike shapes were never flagged:
 
 - **Addresses:** an octet above 255, three-part and five-part version
   numbers, decimal numbers, dotted dates, MAC addresses, clock times, scope
@@ -84,7 +98,8 @@ These 30 look-alike shapes were never flagged:
 - **Social Security numbers:** phone numbers, ISO dates, ZIP+4 codes and
   area numbers that are never issued.
 - **Cards:** 16-digit grouped numbers with a wrong checksum.
-- **Secrets:** certificate blocks, public-key blocks and dotted identifiers.
+- **Secrets:** the word `Bearer` followed by an ordinary word, certificate
+  blocks, public-key blocks and dotted identifiers.
 - **Other:** UUIDs, 40-character commit hashes, epoch seconds and
   milliseconds, semantic versions, ISO timestamps, international phone
   numbers, 12-digit order numbers and hex colors.
@@ -100,6 +115,7 @@ defect in a documented claim. If they matter to you, add
 | Social Security number separated by spaces | 1,040 | 0 |
 | Social Security number with no separators | 1,040 | 0 |
 | Token after a lowercase `bearer` scheme word | 1,080 | 1,080 |
+| Word-shaped token after `Bearer`, outside an `Authorization` header | 1,040 | 0 |
 | Access-key-ID style token | 1,040 | 0 |
 | Token with a short prefix and an underscore | 1,040 | 0 |
 | Token with a short prefix and a dash | 1,040 | 0 |
@@ -134,8 +150,8 @@ corpus of this kind can measure them:
   punctuation directly before or after, and non-ASCII neighbors. There are
   35 contexts in total. Values that span lines use three multi-line
   contexts.
-- **Scale.** 40 values per shape. 48 positive shapes and 34 negative shapes
-  give 80,680 samples.
+- **Scale.** 40 values per shape. 51 positive shapes and 34 negative shapes
+  give 82,840 samples.
 - **Scoring.** A positive is fully masked, partly masked or missed, by the
   bytes that detected spans cover. A negative is flagged when any span
   touches it.
