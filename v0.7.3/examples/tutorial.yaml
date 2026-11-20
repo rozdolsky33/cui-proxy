@@ -1,0 +1,31 @@
+# Complete isolated tutorial configuration. Save hosts.txt beside this file.
+listen: localhost:18787
+ui:
+  listen: localhost:18788
+upstreams:
+  codex: https://chatgpt.com/backend-api/codex
+policy:
+  profile: sanitize
+  on_error: block
+  unsupported: block
+vault:
+  mode: memory
+audit:
+  enabled: true
+  file: .state/tutorial-decisions.jsonl
+  on_error: block
+rules:
+  - name: builtin
+    type: builtin
+  - name: service-hosts
+    type: dictionary
+    file: hosts.txt
+    synth: hostname
+  - name: aws-keys
+    type: regex
+    pattern: '\b(?:AKIA|ASIA)[0-9A-Z]{16}\b'
+    synth: secret
+  - name: ticket-ids
+    type: regex
+    pattern: '\bDEMO-[0-9]{6}\b'
+    synth: secret
