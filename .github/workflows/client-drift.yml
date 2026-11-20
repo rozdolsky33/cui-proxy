@@ -1,0 +1,57 @@
+name: client-drift
+
+# Runs the newest published Codex client against a local stand-in for the
+# model service, directly and through the proxy, and compares what the client
+# sends with the recorded baseline. No model service is contacted and no
+# account or secret is used. A failure means the client's requests changed or
+# the proxy no longer carries them: follow docs/upstream-changes.md.
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/clientprobe/**'
+      - 'internal/clientprobe/**'
+      - 'docs/verification-results/client-shapes/**'
+      - '.github/workflows/client-drift.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: client-drift-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: install the newest Codex client
+        run: |
+          npm install --global @openai/codex
+          codex --version
+
+      - name: build
+        run: make build
+
+      - name: probe
+        run: make client-probe CLIENTPROBE_FLAGS="-write client-shape.json"
+
+      - name: keep the recorded shape
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-shape
+          path: client-shape.json
+          if-no-files-found: ignore
+          retention-days: 30

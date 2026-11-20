@@ -9,6 +9,9 @@ Run `go test ./internal/adapter/codex ./internal/proxy ./internal/sse` with outp
 captured as described in [verification](verification.md). The deterministic HTTP
 workflow corpus in `scripts/workflow/` remains the end-to-end boundary check.
 
+[Codex client changes](upstream-changes.md) lists the client versions checked
+against this adapter and how a change in the client is noticed and handled.
+
 ## Routes and transports
 
 | Form | Behavior and diagnostic | Executable evidence |
@@ -37,6 +40,7 @@ workflow corpus in `scripts/workflow/` remains the end-to-end boundary check.
 | Validated tool-output image positions | Extraction under the same policy/budget constraints | `TestToolImageExtraction`, `TestToolImagesHonorPolicyAndBudgets` |
 | Attachments disabled, wrong placement, ambiguous part, extraction failure | Explicit attachment diagnostic and fail-closed result; no raw binary fallback | `TestDefaultAttachmentDiagnostic`, `TestAttachmentsOnlyInUserContent`, `TestAttachmentAmbiguitiesBlock`, `TestToolImagesRejectAmbiguousPlacement`, `TestToolImageExtractionFailures` |
 | Tool schema describing image/file types | Schema text is scanned, not treated as an attachment | `TestNestedToolSchemasNotBlocked` |
+| Tool definitions in an `additional_tools` input item (Codex 0.166.0 and later) | Scanned like top-level tools; schema property names are not treated as attachments, and attachment keys elsewhere in the item are refused | `TestAdditionalToolsInputItemScanned`, `TestAdditionalToolsSchemaPropertyNamesNotBlocked`, `TestToolSchemaExemptionLimitedToAdditionalToolsItems` |
 | Invalid JSON, excessive nesting, unsupported binary content | Rejected as bad body/depth/attachment error | `TestNonJSONBodyBlocked`, `TestDepthCap`, `TestBinaryChecksOutsideSchema` |
 | Clean integer, decimal and exponent forms | Original spelling preserved | `TestSanitizePreservesCleanNumericSpellings`, `TestSemanticsCommandEffects` |
 | Sensitive decimal/exponent literal | Rejected rather than changing numeric semantics | `TestSanitizeRefusesSensitiveDecimalAndExponentNumbers` |
