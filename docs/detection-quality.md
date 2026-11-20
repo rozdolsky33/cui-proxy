@@ -20,10 +20,10 @@ Measured on the detectors at the commit that last changed
 | `cidr` | 2 | 2,080 | 0 | 0.0% |
 | `email` | 11 | 12,320 | 0 | 0.0% |
 | `ssn` | 1 | 1,040 | 0 | 0.0% |
-| `card` | 7 | 7,280 | 0 | 0.0% |
+| `card` | 8 | 8,320 | 0 | 0.0% |
 | `secret` | 10 | 4,880 | 0 | 0.0% |
 | `ocid` | 3 | 3,120 | 0 | 0.0% |
-| All | 45 | 43,040 | 0 | 0.0% |
+| All | 46 | 44,080 | 0 | 0.0% |
 
 | Look-alikes of | Shapes tested | Samples | Flagged | False-positive rate |
 |---|---|---|---|---|
@@ -34,8 +34,8 @@ Measured on the detectors at the commit that last changed
 | `ssn` | 4 | 4,160 | 0 | 0.0% |
 | `card` | 2 | 2,080 | 0 | 0.0% |
 | `secret` | 5 | 3,360 | 0 | 0.0% |
-| Other ordinary values | 12 | 12,480 | 494 | 4.0% |
-| All | 35 | 34,560 | 494 | 1.4% |
+| Other ordinary values | 12 | 12,480 | 390 | 3.1% |
+| All | 35 | 34,560 | 390 | 1.1% |
 
 Every shape counts equally in these totals. A family's rate therefore
 depends on which shapes were chosen, not on how often each occurs in real
@@ -67,7 +67,7 @@ describes that behavior.
 | Shape | Samples | Flagged | Rate |
 |---|---|---|---|
 | A 16-digit integer | 1,040 | 208 | 20.0% |
-| An 18-digit integer | 1,040 | 286 | 27.5% |
+| An 18-digit integer | 1,040 | 182 | 17.5% |
 
 Both rows follow from the documented rule that a long digit run containing a
 checksum hit is masked.
@@ -77,23 +77,36 @@ checksum hit is masked.
 A run of digits is masked when it passes the card checksum as a whole, or
 when a slice of 13 to 19 digits inside it does. Earlier baselines flagged
 42.5% of 16-digit integers, and 60.0% of 18-digit integers measured the same
-way, because any 13 to 15 digit slice counted.
+way, because any slice starting with 3 to 6 counted.
 
-A slice of 13 to 15 digits now counts only when it starts like a card of
-that length: 13 digits starting with 4, 14 digits starting with 30, 36, 38
-or 39, and 15 digits starting with 34 or 37. Slices of 16 digits or more are
-unchanged. A 64-character hexadecimal digest was flagged in 2.5% of samples
-for the same reason and is now flagged in none.
+A slice of 13 to 17 digits now counts only when it starts like a card of
+that length:
+
+| Slice length | Must start with |
+|---|---|
+| 13 digits | 4 |
+| 14 digits | 30, 36, 38 or 39 |
+| 15 digits | 34 or 37 |
+| 16 digits | 4; 50 to 58; 60, 62 to 65 or 67; 30, 35, 36, 38 or 39 |
+| 17 digits | 50 or 56 to 58; 60, 62 to 65 or 67; 30, 35, 36, 38 or 39 |
+
+Slices of 18 and 19 digits still need only a first digit of 3 to 6. The
+limits on 13 to 15 digit slices shipped in v0.7.2 and took 18-digit integers
+to 27.5%. The limits on 16 and 17 digit slices came after it. A 64-character
+hexadecimal digest was flagged in 2.5% of samples for the same reason and is
+now flagged in none.
 
 The rate cannot reach zero with this kind of rule. One random 16-digit
 integer in ten passes the card checksum as a whole and cannot be told apart
 from an unseparated card number. With 40 values per shape, these two rates
 are rough.
 
-This has a cost. A 13 to 15 digit card number from another scheme, sitting
-inside a longer run of digits, was masked before and is not now. The table of
-[shapes not covered](#shapes-the-built-in-set-does-not-cover) measures one
-such case. The same number standing alone or written with separators is
+This has a cost. A card number that starts with something outside the table,
+sitting inside a longer run of digits, was masked before and is not now. The
+table of [shapes not covered](#shapes-the-built-in-set-does-not-cover)
+measures two such cases. The prefix table follows the published ranges of
+the large card schemes. A smaller or national scheme with another prefix is
+not in it. The same number standing alone or written with separators is
 detected as before.
 
 ### The word `Bearer` followed by ordinary words
@@ -146,6 +159,7 @@ defect in a documented claim. If they matter to you, add
 | Token with a short prefix and a dash | 1,040 | 0 |
 | 32-character hexadecimal string | 1,040 | 0 |
 | 13-digit card-like number starting with 5 or 6, inside a longer digit run | 1,040 | 0 |
+| 16-digit card-like number starting with 31, 33, 59, 61, 66 or 69, inside a longer digit run | 1,040 | 26 |
 
 The lowercase `bearer` form is not stated in the rules guide, and it was
 masked in every sample.
@@ -176,8 +190,8 @@ corpus of this kind can measure them:
   punctuation directly before or after, and non-ASCII neighbors. There are
   35 contexts in total. Values that span lines use three multi-line
   contexts.
-- **Scale.** 40 values per shape. 54 positive shapes and 35 negative shapes
-  give 87,000 samples.
+- **Scale.** 40 values per shape. 56 positive shapes and 35 negative shapes
+  give 89,080 samples.
 - **Scoring.** A positive is fully masked, partly masked or missed, by the
   bytes that detected spans cover. A negative is flagged when any span
   touches it.

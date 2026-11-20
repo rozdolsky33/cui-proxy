@@ -325,6 +325,12 @@ func generators() []generator {
 		pos("card", "13-digit-inside-longer-run", true, general, func(r *rng) string {
 			return r.chars("789", 1) + luhn("4"+r.chars(digits, 11))
 		}),
+		pos("card", "16-digit-inside-longer-run", true, general, func(r *rng) string {
+			return r.chars("789", 1) + card16(r, r.pick([]string{"4", "51", "55", "6011", "35", "62"}))
+		}),
+		pos("card", "16-digit-other-prefix-inside-longer-run", false, general, func(r *rng) string {
+			return r.chars("789", 1) + card16(r, r.pick([]string{"31", "33", "59", "61", "66", "69"}))
+		}),
 		pos("card", "13-digit-other-prefix-inside-longer-run", false, general, func(r *rng) string {
 			return r.chars("789", 1) + luhn(r.pick([]string{"5", "6"})+r.chars(digits, 11))
 		}),

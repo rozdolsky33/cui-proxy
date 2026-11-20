@@ -88,9 +88,9 @@ func TestIPv6EndingInDoubleColonBeforeColon(t *testing.T) {
 	}
 }
 
-// A 13-15 digit slice of a longer digit run is treated as a card only when it
-// starts like a card of that length. Ordinary 16-digit integers otherwise
-// contain such a slice by chance about a third of the time.
+// A 13-17 digit slice of a longer digit run is treated as a card only when it
+// starts like a card of that length. Ordinary long integers otherwise often
+// contain such a slice by chance.
 func TestShortWindowsInDigitRunsNeedCardPrefix(t *testing.T) {
 	luhnTail := func(body string) string { return withCheckDigit(t, body) }
 	// pad returns lead + card, with lead chosen so that the whole run is not
@@ -112,6 +112,11 @@ func TestShortWindowsInDigitRunsNeedCardPrefix(t *testing.T) {
 		"15 digits starting with 37": luhnTail("37" + "500000000000"[:12]),
 		"16 digits starting with 5":  luhnTail("5" + "30000000000000"[:14]),
 		"16 digits starting with 6":  luhnTail("6" + "01100000000000"[:14]),
+		"16 digits starting with 4":  luhnTail("4" + "90000000000000"[:14]),
+		"16 digits starting with 35": luhnTail("35" + "3000000000000"[:13]),
+		"16 digits starting with 62": luhnTail("62" + "3000000000000"[:13]),
+		"17 digits starting with 62": luhnTail("62" + "30000000000000"[:14]),
+		"17 digits starting with 56": luhnTail("56" + "30000000000000"[:14]),
 	}
 	for name, card := range masked {
 		run := pad(card)
@@ -126,6 +131,13 @@ func TestShortWindowsInDigitRunsNeedCardPrefix(t *testing.T) {
 		"14 digits starting with 35": luhnTail("35" + "50000000000"[:11]),
 		"15 digits starting with 4":  luhnTail("4" + "5000000000000"[:13]),
 		"15 digits starting with 36": luhnTail("36" + "500000000000"[:12]),
+		"16 digits starting with 33": luhnTail("33" + "7000000000000"[:13]),
+		"16 digits starting with 59": luhnTail("59" + "7000000000000"[:13]),
+		"16 digits starting with 61": luhnTail("61" + "7000000000000"[:13]),
+		"16 digits starting with 69": luhnTail("69" + "7000000000000"[:13]),
+		"17 digits starting with 4":  luhnTail("4" + "700000000000000"[:15]),
+		"17 digits starting with 53": luhnTail("53" + "70000000000000"[:14]),
+		"17 digits starting with 66": luhnTail("66" + "70000000000000"[:14]),
 	}
 	for name, slice := range skipped {
 		run := pad(slice)
@@ -145,7 +157,7 @@ func otherWindowHit(run, slice string) bool {
 	for st := 0; st+13 <= len(run); st++ {
 		for n := 13; n <= 19 && st+n <= len(run); n++ {
 			w := run[st : st+n]
-			if w != slice && n != len(run) && w[0] >= '3' && w[0] <= '6' && shortCardPrefix(run, st, n) && luhnOK(w) {
+			if w != slice && n != len(run) && w[0] >= '3' && w[0] <= '6' && cardSlicePrefix(run, st, n) && luhnOK(w) {
 				return true
 			}
 		}
