@@ -327,7 +327,10 @@ func TestCardFindLongRunBounded(t *testing.T) {
 			t.Fatalf("window len %d", n)
 		}
 	}
-	if g := cardRunFind(run+"0", 0, len(run)+1); !reflect.DeepEqual(g, [][2]int{{0, len(run) + 1}}) {
+	// The run ends in a 16-digit window with a card prefix that passes the
+	// Luhn test, so the whole run is one secret.
+	long := run + "111111111111111"
+	if g := cardRunFind(long, 0, len(long)); !reflect.DeepEqual(g, [][2]int{{0, len(long)}}) {
 		t.Fatalf("run spans %v", g)
 	}
 }

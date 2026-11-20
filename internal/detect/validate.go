@@ -300,8 +300,8 @@ func cardFind(text string, s, e int) [][2]int {
 //     Luhn-valid 13-digit millisecond timestamp such as 1700000000004 must
 //     not be masked);
 //   - a strict sub-window (13-19 digits, shorter than the group) starts with
-//     3-6, starts like a card of its length when it has 13-15 digits (see
-//     shortCardPrefix), and is Luhn-valid.
+//     3-6, starts like a card of its length when it has 13-17 digits (see
+//     cardSlicePrefix), and is Luhn-valid.
 //
 // Masking the whole run (rather than a card-shaped synthetic) is the safe
 // direction: the token restores even when the run is glued to letters, '_',
@@ -353,23 +353,51 @@ func isUUID(c string) bool {
 	return true
 }
 
-// shortCardPrefix reports whether a strict sub-window of n digits at st
-// starts like a card of that length. Card numbers shorter than 16 digits
-// exist only in a few ranges: 13 digits starting with 4, 14 digits starting
-// with 30, 36, 38 or 39, and 15 digits starting with 34 or 37. Without this
-// filter about a third of ordinary 16-digit integers contain a 13-15 digit
-// window that passes the Luhn test by chance. Windows of 16 digits or more
-// keep the wider 3-6 first-digit rule.
-func shortCardPrefix(text string, st, n int) bool {
+// cardSlicePrefix reports whether a strict sub-window of n digits at st
+// starts like a card of that length. The caller has already required a first
+// digit of 3-6. Without this filter an ordinary long integer often contains a
+// window that passes the Luhn test by chance.
+//
+//   - 13 digits: 4.
+//   - 14 digits: 30, 36, 38, 39.
+//   - 15 digits: 34, 37.
+//   - 16 digits: 4; 50-58; 60, 62-65, 67; 30, 35, 36, 38, 39.
+//   - 17 digits: the 16-digit list without 4 and 51-55, whose cards are not
+//     issued at that length.
+//
+// Windows of 18 and 19 digits keep the first-digit rule alone.
+func cardSlicePrefix(text string, st, n int) bool {
+	d0, d1 := text[st], text[st+1]
+	in := func(set string) bool {
+		for i := 0; i < len(set); i++ {
+			if set[i] == d1 {
+				return true
+			}
+		}
+		return false
+	}
 	switch n {
 	case 13:
-		return text[st] == '4'
+		return d0 == '4'
 	case 14:
-		d := text[st+1]
-		return text[st] == '3' && (d == '0' || d == '6' || d == '8' || d == '9')
+		return d0 == '3' && in("0689")
 	case 15:
-		d := text[st+1]
-		return text[st] == '3' && (d == '4' || d == '7')
+		return d0 == '3' && in("47")
+	case 16, 17:
+		switch d0 {
+		case '3':
+			return in("05689")
+		case '4':
+			return n == 16
+		case '5':
+			if n == 16 {
+				return d1 != '9'
+			}
+			return in("0678")
+		case '6':
+			return in("023457")
+		}
+		return false
 	}
 	return true
 }
@@ -385,7 +413,7 @@ func luhnRun(text string, gs, ge int) bool {
 			continue
 		}
 		for n := 13; n <= 19 && st+n <= ge; n++ {
-			if n != glen && shortCardPrefix(text, st, n) && luhnOK(text[st:st+n]) {
+			if n != glen && cardSlicePrefix(text, st, n) && luhnOK(text[st:st+n]) {
 				return true
 			}
 		}
