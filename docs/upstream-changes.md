@@ -77,6 +77,7 @@ release is compatible in full.
 | `codex-cli 0.170.0` | 2026-11-19 | v0.7.1 | Probe passed. Same request structure as 0.166.0. |
 | `codex-cli 0.171.0` | 2026-11-19 | v0.7.1 | Probe passed on a Linux runner. One new request header, described below. |
 | `codex-cli 0.170.0` | 2026-11-20 | v0.7.2 | Probe passed. No change from the baseline except the header that 0.171.0 added. |
+| `codex-cli 0.170.0` | 2026-11-20 | v0.7.3 | Probe passed. Same result as for v0.7.2. |
 
 Each release from now on records the client version the probe passed with in
 its release notes.
