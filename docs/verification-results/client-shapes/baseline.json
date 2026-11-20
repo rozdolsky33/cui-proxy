@@ -1,11 +1,12 @@
 {
-  "client": "codex-cli 0.170.0",
+  "client": "codex-cli 0.171.0",
   "routes": [
     "POST /v1/responses"
   ],
   "header_names": {
     "POST /v1/responses": [
       "accept",
+      "accept-encoding",
       "authorization",
       "content-length",
       "content-type",

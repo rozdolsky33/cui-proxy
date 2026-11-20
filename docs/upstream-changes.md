@@ -75,6 +75,7 @@ release is compatible in full.
 | `codex-cli 0.167.0` | 2026-11-07 | `main` at that date | [Live check](verification.md) against the signed-in service passed: text and one tool call. |
 | `codex-cli 0.166.0` | 2026-11-19 | `main` before the fix below | Probe passed. Found the tool-definition change described below. |
 | `codex-cli 0.170.0` | 2026-11-19 | `main` with the fix | Probe passed. Same request structure as 0.166.0. |
+| `codex-cli 0.171.0` | 2026-11-19 | `main` with the fix | Probe passed on a Linux runner. One new request header, described below. |
 
 Each release from now on records the client version the probe passed with in
 its release notes.
@@ -121,3 +122,16 @@ its release notes.
   contains the fix yet.
 - **Not confirmed.** That tool servers' definitions also arrive in this item.
   The probe runs the client without tool servers.
+
+### The client asks for compressed responses (2026-11-19)
+
+- **What changed.** Codex 0.171.0 on Linux sends an `Accept-Encoding` header
+  with its model requests. Codex 0.170.0 on macOS did not. Whether the release
+  or the platform makes the difference is not known.
+- **How it was noticed.** The first run of the scheduled workflow's probe
+  failed on the new header name.
+- **What the proxy does.** It already replaces this header with `identity`
+  before forwarding, so the service answers uncompressed and the response can
+  be restored. `TestAcceptEncodingIdentityUpstream` covers this. A compressed
+  response would be blocked, not passed through.
+- **The fix.** None needed. The baseline now includes the header.
