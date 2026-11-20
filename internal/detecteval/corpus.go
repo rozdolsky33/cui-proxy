@@ -319,6 +319,15 @@ func generators() []generator {
 			return split(luhn("36"+r.chars(digits, 11)), " ", 4, 6, 4)
 		}),
 		pos("card", "16-digit-unseparated", true, general, func(r *rng) string { return card16(r, "4") }),
+		pos("card", "15-digit-inside-longer-run", true, general, func(r *rng) string {
+			return r.chars("789", 1) + luhn(r.pick([]string{"34", "37"})+r.chars(digits, 12))
+		}),
+		pos("card", "13-digit-inside-longer-run", true, general, func(r *rng) string {
+			return r.chars("789", 1) + luhn("4"+r.chars(digits, 11))
+		}),
+		pos("card", "13-digit-other-prefix-inside-longer-run", false, general, func(r *rng) string {
+			return r.chars("789", 1) + luhn(r.pick([]string{"5", "6"})+r.chars(digits, 11))
+		}),
 
 		led(pos("secret", "bearer-token", true, bearerctx, func(r *rng) string { return r.chars(b64url, r.between(24, 48)) }), "Bearer "),
 		led(pos("secret", "bearer-letters-only-token", true, bearerctx, func(r *rng) string { return r.chars(lower+upper, r.between(24, 48)) }), "Bearer "),
@@ -425,6 +434,7 @@ func generators() []generator {
 		}),
 		neg("benign", "phone-international", general, func(r *rng) string { return "+1" + r.chars("23456789", 1) + r.chars(digits, 9) }),
 		neg("benign", "order-number-12", general, func(r *rng) string { return r.chars("123456789", 1) + r.chars(digits, 11) }),
+		neg("benign", "integer-18", general, func(r *rng) string { return r.chars("123456789", 1) + r.chars(digits, 17) }),
 		neg("benign", "integer-16", general, func(r *rng) string { return r.chars("123456789", 1) + r.chars(digits, 15) }),
 		neg("benign", "hex-color", general, func(r *rng) string { return "#" + r.chars(hexLower, 6) }),
 	}
