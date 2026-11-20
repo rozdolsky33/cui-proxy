@@ -1,6 +1,6 @@
 # Roadmap to 1.0
 
-Status as of 2026-11-19, release v0.7.1.
+Status as of 2026-11-20, release v0.7.2.
 
 cui-proxy is an early-stage, single-maintainer project. Its tests, fuzzing and
 CI are extensive for its age, but it was first committed on 2026-11-06, has
@@ -74,8 +74,10 @@ Exit criteria: the policy is published, and two consecutive releases ship
 without a breaking change to a declared-stable interface.
 
 Progress: the [compatibility and upgrade policy](docs/compatibility.md) is
-published and tests lock the declared interfaces. v0.7.1 is the first release
-under the policy and makes no breaking change. One more is needed.
+published and tests lock the declared interfaces. v0.7.1 and v0.7.2
+were released under the policy with no breaking change. Both are patch
+releases a day apart, so the deprecation steps have not been used yet. The
+owner decides whether that is enough to count this milestone as met.
 
 ### 3. Trial with outside users
 
