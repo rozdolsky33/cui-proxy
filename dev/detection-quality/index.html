@@ -2235,8 +2235,8 @@ before relying on them.</p>
 </tr>
 <tr>
 <td><code>card</code></td>
-<td>7</td>
-<td>7,280</td>
+<td>8</td>
+<td>8,320</td>
 <td>0</td>
 <td>0.0%</td>
 </tr>
@@ -2256,8 +2256,8 @@ before relying on them.</p>
 </tr>
 <tr>
 <td>All</td>
-<td>45</td>
-<td>43,040</td>
+<td>46</td>
+<td>44,080</td>
 <td>0</td>
 <td>0.0%</td>
 </tr>
@@ -2327,15 +2327,15 @@ before relying on them.</p>
 <td>Other ordinary values</td>
 <td>12</td>
 <td>12,480</td>
-<td>494</td>
-<td>4.0%</td>
+<td>390</td>
+<td>3.1%</td>
 </tr>
 <tr>
 <td>All</td>
 <td>35</td>
 <td>34,560</td>
-<td>494</td>
-<td>1.4%</td>
+<td>390</td>
+<td>1.1%</td>
 </tr>
 </tbody>
 </table>
@@ -2397,8 +2397,8 @@ describes that behavior.</p>
 <tr>
 <td>An 18-digit integer</td>
 <td>1,040</td>
-<td>286</td>
-<td>27.5%</td>
+<td>182</td>
+<td>17.5%</td>
 </tr>
 </tbody>
 </table>
@@ -2408,20 +2408,54 @@ checksum hit is masked.</p>
 <p>A run of digits is masked when it passes the card checksum as a whole, or
 when a slice of 13 to 19 digits inside it does. Earlier baselines flagged
 42.5% of 16-digit integers, and 60.0% of 18-digit integers measured the same
-way, because any 13 to 15 digit slice counted.</p>
-<p>A slice of 13 to 15 digits now counts only when it starts like a card of
-that length: 13 digits starting with 4, 14 digits starting with 30, 36, 38
-or 39, and 15 digits starting with 34 or 37. Slices of 16 digits or more are
-unchanged. A 64-character hexadecimal digest was flagged in 2.5% of samples
-for the same reason and is now flagged in none.</p>
+way, because any slice starting with 3 to 6 counted.</p>
+<p>A slice of 13 to 17 digits now counts only when it starts like a card of
+that length:</p>
+<table>
+<thead>
+<tr>
+<th>Slice length</th>
+<th>Must start with</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>13 digits</td>
+<td>4</td>
+</tr>
+<tr>
+<td>14 digits</td>
+<td>30, 36, 38 or 39</td>
+</tr>
+<tr>
+<td>15 digits</td>
+<td>34 or 37</td>
+</tr>
+<tr>
+<td>16 digits</td>
+<td>4; 50 to 58; 60, 62 to 65 or 67; 30, 35, 36, 38 or 39</td>
+</tr>
+<tr>
+<td>17 digits</td>
+<td>50 or 56 to 58; 60, 62 to 65 or 67; 30, 35, 36, 38 or 39</td>
+</tr>
+</tbody>
+</table>
+<p>Slices of 18 and 19 digits still need only a first digit of 3 to 6. The
+limits on 13 to 15 digit slices shipped in v0.7.2 and took 18-digit integers
+to 27.5%. The limits on 16 and 17 digit slices came after it. A 64-character
+hexadecimal digest was flagged in 2.5% of samples for the same reason and is
+now flagged in none.</p>
 <p>The rate cannot reach zero with this kind of rule. One random 16-digit
 integer in ten passes the card checksum as a whole and cannot be told apart
 from an unseparated card number. With 40 values per shape, these two rates
 are rough.</p>
-<p>This has a cost. A 13 to 15 digit card number from another scheme, sitting
-inside a longer run of digits, was masked before and is not now. The table of
-<a href="#shapes-the-built-in-set-does-not-cover">shapes not covered</a> measures one
-such case. The same number standing alone or written with separators is
+<p>This has a cost. A card number that starts with something outside the table,
+sitting inside a longer run of digits, was masked before and is not now. The
+table of <a href="#shapes-the-built-in-set-does-not-cover">shapes not covered</a>
+measures two such cases. The prefix table follows the published ranges of
+the large card schemes. A smaller or national scheme with another prefix is
+not in it. The same number standing alone or written with separators is
 detected as before.</p>
 <h3 id="the-word-bearer-followed-by-ordinary-words">The word <code>Bearer</code> followed by ordinary words<a class="headerlink" href="#the-word-bearer-followed-by-ordinary-words" title="Permanent link">&para;</a></h3>
 <p>Earlier baselines flagged the word <code>Bearer</code> followed by an ordinary word:
@@ -2510,6 +2544,11 @@ defect in a documented claim. If they matter to you, add
 <td>1,040</td>
 <td>0</td>
 </tr>
+<tr>
+<td>16-digit card-like number starting with 31, 33, 59, 61, 66 or 69, inside a longer digit run</td>
+<td>1,040</td>
+<td>26</td>
+</tr>
 </tbody>
 </table>
 <p>The lowercase <code>bearer</code> form is not stated in the rules guide, and it was
@@ -2540,8 +2579,8 @@ corpus of this kind can measure them:</p>
   punctuation directly before or after, and non-ASCII neighbors. There are
   35 contexts in total. Values that span lines use three multi-line
   contexts.</li>
-<li><strong>Scale.</strong> 40 values per shape. 54 positive shapes and 35 negative shapes
-  give 87,000 samples.</li>
+<li><strong>Scale.</strong> 40 values per shape. 56 positive shapes and 35 negative shapes
+  give 89,080 samples.</li>
 <li><strong>Scoring.</strong> A positive is fully masked, partly masked or missed, by the
   bytes that detected spans cover. A negative is flagged when any span
   touches it.</li>
