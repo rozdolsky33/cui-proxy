@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.7.1/rules/">
+        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.7.2/rules/">
       
       
         <link rel="prev" href="../configuration/">
@@ -2260,12 +2260,14 @@ no individual built-in category toggle, exclusion list, or per-value allowlist.<
 <tr>
 <td><code>secret</code></td>
 <td>Tokens using the <code>Bearer</code> scheme, JWT-shaped tokens, private-key blocks, selected numeric runs and address/port tokens</td>
-<td>The bearer-token detector requires at least eight token characters; an unterminated private-key block is masked to end of text</td>
+<td>The bearer-token detector requires at least eight token characters, and outside an <code>Authorization</code> header it skips text that reads as ordinary words, so a word-shaped token there is not masked; an unterminated private-key block is masked to end of text</td>
 </tr>
 </tbody>
 </table>
 <p>Unseparated card-like digit runs and long numeric IDs containing a Luhn hit
-are masked as opaque secrets rather than preserving a card shape. Tcpdump-style
+are masked as opaque secrets rather than preserving a card shape. Inside a
+longer run, a slice of 13 to 15 digits counts as a hit only when it starts
+like a card of that length (4; 30, 36, 38 or 39; 34 or 37). Tcpdump-style
 dotted address/port tokens are masked whole, including the port. Five
 single-digit dotted components are treated as a version number, not an
 address/port token.</p>
