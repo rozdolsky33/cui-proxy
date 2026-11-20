@@ -175,6 +175,13 @@ Exit criteria: a second maintainer or regular outside reviewer is active, and
 security-sensitive changes are merged with a review from someone other than
 their author.
 
+Progress: [Maintain the project](docs/maintaining.md) lists what depends on
+one person, the sensitive paths, what a review of them checks, the release
+and security-report steps, and the path to becoming a reviewer.
+`CODEOWNERS`, a contribution guide and a pull request template are in place.
+There is still one maintainer and no second reviewer, so the review rule is
+written down but not enforced, and this milestone is not met.
+
 ### 8. Broaden scope, after the rest
 
 Additional clients, menu-bar parity beyond macOS, and wider attachment

@@ -24,6 +24,12 @@ If you want to look for problems deliberately, the
 [review guide](docs/security-review.md) lists the claims to attack, where the
 code is, what is already known, and how to test without real data.
 
+## What happens to a report
+
+[Maintain the project](docs/maintaining.md#handling-a-security-report) lists
+the steps. The project has one maintainer and gives no guaranteed response
+time. A private report of a leak is handled ahead of any other work.
+
 ## Supported versions
 
 Only the latest release is supported.
