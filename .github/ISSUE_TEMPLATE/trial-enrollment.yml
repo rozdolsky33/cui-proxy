@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thank you for trying cui-proxy. Read [the trial guide](https://rozdolsky33.github.io/cui-proxy/dev/trial/) first.
+        Thank you for trying cui-proxy. Read [the trial guide](https://rozdolsky33.github.io/cui-proxy/latest/trial/) first.
         This issue is public. Do not name your employer, customers or projects.
         Add one short comment here each week; the guide lists what to include.
   - type: input

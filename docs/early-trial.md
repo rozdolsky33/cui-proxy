@@ -1,6 +1,6 @@
 # Text-only use: v0.7.0
 
-This release is available on the stable installation channel for supervised text and code workflows. It is not a production-readiness claim, a supported four-agent operating envelope, or a promise of equivalent model reasoning. Multi-agent performance qualification continues separately.
+v0.7.1 is the current patch release of v0.7.0. It fixes three defects and changes no setting. This release is available on the stable installation channel for supervised text and code workflows. It is not a production-readiness claim, a supported four-agent operating envelope, or a promise of equivalent model reasoning. Multi-agent performance qualification continues separately.
 
 ## Install with Homebrew or a pinned installer
 
@@ -13,13 +13,13 @@ brew update && brew upgrade cui-proxy
 cui-proxy version
 ```
 
-Confirm the installed version is `v0.7.0`. If an older proxy process is still running, drain its active requests and restart it with the intended binary and preserved configuration/vault/key; upgrading a formula does not necessarily replace a running process.
+Confirm the installed version is `v0.7.1`. If an older proxy process is still running, drain its active requests and restart it with the intended binary and preserved configuration/vault/key; upgrading a formula does not necessarily replace a running process.
 
 Alternatively, download the pinned installer, inspect it, and install into a separate directory so the current installation remains available:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/rozdolsky33/cui-proxy/v0.7.0/install.sh -o cui-proxy-trial-install.sh
-CUI_PROXY_VERSION=v0.7.0 INSTALL_DIR="$HOME/.local/cui-proxy-trial" sh cui-proxy-trial-install.sh
+curl -fsSL https://raw.githubusercontent.com/rozdolsky33/cui-proxy/v0.7.1/install.sh -o cui-proxy-trial-install.sh
+CUI_PROXY_VERSION=v0.7.1 INSTALL_DIR="$HOME/.local/cui-proxy-trial" sh cui-proxy-trial-install.sh
 "$HOME/.local/cui-proxy-trial/cui-proxy" version
 ```
 
