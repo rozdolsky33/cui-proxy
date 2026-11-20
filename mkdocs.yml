@@ -137,3 +137,4 @@ nav:
       - Maintain the documentation: contributing-docs.md
       - Review the security: security-review.md
       - Maintain the project: maintaining.md
+      - Adding a client or feature: adding-scope.md

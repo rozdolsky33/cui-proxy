@@ -189,6 +189,11 @@ support each enlarge the surface that milestones 3 to 6 must cover. They are
 deferred until those milestones are met for the current scope, and each
 addition goes through the same review, measurement and trial steps.
 
+Progress: nothing is being added, because milestones 3 to 6 are not met.
+[Adding a client or feature](docs/adding-scope.md) records the current scope,
+the conditions for widening it and what each kind of addition must bring, and
+a test fails when a new adapter directory appears.
+
 ## What 1.0 requires
 
 - [ ] The v0.7.0 qualification gates are passed, or the claims are narrowed.
