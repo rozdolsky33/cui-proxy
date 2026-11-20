@@ -68,7 +68,9 @@ no individual built-in category toggle, exclusion list, or per-value allowlist.
 | `secret` | Tokens using the `Bearer` scheme, JWT-shaped tokens, private-key blocks, selected numeric runs and address/port tokens | The bearer-token detector requires at least eight token characters, and outside an `Authorization` header it skips text that reads as ordinary words, so a word-shaped token there is not masked; an unterminated private-key block is masked to end of text |
 
 Unseparated card-like digit runs and long numeric IDs containing a Luhn hit
-are masked as opaque secrets rather than preserving a card shape. Tcpdump-style
+are masked as opaque secrets rather than preserving a card shape. Inside a
+longer run, a slice of 13 to 15 digits counts as a hit only when it starts
+like a card of that length (4; 30, 36, 38 or 39; 34 or 37). Tcpdump-style
 dotted address/port tokens are masked whole, including the port. Five
 single-digit dotted components are treated as a version number, not an
 address/port token.

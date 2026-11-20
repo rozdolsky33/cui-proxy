@@ -1,8 +1,28 @@
 {
   "seed": 20261119,
   "values_per_variant": 40,
-  "samples": 82840,
+  "samples": 87000,
   "positive_variants": [
+    {
+      "family": "card",
+      "group": "13-digit-inside-longer-run",
+      "claimed": true,
+      "total": 1040,
+      "full": 1040,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 0
+    },
+    {
+      "family": "card",
+      "group": "13-digit-other-prefix-inside-longer-run",
+      "claimed": false,
+      "total": 1040,
+      "full": 0,
+      "partial": 0,
+      "missed": 1040,
+      "as_family": 0
+    },
     {
       "family": "card",
       "group": "14-digit-spaces",
@@ -12,6 +32,16 @@
       "partial": 0,
       "missed": 0,
       "as_family": 1040
+    },
+    {
+      "family": "card",
+      "group": "15-digit-inside-longer-run",
+      "claimed": true,
+      "total": 1040,
+      "full": 1040,
+      "partial": 0,
+      "missed": 0,
+      "as_family": 0
     },
     {
       "family": "card",
@@ -489,8 +519,8 @@
       "claimed": false,
       "total": 1040,
       "full": 0,
-      "partial": 26,
-      "missed": 1014,
+      "partial": 0,
+      "missed": 1040,
       "as_family": 0
     },
     {
@@ -518,261 +548,261 @@
     {
       "family": "card",
       "group": "angle-brackets",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "backticks",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "colon-after",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "comma-list",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "env-assignment",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "escaped-json",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "hyphen-suffix",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "json-string",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "log-field",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "markdown-link",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "non-ascii-neighbors",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "own-line",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "parentheses",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "path-segment",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "prose",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "semicolon-after",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "sentence-end",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "shell-argument",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "single-quoted",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "tab-separated",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "tight-commas",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "typographic-quotes",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "underscore-suffix",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "url-query",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "xml-attribute",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
       "family": "card",
       "group": "yaml-value",
-      "claimed": true,
-      "total": 200,
-      "full": 200,
+      "claimed": false,
+      "total": 320,
+      "full": 280,
       "partial": 0,
-      "missed": 0,
+      "missed": 40,
       "as_family": 160
     },
     {
@@ -2701,8 +2731,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2711,8 +2741,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2721,8 +2751,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2731,8 +2761,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2741,8 +2771,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2751,8 +2781,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2761,8 +2791,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2771,8 +2801,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2781,8 +2811,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2791,8 +2821,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2801,8 +2831,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2811,8 +2841,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2821,8 +2851,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2831,8 +2861,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2841,8 +2871,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2851,8 +2881,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2861,8 +2891,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2871,8 +2901,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2881,8 +2911,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2891,8 +2921,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2901,8 +2931,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2911,8 +2941,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2921,8 +2951,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2931,8 +2961,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2941,8 +2971,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     },
     {
@@ -2951,8 +2981,8 @@
       "claimed": false,
       "total": 160,
       "full": 0,
-      "partial": 1,
-      "missed": 159,
+      "partial": 0,
+      "missed": 160,
       "as_family": 0
     }
   ],
@@ -2967,7 +2997,7 @@
       "family": "benign",
       "group": "digest-64",
       "total": 1040,
-      "flagged": 26
+      "flagged": 0
     },
     {
       "family": "benign",
@@ -2991,7 +3021,13 @@
       "family": "benign",
       "group": "integer-16",
       "total": 1040,
-      "flagged": 442
+      "flagged": 208
+    },
+    {
+      "family": "benign",
+      "group": "integer-18",
+      "total": 1040,
+      "flagged": 286
     },
     {
       "family": "benign",

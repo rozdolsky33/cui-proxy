@@ -300,7 +300,8 @@ func cardFind(text string, s, e int) [][2]int {
 //     Luhn-valid 13-digit millisecond timestamp such as 1700000000004 must
 //     not be masked);
 //   - a strict sub-window (13-19 digits, shorter than the group) starts with
-//     3-6 and is Luhn-valid.
+//     3-6, starts like a card of its length when it has 13-15 digits (see
+//     shortCardPrefix), and is Luhn-valid.
 //
 // Masking the whole run (rather than a card-shaped synthetic) is the safe
 // direction: the token restores even when the run is glued to letters, '_',
@@ -352,6 +353,27 @@ func isUUID(c string) bool {
 	return true
 }
 
+// shortCardPrefix reports whether a strict sub-window of n digits at st
+// starts like a card of that length. Card numbers shorter than 16 digits
+// exist only in a few ranges: 13 digits starting with 4, 14 digits starting
+// with 30, 36, 38 or 39, and 15 digits starting with 34 or 37. Without this
+// filter about a third of ordinary 16-digit integers contain a 13-15 digit
+// window that passes the Luhn test by chance. Windows of 16 digits or more
+// keep the wider 3-6 first-digit rule.
+func shortCardPrefix(text string, st, n int) bool {
+	switch n {
+	case 13:
+		return text[st] == '4'
+	case 14:
+		d := text[st+1]
+		return text[st] == '3' && (d == '0' || d == '6' || d == '8' || d == '9')
+	case 15:
+		d := text[st+1]
+		return text[st] == '3' && (d == '4' || d == '7')
+	}
+	return true
+}
+
 func luhnRun(text string, gs, ge int) bool {
 	glen := ge - gs
 	issuer := func(i int) bool { return text[i] >= '3' && text[i] <= '6' }
@@ -363,7 +385,7 @@ func luhnRun(text string, gs, ge int) bool {
 			continue
 		}
 		for n := 13; n <= 19 && st+n <= ge; n++ {
-			if n != glen && luhnOK(text[st:st+n]) {
+			if n != glen && shortCardPrefix(text, st, n) && luhnOK(text[st:st+n]) {
 				return true
 			}
 		}

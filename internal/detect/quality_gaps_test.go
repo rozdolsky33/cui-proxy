@@ -87,3 +87,91 @@ func TestIPv6EndingInDoubleColonBeforeColon(t *testing.T) {
 		}
 	}
 }
+
+// A 13-15 digit slice of a longer digit run is treated as a card only when it
+// starts like a card of that length. Ordinary 16-digit integers otherwise
+// contain such a slice by chance about a third of the time.
+func TestShortWindowsInDigitRunsNeedCardPrefix(t *testing.T) {
+	luhnTail := func(body string) string { return withCheckDigit(t, body) }
+	// pad returns lead + card, with lead chosen so that the whole run is not
+	// itself Luhn-valid; only the embedded window can trigger.
+	pad := func(card string) string {
+		for _, lead := range []string{"9", "8", "7"} {
+			if !luhnOK(lead + card) {
+				return lead + card
+			}
+		}
+		t.Fatal("no lead digit")
+		return ""
+	}
+	masked := map[string]string{
+		"13 digits starting with 4":  luhnTail("4" + "20000000000"[:11]),
+		"14 digits starting with 36": luhnTail("36" + "50000000000"[:11]),
+		"14 digits starting with 30": luhnTail("30" + "50000000000"[:11]),
+		"15 digits starting with 34": luhnTail("34" + "500000000000"[:12]),
+		"15 digits starting with 37": luhnTail("37" + "500000000000"[:12]),
+		"16 digits starting with 5":  luhnTail("5" + "30000000000000"[:14]),
+		"16 digits starting with 6":  luhnTail("6" + "01100000000000"[:14]),
+	}
+	for name, card := range masked {
+		run := pad(card)
+		if g := builtinScan(t, "id "+run+" end"); len(g) != 1 || g[0].Class != "secret" || g[0].Text != run {
+			t.Errorf("%s inside a longer run was not masked whole", name)
+		}
+	}
+	skipped := map[string]string{
+		"13 digits starting with 5":  luhnTail("5" + "20000000000"[:11]),
+		"13 digits starting with 3":  luhnTail("3" + "20000000000"[:11]),
+		"14 digits starting with 4":  luhnTail("4" + "500000000000"[:12]),
+		"14 digits starting with 35": luhnTail("35" + "50000000000"[:11]),
+		"15 digits starting with 4":  luhnTail("4" + "5000000000000"[:13]),
+		"15 digits starting with 36": luhnTail("36" + "500000000000"[:12]),
+	}
+	for name, slice := range skipped {
+		run := pad(slice)
+		if cardRunFind(run, 0, len(run)) != nil {
+			// Another window of the same run may be a hit; that is a property
+			// of the sample, so only report it when the slice is the cause.
+			if !otherWindowHit(run, slice) {
+				t.Errorf("%s inside a longer run was masked", name)
+			}
+		}
+	}
+}
+
+// otherWindowHit reports whether run has a Luhn-valid 13-19 digit window with
+// a card prefix other than the given slice.
+func otherWindowHit(run, slice string) bool {
+	for st := 0; st+13 <= len(run); st++ {
+		for n := 13; n <= 19 && st+n <= len(run); n++ {
+			w := run[st : st+n]
+			if w != slice && n != len(run) && w[0] >= '3' && w[0] <= '6' && shortCardPrefix(run, st, n) && luhnOK(w) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// A whole digit group of card length that passes the Luhn test is still
+// masked whatever it starts with. It cannot be told apart from a card.
+func TestWholeLuhnValidGroupStillMasked(t *testing.T) {
+	for _, body := range []string{"222300004840001", "979200000000000", "100000000000000", "860000000000000"} {
+		n := withCheckDigit(t, body)
+		if g := builtinScan(t, "n="+n+";"); len(g) != 1 || g[0].Text != n {
+			t.Errorf("whole Luhn-valid group not masked")
+		}
+	}
+}
+
+// withCheckDigit appends the digit that makes body pass the Luhn test.
+func withCheckDigit(t *testing.T, body string) string {
+	t.Helper()
+	for d := byte('0'); d <= '9'; d++ {
+		if luhnOK(body + string(d)) {
+			return body + string(d)
+		}
+	}
+	t.Fatalf("no check digit for a %d-digit body", len(body))
+	return ""
+}

@@ -215,7 +215,8 @@ func TestNumericIDsNeverBlock(t *testing.T) {
 
 // luhnHit returns a Luhn-valid 13-19 digit window of the digit run n that the
 // card rules mask (the whole run if 14-19 digits, else a window starting with
-// 3-6), or "".
+// 3-6 that, when it is a 13-15 digit slice of a longer run, also starts like a
+// card of that length), or "".
 func luhnHit(n string) string {
 	if len(n) >= 14 && len(n) <= 19 && luhn(n) {
 		return n
@@ -225,12 +226,25 @@ func luhnHit(n string) string {
 			continue
 		}
 		for l := 13; l <= 19 && st+l <= len(n); l++ {
-			if luhn(n[st : st+l]) {
-				return n[st : st+l]
+			if w := n[st : st+l]; (l == len(n) || shortCardPrefix(w)) && luhn(w) {
+				return w
 			}
 		}
 	}
 	return ""
+}
+
+// shortCardPrefix mirrors the detector's rule for 13-15 digit slices.
+func shortCardPrefix(w string) bool {
+	switch len(w) {
+	case 13:
+		return w[0] == '4'
+	case 14:
+		return w[0] == '3' && strings.ContainsRune("0689", rune(w[1]))
+	case 15:
+		return w[0] == '3' && strings.ContainsRune("47", rune(w[1]))
+	}
+	return true
 }
 
 func luhn(d string) bool {
