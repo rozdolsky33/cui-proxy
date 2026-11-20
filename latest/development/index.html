@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.7.0/development/">
+        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.7.1/development/">
       
       
         <link rel="prev" href="../documentation-status/">
@@ -399,6 +399,8 @@
       
         
       
+        
+      
     
     
     
@@ -552,6 +554,34 @@
     
   
     Connect Codex
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../isolation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Isolate Codex to a project
   
 
     
@@ -879,6 +909,12 @@
   
     
     
+      
+        
+      
+        
+      
+        
       
         
       
@@ -1234,6 +1270,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../trial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Join the operator trial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../release-readiness/" class="md-nav__link">
         
   
@@ -1242,6 +1306,62 @@
     
   
     Release readiness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../compatibility/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compatibility and upgrades
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upstream-changes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Codex client changes
   
 
     
@@ -1270,6 +1390,8 @@
   
     
     
+      
+        
       
         
       
@@ -1419,6 +1541,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../detection-quality/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measured detection quality
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../assurance/" class="md-nav__link">
         
   
@@ -1513,6 +1663,12 @@
   
     
     
+      
+        
+      
+        
+      
+        
       
         
       
@@ -1702,6 +1858,90 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Review the security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../maintaining/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintain the project
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adding-scope/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding a client or feature
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1802,6 +2042,9 @@ toolchain (validated with staticcheck 2026.2.2).</p>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>go<span class="w"> </span>build<span class="w"> </span>-ldflags<span class="w"> </span><span class="s2">"-X main.version=v0.5.0"</span><span class="w"> </span>-o<span class="w"> </span>bin/cui-proxy<span class="w"> </span>./cmd/cui-proxy
 </code></pre></div>
 <h2 id="releasing-maintainers">Releasing (maintainers)<a class="headerlink" href="#releasing-maintainers" title="Permanent link">&para;</a></h2>
+<p>Before tagging, run <code>make client-probe</code> with the current Codex client and put
+the client version it prints in the release notes. If the probe fails, follow
+<a href="../upstream-changes/">Codex client changes</a> first.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Choose a NEW version after checking existing tags.</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>git<span class="w"> </span>tag<span class="w"> </span>vX.Y.Z<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>vX.Y.Z
 </code></pre></div>

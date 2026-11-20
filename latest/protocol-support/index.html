@@ -10,10 +10,10 @@
       
       
       
-        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.7.0/protocol-support/">
+        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.7.1/protocol-support/">
       
       
-        <link rel="prev" href="../codex/">
+        <link rel="prev" href="../isolation/">
       
       
         <link rel="next" href="../configuration/">
@@ -401,6 +401,8 @@
       
         
       
+        
+      
     
     
     
@@ -557,6 +559,34 @@
     
   
     Connect Codex
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../isolation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Isolate Codex to a project
   
 
     
@@ -1009,6 +1039,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1341,6 +1377,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../trial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Join the operator trial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../release-readiness/" class="md-nav__link">
         
   
@@ -1349,6 +1413,62 @@
     
   
     Release readiness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../compatibility/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compatibility and upgrades
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upstream-changes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Codex client changes
   
 
     
@@ -1377,6 +1497,8 @@
   
     
     
+      
+        
       
         
       
@@ -1526,6 +1648,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../detection-quality/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measured detection quality
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../assurance/" class="md-nav__link">
         
   
@@ -1623,6 +1773,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1711,6 +1867,90 @@
     
   
     Maintain the documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Review the security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../maintaining/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintain the project
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adding-scope/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding a client or feature
   
 
     
@@ -1845,6 +2085,8 @@ differently about synthetic values, even when every round trip is lossless.</p>
 Run <code>go test ./internal/adapter/codex ./internal/proxy ./internal/sse</code> with output
 captured as described in <a href="../verification/">verification</a>. The deterministic HTTP
 workflow corpus in <code>scripts/workflow/</code> remains the end-to-end boundary check.</p>
+<p><a href="../upstream-changes/">Codex client changes</a> lists the client versions checked
+against this adapter and how a change in the client is noticed and handled.</p>
 <h2 id="routes-and-transports">Routes and transports<a class="headerlink" href="#routes-and-transports" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1961,6 +2203,11 @@ workflow corpus in <code>scripts/workflow/</code> remains the end-to-end boundar
 <td>Tool schema describing image/file types</td>
 <td>Schema text is scanned, not treated as an attachment</td>
 <td><code>TestNestedToolSchemasNotBlocked</code></td>
+</tr>
+<tr>
+<td>Tool definitions in an <code>additional_tools</code> input item (Codex 0.166.0 and later)</td>
+<td>Scanned like top-level tools; schema property names are not treated as attachments, and attachment keys elsewhere in the item are refused</td>
+<td><code>TestAdditionalToolsInputItemScanned</code>, <code>TestAdditionalToolsSchemaPropertyNamesNotBlocked</code>, <code>TestToolSchemaExemptionLimitedToAdditionalToolsItems</code></td>
 </tr>
 <tr>
 <td>Invalid JSON, excessive nesting, unsupported binary content</td>
@@ -2122,7 +2369,7 @@ and no model-quality or statistical equivalence claim is made.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../codex/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Connect Codex">
+          <a href="../isolation/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Isolate Codex to a project">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -2132,7 +2379,7 @@ and no model-quality or statistical equivalence claim is made.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Connect Codex
+                Isolate Codex to a project
               </div>
             </div>
           </a>

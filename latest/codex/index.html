@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.7.0/codex/">
+        <link rel="canonical" href="https://rozdolsky33.github.io/cui-proxy/v0.7.1/codex/">
       
       
         <link rel="prev" href="../tutorial/">
       
       
-        <link rel="next" href="../protocol-support/">
+        <link rel="next" href="../isolation/">
       
       
         
@@ -401,6 +401,8 @@
       
         
       
+        
+      
     
     
     
@@ -689,6 +691,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../isolation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Isolate Codex to a project
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1008,6 +1038,12 @@
   
     
     
+      
+        
+      
+        
+      
+        
       
         
       
@@ -1363,6 +1399,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../trial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Join the operator trial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../release-readiness/" class="md-nav__link">
         
   
@@ -1371,6 +1435,62 @@
     
   
     Release readiness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../compatibility/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compatibility and upgrades
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upstream-changes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Codex client changes
   
 
     
@@ -1399,6 +1519,8 @@
   
     
     
+      
+        
       
         
       
@@ -1548,6 +1670,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../detection-quality/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measured detection quality
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../assurance/" class="md-nav__link">
         
   
@@ -1645,6 +1795,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1733,6 +1889,90 @@
     
   
     Maintain the documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Review the security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../maintaining/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintain the project
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adding-scope/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding a client or feature
   
 
     
@@ -2033,6 +2273,9 @@ This is an alternate configuration based on the Responses protocol; the dated
 ChatGPT-login smoke test is <strong>not</strong> evidence of an API-key live test. Run your
 own fabricated end-to-end check before relying on it.</p>
 <h2 id="things-routing-does-not-change">Things routing does not change<a class="headerlink" href="#things-routing-does-not-change" title="Permanent link">&para;</a></h2>
+<p>To restrict local file access, follow <a href="../isolation/">Isolate Codex to a project</a>.
+It covers workspace write protection, a custom profile that also restricts
+reads, and checks for parent-directory and symlink access.</p>
 <p>The proxy passes credential headers to the upstream unchanged. It does not sign
 you in, store credentials, grant tool execution permissions, configure SSH, or
 intercept every network connection from your computer. Shell tools, Git, MCP
@@ -2099,13 +2342,13 @@ stream behavior, attachment limits and deterministic task-effect tests.</p>
         
         
           
-          <a href="../protocol-support/" class="md-footer__link md-footer__link--next" aria-label="Next: Protocol support">
+          <a href="../isolation/" class="md-footer__link md-footer__link--next" aria-label="Next: Isolate Codex to a project">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Protocol support
+                Isolate Codex to a project
               </div>
             </div>
             <div class="md-footer__button md-icon">
