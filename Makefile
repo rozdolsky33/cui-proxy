@@ -1,4 +1,4 @@
-.PHONY: test lint build fuzz vuln
+.PHONY: test lint build fuzz vuln client-probe
 
 test:
 	go test -race -run . -bench '^BenchmarkAuditDurability$$' -benchtime=4x ./...
@@ -19,3 +19,9 @@ fuzz:
 # Scan reachable code against the current Go vulnerability database.
 vuln:
 	go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+
+# Run the installed Codex client against a local stand-in, directly and through
+# bin/cui-proxy, and compare its requests with the recorded baseline. Contacts
+# no model service. See docs/upstream-changes.md.
+client-probe: build
+	go run ./scripts/clientprobe -baseline docs/verification-results/client-shapes/baseline.json $(CLIENTPROBE_FLAGS)

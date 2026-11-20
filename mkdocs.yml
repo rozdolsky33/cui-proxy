@@ -123,6 +123,7 @@ nav:
       - Join the operator trial: trial.md
       - Release readiness: release-readiness.md
       - Compatibility and upgrades: compatibility.md
+      - Codex client changes: upstream-changes.md
   - Understand:
       - Life of a request: architecture.md
       - Capabilities and limitations: limitations.md

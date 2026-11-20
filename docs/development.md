@@ -13,6 +13,10 @@ go build -ldflags "-X main.version=v0.5.0" -o bin/cui-proxy ./cmd/cui-proxy
 
 ## Releasing (maintainers)
 
+Before tagging, run `make client-probe` with the current Codex client and put
+the client version it prints in the release notes. If the probe fails, follow
+[Codex client changes](upstream-changes.md) first.
+
 ```sh
 # Choose a NEW version after checking existing tags.
 git tag vX.Y.Z && git push origin vX.Y.Z

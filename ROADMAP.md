@@ -154,6 +154,15 @@ Exit criteria: at least one upstream protocol change has been handled with
 fail-closed behavior intact and a fixed release published, and the handling
 is written up.
 
+Progress: `make client-probe` runs an installed Codex client against a local
+stand-in for the model service and compares its requests with a recorded
+baseline, and a weekly workflow runs it against the newest client.
+[Codex client changes](docs/upstream-changes.md) holds the procedure, the
+checked versions and the first write-up: Codex 0.166.0 moved its tool
+definitions, the proxy stayed fail-closed, and the adapter was fixed the day
+the change was noticed. No release contains that fix yet, and the probe does
+not see real responses, so this milestone is not met.
+
 ### 7. Reduce single-maintainer risk
 
 - Bring in at least one more person with enough context to review changes to
