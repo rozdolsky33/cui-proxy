@@ -27,6 +27,10 @@ func (st *Stream) Write(chunk string) string {
 	return st.emit(false)
 }
 
+// BufferedBytes reports the number of source bytes still awaiting a boundary.
+// Adapters use it to retain the corresponding original encoded spelling.
+func (st *Stream) BufferedBytes() int { return len(st.buf) }
+
 // Flush returns the remaining held-back text, restored, and resets the stream.
 func (st *Stream) Flush() string {
 	out := st.emit(true)

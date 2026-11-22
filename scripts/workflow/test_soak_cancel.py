@@ -26,6 +26,8 @@ class CancelTests(unittest.TestCase):
         released = dict(active, active=0, finished=1, disconnected=1)
         with patch("soak_cancel.http.client.HTTPConnection", return_value=conn), patch("soak_cancel.backend_evidence", side_effect=[receipt, active, released]):
             row = cancel_request("http://127.0.0.1:1", self.case(), "a" * 64, "http://127.0.0.1:2")
+            self.assertEqual(row["operation_id"], self.case()["operation_id"])
+            self.assertTrue(row["upstream_receipt_verified"])
         self.assertEqual(row["outcome"], "cancelled")
         self.assertTrue(row["expected_failure_verified"])
         self.assertTrue(row["boundary_verified"])

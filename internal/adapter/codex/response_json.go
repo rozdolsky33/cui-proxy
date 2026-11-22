@@ -9,7 +9,7 @@ import (
 )
 
 // Bound buffered argument data across a response. Ordinary text streams retain
-// only a possible synthetic suffix; JSON needs complete tokens and validation.
+// only a possible synthetic suffix; JSON also retains input for validation.
 const maxArgumentBytes = 20 << 20
 
 // restoreJSONContent handles complete decoded string content, including JSON
@@ -68,8 +68,9 @@ func restoreJSONNode(n *node, r *transform.Restorer, depth int) error {
 	return nil
 }
 
-// argumentStream buffers one JSON string or number token, restoring after decoding
-// it. Escape sequences and chunk boundaries are never treated as content.
+// argumentStream decodes ordinary string values incrementally. Keys, numbers,
+// and possible nested JSON documents retain whole-token restoration semantics.
+// Escape sequences and chunk boundaries are never treated as content.
 // Raw input is retained (with a response-wide bound) for final JSON validation.
 type argumentStream struct {
 	r               *transform.Restorer
@@ -80,6 +81,9 @@ type argumentStream struct {
 	containers      []byte
 	key             bool
 	number          strings.Builder
+	plain           *argumentString
+	bufferString    bool
+	stringScan      int // complete leading whitespace already classified
 }
 
 func (st *argumentStream) Write(chunk string) (string, error) {
@@ -102,6 +106,7 @@ func (st *argumentStream) Write(chunk string) (string, error) {
 			}
 			if c == '"' {
 				st.quoted = true
+				st.stringScan = 0
 				st.token.WriteByte(c)
 				continue
 			}
@@ -142,6 +147,19 @@ func (st *argumentStream) Write(chunk string) (string, error) {
 		if c != '"' {
 			continue
 		}
+		if st.plain != nil {
+			part, err := st.flushPlainString(true)
+			if err != nil {
+				return "", err
+			}
+			out.WriteString(part)
+			out.WriteByte('"')
+			st.quoted = false
+			st.plain = nil
+			st.bufferString = false
+			st.token.Reset()
+			continue
+		}
 		raw := st.token.String()
 		var text string
 		if err := json.Unmarshal([]byte(raw), &text); err != nil {
@@ -161,8 +179,82 @@ func (st *argumentStream) Write(chunk string) (string, error) {
 			out.Write(quote(restored))
 		}
 		st.quoted = false
+		st.bufferString = false
 		st.token.Reset()
 	}
+	if st.quoted && !st.key && !st.bufferString {
+		part, err := st.flushPlainString(false)
+		if err != nil {
+			return "", err
+		}
+		out.WriteString(part)
+	}
+	return out.String(), nil
+}
+
+func (st *argumentStream) flushPlainString(final bool) (string, error) {
+	raw := st.token.String()
+	if st.plain == nil {
+		raw = raw[1:] // opening quote is emitted only after choosing plain text
+	}
+	if final {
+		raw = raw[:len(raw)-1] // the caller emits the closing quote after flushing
+	}
+	prefix := ""
+	if st.plain == nil {
+		for {
+			unscanned := raw[st.stringScan:]
+			text, _, remaining, err := decodeArgumentPrefix(unscanned, false)
+			if err != nil {
+				return "", err
+			}
+			consumed := len(unscanned) - len(remaining)
+			st.stringScan += consumed
+			c := first(text)
+			if c == '{' || c == '[' {
+				// Nested JSON validity is known only when the string is complete.
+				st.bufferString = true
+				return "", nil
+			}
+			if c != 0 {
+				break
+			}
+			if consumed == 0 || remaining == "" {
+				return "", nil
+			}
+		}
+		st.plain = &argumentString{stream: st.r.NewStream()}
+		prefix = `"`
+	}
+	var out strings.Builder
+	out.WriteString(prefix)
+	for raw != "" {
+		text, units, remaining, err := decodeArgumentPrefix(raw, final)
+		if err != nil {
+			return "", err
+		}
+		if len(remaining) == len(raw) {
+			break
+		}
+		part, err := st.plain.write(text, units, false)
+		if err != nil {
+			return "", err
+		}
+		out.WriteString(part)
+		raw = remaining
+	}
+	if final {
+		if raw != "" {
+			return "", fmt.Errorf("codex: incomplete argument string")
+		}
+		part, err := st.plain.write("", nil, true)
+		if err != nil {
+			return "", err
+		}
+		out.WriteString(part)
+	}
+	st.token.Reset()
+	st.token.WriteString(raw)
 	return out.String(), nil
 }
 
