@@ -90,7 +90,7 @@ class DrainTests(unittest.TestCase):
             return {"outcome": "supported_success", "completed": True}
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "phase"
-            report = run_recorded_phase(execute, "churn", root, duration=1, drain_seconds=2, replay=journal.snapshot(), clock=lambda: 0)
+            report = run_recorded_phase(execute, "churn", root, duration=1, drain_seconds=2, replay=journal.snapshot(), clock=iter(range(0, 1000000, 1000)).__next__)
             saved = read_sealed_evidence(root / "events.jsonl", root / "seal.json")
         self.assertTrue(saved["run_completed"])
         self.assertEqual(len(seen), 5)

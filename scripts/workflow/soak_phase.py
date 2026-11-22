@@ -34,7 +34,7 @@ def run_phase(execute, phase, *, duration=7200, clock=time.monotonic,
 
 
 def run_replay(execute, records, phase, *, duration=7200, clock=time.monotonic,
-               record=lambda event: None, stop=None, drain_seconds=0):
+               record=lambda event: None, stop=None, drain_seconds=0, wait=None):
     clients = replay_requests(records, phase, duration, drain_seconds=drain_seconds)
     if any(not rows for rows in clients):
         raise ValueError("soak_replay_missing_client")
@@ -43,11 +43,11 @@ def run_replay(execute, records, phase, *, duration=7200, clock=time.monotonic,
     return _execute_clients(
         execute, phase, duration, clock, record, stop, clock(),
         lambda client: next(pending[client], None), lambda identity: None,
-        lambda: schedule, replay=True, drain_seconds=drain_seconds)
+        lambda: schedule, replay=True, drain_seconds=drain_seconds, wait=wait)
 
 
 def _execute_clients(execute, phase, duration, clock, record, stop, started,
-                     next_plan, complete, snapshot, *, replay, drain_seconds=0):
+                     next_plan, complete, snapshot, *, replay, drain_seconds=0, wait=None):
     external_stop = stop if stop is not None else threading.Event()
     stop = threading.Event()
     results, failures = [], []
@@ -58,6 +58,14 @@ def _execute_clients(execute, phase, duration, clock, record, stop, started,
         with evidence_lock:
             record(copy.deepcopy(event))
 
+    def wait_until(offset):
+        while not stop.is_set() and not external_stop.is_set():
+            remaining = started + offset - clock()
+            if remaining <= 0:
+                return True
+            (wait or external_stop.wait)(min(remaining, 0.05))
+        return False
+
     def worker(client):
         while not stop.is_set() and not external_stop.is_set():
             plan = next_plan(client)
@@ -67,6 +75,8 @@ def _execute_clients(execute, phase, duration, clock, record, stop, started,
                 return
             result = {"outcome": "harness_failure", "completed": False}
             failure = None
+            if replay and not wait_until(plan["elapsed_s"]):
+                return
             try:
                 emit(dict(plan, event="assigned"))
                 result = execute(copy.deepcopy(plan))
@@ -100,6 +110,8 @@ def _execute_clients(execute, phase, duration, clock, record, stop, started,
         futures = [executor.submit(worker, client) for client in range(4)]
         for future in futures:
             future.result()
+        if replay:
+            wait_until(duration)
     finally:
         # Set stop before waiting so interrupt/error cleanup cannot keep scheduling.
         executor_stop = stop.is_set() or external_stop.is_set()
