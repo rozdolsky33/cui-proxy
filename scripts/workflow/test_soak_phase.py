@@ -89,7 +89,7 @@ class ReplayPhaseTests(unittest.TestCase):
         def execute(plan):
             seen[plan["identity"][1]].append(plan)
             return {"outcome": "supported_success"}
-        report = run_replay(execute, saved, "churn")
+        report = run_replay(execute, saved, "churn", clock=iter(range(0, 1000000, 1000)).__next__, wait=lambda _seconds: None)
         self.assertTrue(report["completed"])
         self.assertEqual(len(report["results"]), len(saved))
         for client in range(4):
