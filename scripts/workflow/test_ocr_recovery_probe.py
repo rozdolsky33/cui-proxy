@@ -63,7 +63,7 @@ class PrivateExtractorTests(unittest.TestCase):
                 self.assertEqual(child["PATH"], str(isolated.directory))
                 self.assertNotIn("TESSDATA_PREFIX", child)
                 with isolated.without_ocr():
-                    for name in ("pdftotext", "pdftoppm"):
+                    for name in ('pdftotext', 'pdftoppm', 'pdfinfo'):
                         self.assertTrue((isolated.directory / name).is_file())
 
 

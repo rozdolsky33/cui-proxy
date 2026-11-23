@@ -16,7 +16,7 @@ process and cleanup handling, its real backend and receipt API, and the
 `extraction_performance.attachment_case` canonical image oracle. Text requests
 use `performance.request` and `soak_boundary.verify_deferred_boundary`.
 
-An isolated PATH contains three private regular-file launchers that execute the
+An isolated PATH contains four private regular-file launchers that execute the
 resolved real Tesseract and Poppler tools. It never includes the host PATH.
 Removing OCR renames only the private Tesseract launcher; neither actual tools
 nor shared symlinks are modified. The launcher is restored in `finally`, including
@@ -71,7 +71,7 @@ printed. Successful runs delete their raw captures after the final privacy scan.
 `scripts/workflow/ocr_recovery_probe.py` requires `--binary`,
 `--binary-sha256`, `--binary-source`, `--seed-binary`, `--producer-source`,
 `--producer-commit`, `--fixtures`, `--reference-lock`, and `--report`.
-Optional `--tesseract`, `--pdftotext`, and `--pdftoppm` select exact real tools.
+Optional `--tesseract`, `--pdftotext`, `--pdftoppm`, and `--pdfinfo` select exact real tools.
 The report must be a new file outside the clean producer checkout. The existing
 global lock file must be supplied explicitly. There is no fixture generation,
 build, automatic test run, or automatic retry mode.

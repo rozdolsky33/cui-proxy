@@ -29,7 +29,7 @@ from soak_receipts import receipt_id, verify_receipt
 
 
 CANDIDATE_COMMIT = "c8aaef5799c75bccb19a7121304198507d36649b"
-TOOL_NAMES = ("tesseract", "pdftotext", "pdftoppm")
+TOOL_NAMES = ('tesseract', 'pdftotext', 'pdftoppm', 'pdfinfo')
 DETAIL = "attachment_image_missing_tool"
 HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 REQUEST_ID = re.compile(r"[0-9a-f]{16}\Z")
