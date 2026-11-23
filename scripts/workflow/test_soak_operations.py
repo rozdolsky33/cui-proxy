@@ -17,6 +17,10 @@ class ToolOperationTests(unittest.TestCase):
             observer = observer_factory()
             if complete:
                 for index, event in enumerate(tool_events(build_tool_call(scenario, values, "call-1"))):
+                    if event["type"] == "response.completed":
+                        event = dict(event, benchmark_prefix_ids=observer.prefix_ids,
+                                     benchmark_send_started_s=[1.] * len(observer.prefix_ids),
+                                     benchmark_send_finished_s=[1.] * len(observer.prefix_ids))
                     observer.observe(event, index)
             return {"outcome": "supported_success", "completed": True}
         return request

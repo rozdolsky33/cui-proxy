@@ -48,9 +48,18 @@ decoder and existing argument-JSON fuzz targets each passed a 20-second run.
 Independent review's allocation findings were corrected and re-reviewed with no
 remaining Critical or Important findings.
 
-Tool timing also needs verified association of corresponding decoded logical
-prefixes: equal byte fractions of original and masked argument documents are not
-necessarily corresponding events. Review that association, run the focused
-native comparison, and collect the required new acceptance measurements for the
-frozen corrected candidate. Neither this preflight nor prior artifact results
-qualifies a current release or establishes live-model reasoning equivalence.
+Tool timing now also associates corresponding decoded logical prefixes: equal
+byte fractions of original and masked argument documents are not necessarily
+corresponding events. An exact, unambiguous tool recipe identifies literal
+prefixes and atomic substituted values. Client and backend derive the same
+milestone IDs with separate raw offsets. The sender records when actual source
+frames supply those milestones; its existing 32 raw deltas and pacing remain.
+Qualified observers require matching IDs and valid ordered timing arrays.
+Ordinary-text buffering still fails the unchanged 100 ms regression gate.
+Independent review found no Critical or Important issues in this association.
+The complete native workflow suite passed all 826 tests after this change.
+
+Run the focused native comparison and collect the required new acceptance
+measurements for the frozen corrected candidate. Neither this preflight nor
+prior artifact results qualifies a current release or establishes live-model
+reasoning equivalence.

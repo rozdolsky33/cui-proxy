@@ -1,3 +1,4 @@
+from tool_prefix_plan import tool_prefix_plan
 #!/usr/bin/env python3
 """Isolated matched-load measurements; stdout is counts/status only.
 
@@ -223,7 +224,7 @@ class FakeBackend:
                     self.end_headers()
                     if tool_call is not None:
                         from soak_sender import send_tool_stream
-                        send_tool_stream(self.wfile, tool_call, outer.interval)
+                        send_tool_stream(self.wfile, tool_call, outer.interval, prefix_plan=tool_prefix_plan(scenario, values, tool_call))
                     else:
                         send_started = []
                         send_finished = []

@@ -7,6 +7,7 @@ import tempfile
 
 import performance
 from soak_semantics import verify_tool_effect
+from tool_prefix_plan import tool_prefix_plan
 from soak_tool_stream import ToolStreamObserver
 
 
@@ -29,7 +30,7 @@ def run_tool_operation(url, case, expected_hash, *, timeout=45, expected_layout_
             "inspect-resource", "--source", originals[0], "--target", originals[1]])}
     expected = {"type": "function_call", "name": name, "call_id": call_id,
                 "arguments": json.dumps(arguments, separators=(",", ":"))}
-    observer = ToolStreamObserver(expected)
+    observer = ToolStreamObserver(expected, prefix_plan=tool_prefix_plan(scenario, originals, expected))
     with tempfile.TemporaryDirectory(prefix="cui-soak-effect-") as directory:
         if scenario == "W02":
             Path(directory, "effect.txt").write_text(originals[0])
