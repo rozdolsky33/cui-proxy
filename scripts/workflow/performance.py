@@ -89,7 +89,9 @@ def relay_timings(started_s, prefix_ms, send_started_s, send_finished_s):
         return result
     if any(type(value) not in (int,float) or not math.isfinite(value) for values in arrays for value in values):
         return result
-    if any(end < start for start,end in zip(send_started_s,send_finished_s)) or any(start < previous for previous,start in zip(send_finished_s,send_started_s[1:])):
+    if any(end < start for start,end in zip(send_started_s,send_finished_s)) or any(start < previous_finish and (start, finish) != (previous_start, previous_finish)
+            for previous_start, previous_finish, start, finish in
+            zip(send_started_s, send_finished_s, send_started_s[1:], send_finished_s[1:])):
         return result
     sent = [(value-started_s)*1000 for value in send_started_s]
     flushed = [(value-started_s)*1000 for value in send_finished_s]

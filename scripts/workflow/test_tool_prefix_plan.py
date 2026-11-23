@@ -65,8 +65,13 @@ class ToolPrefixAssociationTests(unittest.TestCase):
         right = timing.tool_prefix_plan("W04", masked_values, masked)
         sink = io.BytesIO()
         now = [10.0]
+        def clock():
+            now[0] += .001
+            return now[0]
+
         send_tool_stream(sink, masked, .025, prefix_plan=right,
-                         clock=lambda: now[0], sleep=lambda delay: now.__setitem__(0, now[0] + delay))
+                         clock=clock, sleep=lambda delay: now.__setitem__(0, now[0] + delay))
+        finished_ms = (now[0] - 10.) * 1000.
         upstream = [json.loads(frame.split(b"data: ", 1)[1])
                     for frame in sink.getvalue().split(b"\n\n") if frame]
         terminal = next(e for e in upstream if e["type"] == "response.completed")
@@ -82,7 +87,8 @@ class ToolPrefixAssociationTests(unittest.TestCase):
                 continue
             event = dict(next(e for e in skeleton if e["type"] == "response.function_call_arguments.delta"),
                          delta=original["arguments"][position:end])
-            observer.observe(event, 800. if buffered else frame * 25. + 5.)
+            source_ms = (terminal["benchmark_send_started_s"][right["frames"].index(frame)] - 10.) * 1000.
+            observer.observe(event, finished_ms + 150. if buffered else source_ms + 5.)
             position = end
         for event in skeleton[1:]:
             if event["type"] == "response.function_call_arguments.delta":
@@ -90,13 +96,20 @@ class ToolPrefixAssociationTests(unittest.TestCase):
             if event["type"] == "response.completed":
                 event = dict(event, **{key: value for key, value in terminal.items()
                                       if key.startswith("benchmark_")})
-            observer.observe(event, 805.)
+            observer.observe(event, finished_ms + 155.)
         return observer, terminal
 
     def test_atomic_mapping_hold_uses_actual_required_source_frame(self):
         observer, terminal = self.stream()
         self.assertTrue(observer.valid())
         delays = relay_timings(10., observer.prefix_ms, observer.send_started_s, observer.send_finished_s)
+        self.assertTrue(any(finish > start for start, finish in zip(
+            observer.send_started_s, observer.send_finished_s)))
+        self.assertLess(len(set(zip(observer.send_started_s, observer.send_finished_s))), len(observer.prefix_ms))
+        row = dict(prefix_ms=observer.prefix_ms, **delays)
+        for key in ("upstream_send_ms", "upstream_flush_ms", "relay_ms", "relay_flush_ms"):
+            self.assertIsInstance(row[key], list)
+            self.assertEqual(len(row[key]), len(row["prefix_ms"]))
         self.assertLess(max(delays["relay_ms"]), 10.)
         self.assertEqual(len(observer.prefix_ms), len(terminal["benchmark_prefix_ids"]))
 
@@ -138,6 +151,15 @@ class ToolPrefixAssociationTests(unittest.TestCase):
                         event[field] = malformed
                     observer.observe(event, 900.)
                 self.assertFalse(observer.valid())
+
+
+    def test_distinct_overlapping_intervals_cannot_produce_report_samples(self):
+        for starts, finishes in (([10.01, 10.0105], [10.011, 10.012]),
+                                 ([10.01, 10.01], [10.011, 10.012]),
+                                 ([10.01, 10.0105], [10.011, 10.011]),
+                                 ([10.01, 10.009], [10.011, 10.010])):
+            row = relay_timings(10., [30., 30.], starts, finishes)
+            self.assertTrue(all(value is None for value in row.values()))
 
 
 if __name__ == "__main__":

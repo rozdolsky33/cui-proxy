@@ -59,6 +59,18 @@ Ordinary-text buffering still fails the unchanged 100 ms regression gate.
 Independent review found no Critical or Important issues in this association.
 The complete native workflow suite passed all 826 tests after this change.
 
+The short native paired run then exposed a further collector integration gap:
+several canonical milestones can become available in the same source frame.
+The generic relay calculator rejected their identical positive-duration time
+intervals and returned unavailable timing arrays. It now accepts an overlap
+only when both timestamps exactly repeat the previous interval. Distinct
+overlaps, backward times and negative durations remain rejected. A regression
+through sender, metadata, observer and report retains all 32 samples from 22
+source frames; immediate relay is 5 ms in that controlled test, while delayed
+ordinary text still exceeds 1,000 ms and fails the unchanged 100 ms target.
+All 827 native workflow tests pass with this correction. No missing timing
+samples in the retained native campaign have been filled retrospectively.
+
 Run the focused native comparison and collect the required new acceptance
 measurements for the frozen corrected candidate. Neither this preflight nor
 prior artifact results qualifies a current release or establishes live-model
