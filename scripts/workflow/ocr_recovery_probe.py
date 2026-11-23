@@ -560,7 +560,7 @@ def run_probe(arguments, report):
                             harness.wait_until(lambda: env.metrics().get("active_requests") == 3,
                                                5, "three_text_requests_not_active")
                             failure_started = time.monotonic()
-                            status, raw, _duration = send_raw_case(env.url, failed)
+                            status, raw = send_raw_case(env.url, failed)
                             failure_finished = time.monotonic()
                             missing = check_missing_failure(status, raw)
                             rows = [future.result() for future in futures]
