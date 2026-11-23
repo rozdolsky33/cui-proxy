@@ -75,3 +75,7 @@
 - [x] Parent executed the frozen F0 native harness against retained 0.7.4 bytes; the suite passed and the binary hash remained unchanged.
 - [x] Native evidence is bound to the new release binary; historical c8 results are not transferred.
 - [ ] Freeze and integrate producers only after tests/review; no qualification or release-complete claim before real execution evidence.
+
+## Native proof-path regression
+
+The first real baseline response exposed a metadata-proof helper accepting a string while assuming a Path. A byte-verified pre-fix overlay reproduced AttributeError in the new regression; normalizing the input path fixed it. The original snapshot and its initial manifest-name import failure remain retained. Captured final verification passed 19 targeted and 870 full workflow tests (four skips), plus the documentation contract. No response-body retention, binary rebuild, or acceptance-limit change was introduced. Native upgrade/rollback acceptance remains pending.

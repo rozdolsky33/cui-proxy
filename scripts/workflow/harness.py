@@ -188,6 +188,7 @@ class UpstreamResponseProof:
 
 
 def _store_response_proof(path, capture, proof):
+    path = Path(path)
     # This updates existing request-capture metadata only. No raw response is
     # written here or anywhere else; the observer has already cleared its RAM.
     metadata = dict(capture, response_proof=proof)

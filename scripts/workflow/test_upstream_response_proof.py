@@ -1,4 +1,6 @@
 import json
+from pathlib import Path
+import tempfile
 import unittest
 
 import harness
@@ -75,6 +77,21 @@ class UpstreamResponseProofTests(unittest.TestCase):
             with self.assertRaises(harness.CheckFailure):
                 proof.finish()
             self.assertEqual(proof.buffered_bytes, 0)
+
+
+    def test_metadata_proof_storage_accepts_actual_backend_string_path_atomically(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            path = directory / "capture.json"
+            capture = {"body": "opaque-request", "headers": {}}
+            proof = {"completed": True, "bytes": 123, "semantic_sha256": "a" * 64}
+            harness._store_response_proof(str(path), capture, proof)
+            stored = json.loads(path.read_bytes())
+            self.assertEqual(stored, dict(capture, response_proof=proof))
+            self.assertEqual(set(stored["response_proof"]),
+                             {"completed", "bytes", "semantic_sha256"})
+            self.assertNotIn("response_proof", capture)
+            self.assertEqual(list(directory.iterdir()), [path])
 
 
 if __name__ == "__main__":
