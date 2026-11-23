@@ -268,8 +268,16 @@ def validate_evidence(report):
     require(set(report["stages"]) == {"baseline", "candidate", "rollback"}
             and all(all(stage.get(key) is True for key in ("check_config", "preflight", "identity", "graceful_exit"))
                     for stage in report["stages"].values()), "stage_health")
-    require(report.get("canonical_requests") == 4 and report.get("alias_response_proofs") == 2
-            and report.get("mapping_counts") == [0, 1, 1, 1, 2, 2, 2], "canonical_persistence")
+    counts = report.get("mapping_counts")
+    # Restart gauges have no sample until their first completed request.
+    # Alias-only restoration and vault/key evidence establish persistence separately.
+    require(report.get("mapping_counts_kind") == "process_local_vault_size_gauge" and
+            type(counts) is list and len(counts) == 7 and
+            all(type(count) is int for count in counts) and counts[0] == 0 and
+            [counts[index] for index in (1, 3, 4, 6)] == [1, 1, 2, 2] and
+            counts[2] in (0, 1) and counts[5] in (0, 2) and
+            report.get("canonical_requests") == 4 and report.get("alias_response_proofs") == 2,
+            "canonical_persistence")
     require(all(report.get(key) is True for key in ("originals_absent_from_alias_wire", "latest_vault_rollback_verified",
                 "backup_preserved", "archive_stable", "candidate_binary_stable", "baseline_binary_stable", "rollback_healthy")),
             "persistence_or_stability")
@@ -348,6 +356,7 @@ def run_probe(args, report):
                     config, _metadata = _config(env.config_path, env.directory, originals)
                     vault, key, audit = (Path(config["vault"]["file"]), Path(config["vault"]["key_file"]),
                                          Path(config["audit"]["file"]))
+                    report["mapping_counts_kind"] = "process_local_vault_size_gauge"
                     counts = report["mapping_counts"]
                     counts.append(env.vault_count())
                     expected_a, expected_b = ([harness.message(value)] for value in originals)

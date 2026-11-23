@@ -91,6 +91,7 @@ class ReleaseCloseoutTests(unittest.TestCase):
                              "handles_closed": True, "value_free": True, "leaking_files": 0},
                  "cleanup": {"private_environment_removed": True, "children_stopped": True,
                              "extracted_directory_removed": True}}
+        valid["mapping_counts_kind"] = "process_local_vault_size_gauge"
         valid["effective_config"] = {"sha256": "f" * 64, "profile": 'sanitize', "on_error": "block",
                                      "attachments": "block", "vault_mode": "file",
                                      "loopback_only": True, "private_paths": True}
@@ -152,6 +153,57 @@ class ReleaseCloseoutTests(unittest.TestCase):
             with self.assertRaises(recovery.ProbeFailure):
                 recovery.captured_log_summary(directory, [handle], [], {"private-value"},
                     directory / 'retained-leak-failure', {}, minimum_captures=1)
+
+
+    def test_restart_gauge_zero_requires_exact_postrequest_counts_and_persistence_proofs(self):
+        valid = {"candidate": {"binary_sha256": "a" * 64, "source_commit": "b" * 40,
+                                       "manifest_sha256": "c" * 64, "version": "0.7.4", "embedded_clean_revision": True},
+                         "baseline": {"binary_sha256": "d" * 64, "provenance_sha256": "e" * 64,
+                                      "asset_verified": True, "version": "0.7.3"},
+                         "producer": {"commit": "f" * 40, "clean": True,
+                                      "module_sha256": {name: "a" * 64 for name in
+                                                        ("release_closeout.py", "release_archive.py", "harness.py", "ocr_recovery_probe.py")}},
+                         "archive": {"archive_sha256": "b" * 64, "binary_sha256": "a" * 64,
+                                     "stock_member_layout_verified": True, "stock_builder_executed_by_probe": False},
+                         "stages": {name: {key: True for key in ("check_config", "preflight", "identity", "graceful_exit")}
+                                    for name in ("baseline", "candidate", "rollback")},
+                         "canonical_requests": 4, "alias_response_proofs": 2,
+                         "mapping_counts": [0, 1, 1, 1, 2, 2, 2],
+                         "originals_absent_from_alias_wire": True, "latest_vault_rollback_verified": True,
+                         "backup_preserved": True, "archive_stable": True, "candidate_binary_stable": True,
+                         "baseline_binary_stable": True, "rollback_healthy": True,
+                         "audit": {"records": 4, "sanitized": 2, "forwarded": 2, "metadata_only": True,
+                                   "privacy_verified": True, "sha256": "c" * 64},
+                         "privacy": {"scan_completed": True, "shutdown_complete": True,
+                                     "handles_closed": True, "value_free": True, "leaking_files": 0},
+                         "cleanup": {"private_environment_removed": True, "children_stopped": True,
+                                     "extracted_directory_removed": True}}
+        valid["mapping_counts_kind"] = "process_local_vault_size_gauge"
+        valid["effective_config"] = {"sha256": "f" * 64, "profile": 'sanitize', "on_error": "block",
+                                             "attachments": "block", "vault_mode": "file",
+                                             "loopback_only": True, "private_paths": True}
+        valid["effective_config"] = {"sha256": "d" * 64, "profile": 'sanitize', "on_error": "block",
+                                             "attachments": "block", "vault_mode": "file", "loopback_only": True,
+                                             "private_paths": True}
+        valid["mapping_counts"] = [0, 1, 0, 1, 2, 0, 2]
+        closeout.validate_evidence(valid)
+        for counts in ([0, 0, 0, 1, 2, 0, 2], [0, 1, 0, 0, 2, 0, 2],
+                       [0, 1, 0, 1, 1, 0, 2], [0, 1, 0, 1, 2, 0, 1],
+                       [0, 1, 3, 1, 2, 0, 2], [0, 1, 0, 1, 2, 3, 2],
+                       [False, 1, 0, 1, 2, 0, 2], [0, True, 0, 1, 2, 0, 2]):
+            changed = copy.deepcopy(valid)
+            changed["mapping_counts"] = counts
+            with self.subTest(counts=counts), self.assertRaises(ValueError):
+                closeout.validate_evidence(changed)
+        for field in ("originals_absent_from_alias_wire", "latest_vault_rollback_verified"):
+            changed = copy.deepcopy(valid)
+            changed[field] = False
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                closeout.validate_evidence(changed)
+        changed = copy.deepcopy(valid)
+        changed["alias_response_proofs"] = 0
+        with self.assertRaises(ValueError):
+            closeout.validate_evidence(changed)
 
 
 if __name__ == "__main__":

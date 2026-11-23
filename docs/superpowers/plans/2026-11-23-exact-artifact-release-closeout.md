@@ -79,3 +79,7 @@
 ## Native proof-path regression
 
 The first real baseline response exposed a metadata-proof helper accepting a string while assuming a Path. A byte-verified pre-fix overlay reproduced AttributeError in the new regression; normalizing the input path fixed it. The original snapshot and its initial manifest-name import failure remain retained. Captured final verification passed 19 targeted and 870 full workflow tests (four skips), plus the documentation contract. No response-body retention, binary rebuild, or acceptance-limit change was introduced. Native upgrade/rollback acceptance remains pending.
+
+## Process-local vault gauge interpretation
+
+The complete native baseline/upgrade/latest-vault rollback sequence was healthy, but the final validator incorrectly expected vault_size to initialize from disk at startup. Production updates this process-local metric after request completion. Preserve exact post-request counts and all independent alias-only, canonical, backend-response, latest-vault hash and unchanged-key proofs; pre-request restart observations are explicitly labeled and allow only zero or the expected cardinality. The focused pre-fix regression failed, final targeted verification passed 20 tests, and the full suite passed 871 tests (four skips). An existing negative test caught an introduced validator label mutation; moving labeling exclusively into the producer fixed it with no test changes. Native acceptance must still pass a fresh complete run.
