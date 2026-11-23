@@ -5,9 +5,10 @@ runtime, using a real OCR extractor and the existing canonical workflow oracle.
 The current harness's synthetic OCR launcher is useful for deterministic tests
 but cannot establish this live dependency behavior.
 
-The parent approved this design on 2026-11-23. Preparation is static while the
-eight-hour soak owns the reference machine lock. No tests, builds, extraction,
-profiling, benchmarks, or live probe may run until the parent releases that lock.
+This design was prepared under the standing roadmap authorization while the
+prior soak held the reference machine lock. Tests and the live probe ran
+sequentially after that controller stopped. Future executions must acquire the
+same exclusive lock before any child process or extractor call.
 
 ## Approach
 
@@ -76,6 +77,6 @@ The report must be a new file outside the clean producer checkout. The existing
 global lock file must be supplied explicitly. There is no fixture generation,
 build, automatic test run, or automatic retry mode.
 
-The new helper and tests remain unexecuted pending the parent-controlled lock
-release, review, and sequential verification. They cannot yet be cited as passing
-tests or live recovery evidence.
+The [completed verification record](../../verification-results/2026-11-23-live-ocr-recovery.md)
+binds the accepted native run and passing regression suite to their exact
+candidate and producer identities. Separate sustained and release gates remain.

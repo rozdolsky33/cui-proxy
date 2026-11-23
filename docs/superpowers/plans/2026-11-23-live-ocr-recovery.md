@@ -17,7 +17,7 @@
 - Use only private launcher removal; preserve the real tools and all shared symlinks.
 - Keep candidate binary identity separate from producer identity.
 - Retain no fixture values, replacements, request IDs, raw errors, or raw audit records in the report or tool output.
-- The test-first execution steps below are intentionally pending the explicit no-execution instruction; static preparation does not constitute red/green verification.
+- Initial preparation was static while the prior soak held the lock. The completed checks below ran after that controller stopped; no timed campaign ran concurrently.
 
 ## Review Focus
 
@@ -40,9 +40,9 @@
 - `bind_identity(...)` verifies the fixed c8 binary and a separately supplied clean producer commit.
 
 - [x] Write tests for cleanup after exception, private PATH isolation, lock refusal, exact recovery guidance, all-three overlap, missing receipts, audit privacy, captured shutdown-log leaks, mandatory final log proof, and completeness gates.
-- [ ] After the parent releases the reference lock, run the focused tests with stdout/stderr captured locally and confirm the intended red failures using a reviewed preimplementation snapshot if available. Never claim that the current static preparation demonstrated red/green.
+- [x] After lock release, capture failing regressions before their fixes for private tool coverage, raw HTTP behavior and route, wire schema, and strict audit outcomes. Preserve the initial capture-path failures as well.
 - [x] Prepare the helper implementation for static review.
-- [ ] Run focused tests after review, capture all output, report only status/counts/test names, and fix meaningful failures.
+- [x] Run focused tests after review with captured output; all 21 tests pass after fixing meaningful failures.
 
 ### Task 2: Execute the real recovery sequence
 
@@ -56,7 +56,10 @@
 - [x] Prepare the baseline → private OCR removal → same-process missing-tool preflight → uncached image failure overlapping three text requests → launcher restoration → canonical image recovery sequence.
 - [x] Prepare final evidence validation for candidate/producer binding, six audit records, five canonical receipts, three overlapping text successes, uncached image behavior, captured log privacy after shutdown, and cleanup.
 - [x] Prepare fail-closed preservation of private captured failure logs before Harness removes its temporary environment, with safe metadata-only report labels/counts/digests.
-- [ ] Parent independently reviews the static changes.
-- [ ] After the soak ends, acquire the global lock and run focused tests followed by the full required native workflow suite sequentially with captured output.
-- [ ] Commit the producer only after tests/review, then run the live probe with its clean producer identity under the same global lock discipline.
-- [ ] Inspect the report locally, verify cleanup and all bindings, and retain only metadata evidence. Do not create a PR before tests and review.
+- [x] Complete independent source and retained-evidence review with no outstanding Critical or Important findings.
+- [x] Acquire the global lock for sequential focused/native execution and the final full workflow suite; all 851 workflow tests pass with captured output.
+- [x] Commit each producer after focused checks, bind the live run to its clean identity, and complete the full suite before PR creation.
+- [x] Inspect the accepted report locally and verify cleanup, privacy, and bindings before PR creation. Retain failed attempts separately.
+
+The [verification record](../../verification-results/2026-11-23-live-ocr-recovery.md)
+records the accepted native sequence, aggregate results, and remaining scope.
