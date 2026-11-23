@@ -222,8 +222,9 @@ def check_missing_failure(status, raw):
         error = json.loads(raw)["error"]
         guidance = error["recovery"]
         ident = error["request_id"]
-        require(error.get("code") == "transformation_error" and DETAIL in error.get("message", ""),
+        require(error.get("code") == 'sanitize' and DETAIL in error.get("message", ""),
                 "missing_tool_error")
+        require(error.get("type") == "cui_proxy_blocked", "missing_tool_error_family")
         require(guidance.get("code") == DETAIL and guidance.get("category") == "dependency"
                 and guidance.get("retry") == "after_repair", "missing_tool_recovery_code")
         remedy = guidance.get("remedy")
@@ -260,6 +261,10 @@ def audit_summary(path, successful_ids, failure_id, forbidden_values):
     try:
         rows = [json.loads(line) for line in raw.splitlines()]
         require(all(type(row) is dict and set(row) <= allowed for row in rows), "audit_schema_not_metadata_only")
+        require(all(
+            row.get("reason") == "sanitize" if row.get("decision") == "blocked"
+            else row.get("reason", "") == "" for row in rows
+        ), "audit_reason_mismatch")
         expected = set(successful_ids) | {failure_id}
         require(len(expected) == len(successful_ids) + 1 and len(rows) == len(expected)
                 and {row.get("request_id") for row in rows} == expected, "audit_request_binding_missing")

@@ -69,10 +69,7 @@ class PrivateExtractorTests(unittest.TestCase):
 
 class RecoveryAssertionTests(unittest.TestCase):
     def failure(self):
-        return {"error": {"code": "transformation_error", "request_id": "0123456789abcdef",
-                          "message": "attachment_image_missing_tool",
-                          "recovery": {"code": "attachment_image_missing_tool", "category": "dependency",
-                                       "retry": "after_repair", "remedy": "Install Tesseract and restart the proxy."}}}
+        return {"error": {'code': 'sanitize', 'request_id': '0123456789abcdef', 'message': 'attachment_image_missing_tool', 'recovery': {'code': 'attachment_image_missing_tool', 'category': 'dependency', 'retry': 'after_repair', 'remedy': 'Install Tesseract and restart the proxy.'}, 'type': 'cui_proxy_blocked'}}
 
     def test_missing_tool_requires_exact_failure_and_recovery_guidance(self):
         raw = json.dumps(self.failure()).encode()
@@ -101,13 +98,11 @@ class RecoveryAssertionTests(unittest.TestCase):
     def test_audit_missing_binding_extra_fields_and_values_fail_closed(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "audit.jsonl"
-            record = {"request_id": "0123456789abcdef", "decision": "blocked",
-                      "detail": "attachment_image_missing_tool", "hash": "a" * 64}
+            record = {'request_id': '0123456789abcdef', 'decision': 'blocked', 'detail': 'attachment_image_missing_tool', 'hash': 'a' * 64, 'reason': 'sanitize'}
             path.write_text(json.dumps(record) + "\n")
             result = probe.audit_summary(path, [], record["request_id"], ["privatefixturevalue"])
             self.assertEqual(result["missing_tool_blocks"], 1)
-            for mutated in (dict(record, detail="other"), dict(record, payload="privatefixturevalue"),
-                            dict(record, reason="privatefixturevalue")):
+            for mutated in (dict(record, detail='other'), dict(record, payload='privatefixturevalue'), dict(record, reason='privatefixturevalue'), record | {'reason': 'policy'}):
                 path.write_text(json.dumps(mutated) + "\n")
                 with self.assertRaises(probe.ProbeFailure):
                     probe.audit_summary(path, [], record["request_id"], ["privatefixturevalue"])
@@ -116,6 +111,12 @@ class RecoveryAssertionTests(unittest.TestCase):
         with patch.object(probe, "read_receipt", return_value={"count": 0}):
             with self.assertRaises((probe.ProbeFailure, ValueError)):
                 probe.require_receipt("http://127.0.0.1:1", "operation", "a" * 64)
+
+    def test_wrong_proxy_error_family_fails_closed(self):
+        payload = self.failure()
+        payload["error"]["type"] = "other"
+        with self.assertRaises(probe.ProbeFailure):
+            probe.check_missing_failure(422, json.dumps(payload).encode())
 
 
 class LockAndBindingTests(unittest.TestCase):
@@ -302,8 +303,6 @@ class CapturedLogPrivacyTests(unittest.TestCase):
             self.assertTrue(env.log_evidence["failure_logs_retained"])
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 class RawCaseTests(unittest.TestCase):
@@ -344,3 +343,7 @@ class RawCaseTests(unittest.TestCase):
                     probe.send_raw_case("http://127.0.0.1:1", {"body": b""}, max_body_bytes=2)
         response.read.assert_called_once_with(3)
         response.close.assert_called_once()
+
+
+if __name__ == "__main__":
+    unittest.main()
