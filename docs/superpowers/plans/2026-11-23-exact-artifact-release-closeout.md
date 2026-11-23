@@ -64,7 +64,7 @@
 - [x] After parent stop confirmation, prepare optional generic expected-commit OCR API/CLI with legacy c8 default and regression tests in this new worktree only.
 - [x] Independent static code review cleared Critical/Important findings; no execution was performed.
 - [x] Independent static review cleared Critical/Important findings. Parent retained baseline red (three missing-feature import errors), corrected a test-only macOS path alias, and ran 16 targeted plus 867 full workflow tests (four skips). Native setup then exposed an unsupported helper profile; two preserved regressions failed before the fix and passed after it. The helper now uses sanitize, and early failures retain one closed capture while successful runs and OCR retain the two-capture minimum. Final verification passed 18 targeted and 869 workflow tests (four skips).
-- [ ] Run the real selected-artifact upgrade/rollback sequence under the global lock.
+- [x] Fresh exact-archive native baseline/upgrade/latest-vault rollback passed under the global lock: all stages healthy, four canonical requests, two alias-only response proofs, unchanged key, private logs and cleanup.
 
 ### Task 3: Reuse separate backend-delay observation
 
@@ -74,7 +74,8 @@
 - [x] Confirm source-backed injected 80 ms delay and at least 60 ms upstream attribution, separate from planned soak latency.
 - [x] Parent executed the frozen F0 native harness against retained 0.7.4 bytes; the suite passed and the binary hash remained unchanged.
 - [x] Native evidence is bound to the new release binary; historical c8 results are not transferred.
-- [ ] Freeze and integrate producers only after tests/review; no qualification or release-complete claim before real execution evidence.
+- [x] Clean producer 96f2a6c passed real native closeout and OCR recovery after 20 targeted and 871 workflow tests; frozen release bytes remain unchanged.
+- [ ] Integrate after required CI; full soak/reference qualification and release completion remain separate open gates.
 
 ## Native proof-path regression
 
