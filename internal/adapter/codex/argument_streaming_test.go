@@ -34,6 +34,32 @@ func TestArgumentPlainStringEmitsBeforeClosingQuote(t *testing.T) {
 	}
 }
 
+func TestArgumentKeyEmitsBeforeClosingQuote(t *testing.T) {
+	for _, key := range []string{"reference", "exit_code", "[ordinary key"} {
+		e := newEnv(t)
+		st := &argumentStream{r: e.r}
+		first, err := st.Write(`{"` + key[:len(key)-1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(first, key[:len(key)-1]) {
+			t.Fatal("ordinary argument key was held until its closing quote")
+		}
+		last, err := st.Write(key[len(key)-1:] + `":"value"}`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tail, err := st.Finish()
+		if err != nil {
+			t.Fatal(err)
+		}
+		var decoded map[string]string
+		if json.Unmarshal([]byte(first+last+tail), &decoded) != nil || decoded[key] != "value" {
+			t.Fatal("streamed argument key changed its meaning")
+		}
+	}
+}
+
 func TestArgumentWhitespaceClassificationAllocationsStayLinear(t *testing.T) {
 	e := newEnv(t)
 	const size = 128 << 10

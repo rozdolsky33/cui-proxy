@@ -1,5 +1,6 @@
 """Associate tool timing with exact recipe prefixes, independent of mapping widths."""
 import hashlib
+from bisect import bisect_left
 import json
 import re
 import shlex
@@ -26,7 +27,7 @@ def tool_prefix_plan(scenario, values, call):
 
     Literal characters each contribute one canonical unit. Each complete mapped
     value occurrence contributes one unit, including its JSON/shell encoding.
-    Upstream frames remain the original 32 equal character slices.
+    Frame associations come from the actual emitted deltas, without rounding assumptions.
     """
     if scenario not in ("W02", "W03", "W04"):
         raise ValueError("tool_prefix_recipe")
@@ -74,8 +75,34 @@ def tool_prefix_plan(scenario, values, call):
                    for index in range(1, count + 1)]
     lengths = [units[point - 1] for point in coordinates]
     recipe_id = hashlib.sha256((scenario + ":" + template).encode()).hexdigest()
-    ends = [len(arguments) * index // 32 for index in range(1, 33)]
+    from soak_tool_stream import tool_events
+
     return {"ids": [recipe_id + ":" + str(point) for point in coordinates],
             "lengths": lengths,
-            "frames": [next(index for index, end in enumerate(ends) if end >= length)
-                       for length in lengths]}
+            "frames": source_frames(arguments, lengths, tool_events(call))}
+
+
+def source_frames(arguments, lengths, events):
+    """Find each prefix's first covering frame in an exact emitted stream."""
+    if (type(arguments) is not str or not arguments or type(lengths) is not list
+            or not lengths or any(type(length) is not int for length in lengths)
+            or lengths[0] <= 0 or lengths[-1] != len(arguments)
+            or any(left >= right for left, right in zip(lengths, lengths[1:]))):
+        raise ValueError("tool_prefix_lengths")
+    deltas = []
+    ends = []
+    total = 0
+    for event in events:
+        if type(event) is not dict:
+            raise ValueError("tool_prefix_frame_layout")
+        if event.get("type") != "response.function_call_arguments.delta":
+            continue
+        delta = event.get("delta")
+        if type(delta) is not str:
+            raise ValueError("tool_prefix_frame_layout")
+        deltas.append(delta)
+        total += len(delta)
+        ends.append(total)
+    if len(deltas) != 32 or "".join(deltas) != arguments:
+        raise ValueError("tool_prefix_frame_layout")
+    return [bisect_left(ends, length) for length in lengths]
