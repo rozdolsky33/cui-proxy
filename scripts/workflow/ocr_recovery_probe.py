@@ -273,8 +273,10 @@ def audit_summary(path, successful_ids, failure_id, forbidden_values):
         failures = [row for row in rows if row["request_id"] == failure_id]
         require(len(failures) == 1 and failures[0].get("decision") == "blocked"
                 and failures[0].get("detail") == DETAIL, "audit_missing_tool_block_missing")
-        require(all(row.get("decision") == "forwarded" for row in rows if row["request_id"] != failure_id),
+        require(all(row.get("decision") == 'sanitized' for row in rows if row["request_id"] != failure_id),
                 "audit_success_binding_failed")
+        require(all(row.get("detail", "") == "" for row in rows
+                    if row.get("decision") == "sanitized"), "audit_success_detail")
     except (ValueError, TypeError, KeyError):
         raise ProbeFailure("audit_invalid") from None
     return {"sha256": hashlib.sha256(raw).hexdigest(), "records": len(rows),

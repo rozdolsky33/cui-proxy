@@ -118,6 +118,21 @@ class RecoveryAssertionTests(unittest.TestCase):
         with self.assertRaises(probe.ProbeFailure):
             probe.check_missing_failure(422, json.dumps(payload).encode())
 
+    def test_transformed_success_audit_requires_sanitized_and_no_failure_detail(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "audit.jsonl"
+            record = {'request_id': '0123456789abcdef', 'decision': 'blocked', 'detail': 'attachment_image_missing_tool', 'hash': 'a' * 64, 'reason': 'sanitize'}
+            failure_id = record['request_id']
+            forbidden = ['privatefixturevalue']
+            success_id = ("1" if failure_id[0] != "1" else "2") + failure_id[1:]
+            success = record | {"request_id": success_id, "decision": "sanitized", "reason": "", "detail": ""}
+            path.write_text(json.dumps(record) + "\n" + json.dumps(success) + "\n")
+            self.assertEqual(probe.audit_summary(path, {success_id}, failure_id, forbidden)["records"], 2)
+            for change in ({"decision": "forwarded"}, {"reason": "sanitize"}, {"detail": probe.DETAIL}):
+                path.write_text(json.dumps(record) + "\n" + json.dumps(success | change) + "\n")
+                with self.assertRaises(probe.ProbeFailure):
+                    probe.audit_summary(path, {success_id}, failure_id, forbidden)
+
 
 class LockAndBindingTests(unittest.TestCase):
     def test_busy_reference_lock_fails_before_any_probe_subprocess(self):
