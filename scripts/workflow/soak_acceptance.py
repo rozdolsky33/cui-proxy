@@ -7,6 +7,7 @@ from soak_churn_resources import evaluate_churn_resources
 from soak_control_acceptance import evaluate_controls
 from soak_evidence_bindings import evaluate_evidence_bindings
 from soak_finalization_acceptance import evaluate_finalization
+from soak_growth_review import evaluate_growth_review
 from soak_provenance_acceptance import evaluate_provenance
 from soak_resource_acceptance import evaluate_fixed_resources, evaluate_idle_recovery
 from soak_resource_series import evaluate_resource_series
@@ -70,9 +71,10 @@ def _measured(reports, mode):
     return operations, images, image_count
 
 
-def evaluate_completed_soak(campaign, expected_identity):
+def evaluate_completed_soak(campaign, expected_identity, *, growth_review=None):
     """Campaign must come from read_completed_campaign; expected identity is independent."""
     gates = {}
+    resource_result = None
 
     def run(name, function, *args, **kwargs):
         try:
@@ -139,10 +141,6 @@ def evaluate_completed_soak(campaign, expected_identity):
             started_s=churn["started_s"], duration_s=churn["duration_s"], elapsed_s=churn["elapsed_s"],
             mapping_evidence=churn["mapping_evidence"])
         # Sustained positive growth needs an evidence-backed investigation, even below 10%.
-        reviewed = (resource_result.get("state") == "pass"
-                    and resource_result.get("positive_growth_requires_review") is False)
-        gates["growth_review"] = dict(state="pass" if reviewed else "incomplete",
-                                       performance_qualified=False)
     summary = reports["proxy-mode-summary.json"]
     run("idle_recovery", evaluate_idle_recovery, summary.get("baseline_idle"), summary.get("after_idle"),
         summary.get("baseline_gc"), summary.get("after_gc"))
@@ -156,4 +154,8 @@ def evaluate_completed_soak(campaign, expected_identity):
                 minimum_protected_values=44001)
         except (TypeError, KeyError):
             gates[mode + "_finalization"] = dict(state="incomplete", reason="soak_finalization_shape")
+    if resource_result is not None:
+        run("growth_review", evaluate_growth_review, campaign, expected_identity, resource_result, growth_review,
+            prerequisites={name: gate for name, gate in gates.items() if name != "growth_review"},
+            required_prerequisites=REQUIRED_GATES - {"growth_review"})
     return summarize_acceptance(gates)
