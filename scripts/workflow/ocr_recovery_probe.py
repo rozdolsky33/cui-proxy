@@ -26,6 +26,9 @@ from performance_workload import Workload
 from soak_boundary import verify_deferred_boundary
 from soak_identity import read_build_info
 from soak_receipts import receipt_id, verify_receipt
+from harness import OPENER
+from urllib.error import HTTPError
+from urllib.request import Request
 
 
 CANDIDATE_COMMIT = "c8aaef5799c75bccb19a7121304198507d36649b"
@@ -455,6 +458,21 @@ def validate_evidence(report):
             and HEX64.fullmatch(report.get("seed_binary_sha256", "")), "extractor_binding_evidence_missing")
 
 
+def send_raw_case(url, case, timeout=5, max_body_bytes=65536):
+    request = Request(url, data=case["body"],
+                      headers=perf.request_headers(case, None), method="POST")
+    try:
+        response = OPENER.open(request, timeout=timeout)
+    except HTTPError as error:
+        response = error
+    try:
+        raw = response.read(max_body_bytes + 1)
+        require(len(raw) <= max_body_bytes, "recovery_response_too_large")
+        return response.status, raw
+    finally:
+        response.close()
+
+
 def image_request(env, case, expected):
     row = perf.request(env.url, case, expected_hash=hashlib.sha256(expected).hexdigest(),
                        expected_layout_hash=perf.text_layout_hash(expected))
@@ -542,8 +560,7 @@ def run_probe(arguments, report):
                             harness.wait_until(lambda: env.metrics().get("active_requests") == 3,
                                                5, "three_text_requests_not_active")
                             failure_started = time.monotonic()
-                            status, raw, _duration = env.send(json.loads(failed["body"]), False,
-                                                             perf.request_headers(failed, None))
+                            status, raw, _duration = send_raw_case(env.url, failed)
                             failure_finished = time.monotonic()
                             missing = check_missing_failure(status, raw)
                             rows = [future.result() for future in futures]

@@ -304,3 +304,42 @@ class CapturedLogPrivacyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RawCaseTests(unittest.TestCase):
+    def test_rejected_case_preserves_original_bytes_without_fixture_metadata(self):
+        from unittest.mock import MagicMock, patch
+        case = {"body": bytes(range(65, 70))}
+        response = MagicMock()
+        response.status = 422
+        response.read.return_value = bytes(range(70, 75))
+        with patch.object(probe.perf, "request_headers", return_value={}) as headers:
+            with patch.object(probe.OPENER, "open", return_value=response) as opened:
+                status, raw = probe.send_raw_case("http://127.0.0.1:1/responses", case)
+        self.assertEqual((status, raw), (422, bytes(range(70, 75))))
+        self.assertEqual(opened.call_args.args[0].data, case["body"])
+        headers.assert_called_once_with(case, None)
+        response.close.assert_called_once()
+
+    def test_http_error_body_is_read_and_closed(self):
+        import io
+        from urllib.error import HTTPError
+        from unittest.mock import patch
+        body = bytes(range(70, 75))
+        response = HTTPError("http://127.0.0.1:1/responses", 422, "", {}, io.BytesIO(body))
+        with patch.object(probe.perf, "request_headers", return_value={}):
+            with patch.object(probe.OPENER, "open", side_effect=response):
+                self.assertEqual(probe.send_raw_case("http://127.0.0.1:1/responses", {"body": b""}), (422, body))
+        self.assertTrue(response.closed)
+
+    def test_oversized_recovery_body_fails_closed_and_closes_response(self):
+        from unittest.mock import MagicMock, patch
+        response = MagicMock()
+        response.status = 422
+        response.read.return_value = bytes(range(7))
+        with patch.object(probe.perf, "request_headers", return_value={}):
+            with patch.object(probe.OPENER, "open", return_value=response):
+                with self.assertRaises(probe.ProbeFailure):
+                    probe.send_raw_case("http://127.0.0.1:1/responses", {"body": b""}, max_body_bytes=2)
+        response.read.assert_called_once_with(3)
+        response.close.assert_called_once()
