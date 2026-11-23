@@ -21,9 +21,9 @@ was approximately 811/797 ms for W04; the unchanged target is 100 ms. Plain
 message scenarios W01/W08 measured approximately 61 ms. First-byte latency stayed
 within its separate limits.
 
-Ordinary argument string values now decode complete JSON units incrementally,
+Argument keys and ordinary string values now decode complete JSON units incrementally,
 use the existing streaming restorer, and encode restored content safely. Raw
-spellings are retained for unchanged content. Keys, numeric tokens and strings
+spellings are retained for unchanged content. Numeric tokens and string values
 that may contain nested JSON retain complete-token processing. Split escapes,
 UTF-8 sequences and surrogate pairs remain pending until they can be decoded.
 Response-wide input limits, depth checks and final JSON validation remain in
@@ -65,11 +65,29 @@ The generic relay calculator rejected their identical positive-duration time
 intervals and returned unavailable timing arrays. It now accepts an overlap
 only when both timestamps exactly repeat the previous interval. Distinct
 overlaps, backward times and negative durations remain rejected. A regression
-through sender, metadata, observer and report retains all 32 samples from 22
-source frames; immediate relay is 5 ms in that controlled test, while delayed
-ordinary text still exceeds 1,000 ms and fails the unchanged 100 ms target.
+through sender, metadata, observer and report retains samples when milestones
+share a positive-duration source interval. Delayed ordinary text still exceeds
+1,000 ms in the controlled test and fails the unchanged 100 ms target.
 All 827 native workflow tests pass with this correction. No missing timing
 samples in the retained native campaign have been filled retrospectively.
+
+A subsequent native preflight found the remaining W03 delay in JSON keys:
+all 72 measured proxy operations delivered each key's early and late prefixes
+together, while bypass operations streamed them. Keys now use the same bounded
+incremental decoder and plain-text restorer; nested-JSON classification remains
+specific to string values. The new key-emission regression failed before this
+correction and passes afterward.
+
+Review also found that a separately computed frame-boundary formula disagreed
+with the sender's ceiling cuts and understated some tool delays. Frame lookup
+now uses cumulative lengths of the actual emitted deltas, verifies exact
+argument reconstruction, and selects the first frame supplying each milestone.
+Tests check 390 varied layouts against emitted data and reject inconsistent
+layouts before writing. Those earlier native tool timings remain rejected
+diagnostic evidence. With both corrections, all 25 Go packages pass race tests,
+vet and staticcheck pass, both fuzz targets pass 20-second runs, and all 830
+native workflow tests pass. Independent review found no Critical or Important
+issues. Fresh native measurements are still required.
 
 Run the focused native comparison and collect the required new acceptance
 measurements for the frozen corrected candidate. Neither this preflight nor

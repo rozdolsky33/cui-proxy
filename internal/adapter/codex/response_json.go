@@ -68,8 +68,8 @@ func restoreJSONNode(n *node, r *transform.Restorer, depth int) error {
 	return nil
 }
 
-// argumentStream decodes ordinary string values incrementally. Keys, numbers,
-// and possible nested JSON documents retain whole-token restoration semantics.
+// argumentStream decodes keys and ordinary string values incrementally. Numbers
+// and possible nested JSON string values retain whole-token restoration semantics.
 // Escape sequences and chunk boundaries are never treated as content.
 // Raw input is retained (with a response-wide bound) for final JSON validation.
 type argumentStream struct {
@@ -182,7 +182,7 @@ func (st *argumentStream) Write(chunk string) (string, error) {
 		st.bufferString = false
 		st.token.Reset()
 	}
-	if st.quoted && !st.key && !st.bufferString {
+	if st.quoted && !st.bufferString {
 		part, err := st.flushPlainString(false)
 		if err != nil {
 			return "", err
@@ -202,25 +202,27 @@ func (st *argumentStream) flushPlainString(final bool) (string, error) {
 	}
 	prefix := ""
 	if st.plain == nil {
-		for {
-			unscanned := raw[st.stringScan:]
-			text, _, remaining, err := decodeArgumentPrefix(unscanned, false)
-			if err != nil {
-				return "", err
-			}
-			consumed := len(unscanned) - len(remaining)
-			st.stringScan += consumed
-			c := first(text)
-			if c == '{' || c == '[' {
-				// Nested JSON validity is known only when the string is complete.
-				st.bufferString = true
-				return "", nil
-			}
-			if c != 0 {
-				break
-			}
-			if consumed == 0 || remaining == "" {
-				return "", nil
+		if !st.key {
+			for {
+				unscanned := raw[st.stringScan:]
+				text, _, remaining, err := decodeArgumentPrefix(unscanned, false)
+				if err != nil {
+					return "", err
+				}
+				consumed := len(unscanned) - len(remaining)
+				st.stringScan += consumed
+				c := first(text)
+				if c == '{' || c == '[' {
+					// Nested JSON validity is known only when the string is complete.
+					st.bufferString = true
+					return "", nil
+				}
+				if c != 0 {
+					break
+				}
+				if consumed == 0 || remaining == "" {
+					return "", nil
+				}
 			}
 		}
 		st.plain = &argumentString{stream: st.r.NewStream()}

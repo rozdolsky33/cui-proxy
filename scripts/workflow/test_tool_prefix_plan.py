@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 import io
 import json
 
@@ -39,8 +40,12 @@ class ToolPrefixPlanTests(unittest.TestCase):
 
     def test_every_milestone_maps_to_first_source_frame_that_contains_it(self):
         plan, call = self.plan("W04", ("x" * 500, "y" * 100))
-        length = len(call["arguments"])
-        ends = [length * i // 32 for i in range(1, 33)]
+        ends = []
+        cumulative = 0
+        for event in tool_events(call):
+            if event["type"] == "response.function_call_arguments.delta":
+                cumulative += len(event["delta"])
+                ends.append(cumulative)
         for prefix, frame in zip(plan["lengths"], plan["frames"]):
             self.assertGreaterEqual(ends[frame], prefix)
             self.assertTrue(frame == 0 or ends[frame - 1] < prefix)
@@ -55,6 +60,59 @@ class ToolPrefixPlanTests(unittest.TestCase):
         self.assertGreaterEqual(len(plan["lengths"]), 10)
 
 
+    def test_source_frames_follow_emitted_layout_for_widths_unicode_and_escapes(self):
+        exact_boundaries = 0
+        for scenario in ("W02", "W03", "W04"):
+            for width in range(1, 66):
+                for suffix in ("", "\u03bb\n\\\"'"):
+                    plan, call = self.plan(scenario, ("x" * width + suffix, "y" * (width + 3)))
+                    ends = []
+                    cumulative = 0
+                    for event in tool_events(call):
+                        if event["type"] == "response.function_call_arguments.delta":
+                            cumulative += len(event["delta"])
+                            ends.append(cumulative)
+                    for length, frame in zip(plan["lengths"], plan["frames"]):
+                        self.assertGreaterEqual(ends[frame], length)
+                        self.assertTrue(frame == 0 or ends[frame - 1] < length)
+                        exact_boundaries += ends[frame] == length
+        self.assertGreater(exact_boundaries, 0)
+
+    def test_inconsistent_or_incomplete_frame_layout_is_rejected(self):
+        plan, call = self.plan("W03", ("alpha", "beta"))
+        events = tool_events(call)
+        delta_index = next(i for i, event in enumerate(events)
+                           if event["type"] == "response.function_call_arguments.delta")
+        variants = [events[:delta_index] + events[delta_index + 1:]]
+        for replacement in (None, "", "incorrect"):
+            changed = [dict(event) for event in events]
+            changed[delta_index]["delta"] = replacement
+            variants.append(changed)
+        for changed in variants:
+            with self.assertRaises(ValueError):
+                timing.source_frames(call["arguments"], plan["lengths"], changed)
+        for lengths in ([], [0], [len(call["arguments"]) + 1], [2, 1], [False]):
+            with self.assertRaises(ValueError):
+                timing.source_frames(call["arguments"], lengths, events)
+
+
+    def test_sender_rejects_inconsistent_layout_before_writing(self):
+        plan, call = self.plan("W03", ("alpha", "beta"))
+        events = tool_events(call)
+        delta_index = next(i for i, event in enumerate(events)
+                           if event["type"] == "response.function_call_arguments.delta")
+        truncated = events[:delta_index] + events[delta_index + 1:]
+        sink = io.BytesIO()
+        with patch("soak_sender.tool_events", return_value=truncated):
+            with self.assertRaises(ValueError):
+                send_tool_stream(sink, call, 0., prefix_plan=plan)
+        self.assertEqual(sink.getvalue(), b"")
+        inconsistent_plan = dict(plan, frames=[0] * len(plan["frames"]))
+        with self.assertRaises(ValueError):
+            send_tool_stream(sink, call, 0., prefix_plan=inconsistent_plan)
+        self.assertEqual(sink.getvalue(), b"")
+
+
 class ToolPrefixAssociationTests(unittest.TestCase):
     def stream(self, buffered=False):
         values = ("x" * 500, "y" * 120)
@@ -65,8 +123,10 @@ class ToolPrefixAssociationTests(unittest.TestCase):
         right = timing.tool_prefix_plan("W04", masked_values, masked)
         sink = io.BytesIO()
         now = [10.0]
+        recorded_clock = []
         def clock():
             now[0] += .001
+            recorded_clock.append(now[0])
             return now[0]
 
         send_tool_stream(sink, masked, .025, prefix_plan=right,
@@ -75,6 +135,18 @@ class ToolPrefixAssociationTests(unittest.TestCase):
         upstream = [json.loads(frame.split(b"data: ", 1)[1])
                     for frame in sink.getvalue().split(b"\n\n") if frame]
         terminal = next(e for e in upstream if e["type"] == "response.completed")
+        cumulative = 0
+        emitted_ends = []
+        for event in upstream:
+            if event["type"] == "response.function_call_arguments.delta":
+                cumulative += len(event["delta"])
+                emitted_ends.append(cumulative)
+        self.assertEqual(len(emitted_ends), 32)
+        for index, (length, frame) in enumerate(zip(right["lengths"], right["frames"])):
+            self.assertGreaterEqual(emitted_ends[frame], length)
+            self.assertTrue(frame == 0 or emitted_ends[frame - 1] < length)
+            self.assertEqual(terminal["benchmark_send_started_s"][index], recorded_clock[2 * frame])
+            self.assertEqual(terminal["benchmark_send_finished_s"][index], recorded_clock[2 * frame + 1])
         observer = ToolStreamObserver(original, prefix_plan=left)
         skeleton = tool_events(original)
         observer.observe(skeleton[0], 0.)
