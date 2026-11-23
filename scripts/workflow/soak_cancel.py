@@ -103,6 +103,8 @@ def cancel_request(url, case, expected_hash, upstream_url, *, timeout=45):
                 "started_s": started, "finished_s": finished,
                 "duration_ms": (finished - started) * 1000,
                 "first_byte_ms": (first_byte - started) * 1000}
+        row["operation_id"] = case["operation_id"]
+        row["upstream_receipt_verified"] = True
         server_id = response.getheader("X-Cui-Proxy-Request-Id")
         if isinstance(server_id, str) and len(server_id) == 16 and all(c in "0123456789abcdef" for c in server_id):
             row["server_request_id"] = server_id

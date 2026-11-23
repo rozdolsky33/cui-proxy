@@ -50,7 +50,7 @@ def tool_events(call):
 class ToolStreamObserver:
     """Preserve logical-prefix availability even when a proxy buffers deltas."""
 
-    def __init__(self, expected_call):
+    def __init__(self, expected_call, *, prefix_plan=None):
         try:
             self.expected = _call(expected_call)
             if not self.expected["arguments"]:
@@ -59,6 +59,10 @@ class ToolStreamObserver:
             raise ValueError("soak_stream_invalid") from None
         length = len(self.expected["arguments"])
         self.prefix_lengths = [(length * index + 31) // 32 for index in range(1, 33)]
+        self.prefix_ids = None if prefix_plan is None else prefix_plan["ids"]
+        if prefix_plan is not None:
+            self.prefix_lengths = prefix_plan["lengths"]
+        self.prefix_timing_valid = prefix_plan is None
         self.prefix_ms = []
         self.arguments = ""
         self.item_id = None
@@ -137,6 +141,9 @@ class ToolStreamObserver:
                 self._complete_item(response["output"][0])
                 self.send_started_s = event.get("benchmark_send_started_s")
                 self.send_finished_s = event.get("benchmark_send_finished_s")
+                if self.prefix_ids is not None:
+                    self.prefix_timing_valid = (event.get("benchmark_prefix_ids") == self.prefix_ids
+                        and _valid_prefix_times(self.send_started_s, self.send_finished_s, len(self.prefix_ids)))
                 self.call = _call(response["output"][0])
                 self.terminal = True
             else:
@@ -182,8 +189,7 @@ class ToolStreamObserver:
             raise ValueError("soak_stream_invalid") from None
 
     def valid(self):
-        return (not self.failed and not self.pending.strip() and self.terminal and self.call is not None
-                and self.arguments == self.expected["arguments"] and len(self.prefix_ms) == 32)
+        return self.prefix_timing_valid and (not self.failed and (not self.pending.strip()) and self.terminal and (self.call is not None) and (self.arguments == self.expected['arguments']) and (len(self.prefix_ms) == 32))
 
 
 def _unique(pairs):
@@ -197,3 +203,17 @@ def _unique(pairs):
 
 def _constant(_value):
     raise ValueError("soak_stream_invalid")
+
+
+def _valid_prefix_times(starts, finishes, count):
+    if type(starts) is not list or type(finishes) is not list or len(starts) != count or len(finishes) != count:
+        return False
+    previous_start = previous_finish = -1.
+    for start, finish in zip(starts, finishes):
+        if (type(start) not in (int, float) or type(finish) not in (int, float)
+                or not math.isfinite(start) or not math.isfinite(finish)
+                or start < 0 or finish < 0
+                or start < previous_start or finish < previous_finish or start > finish):
+            return False
+        previous_start, previous_finish = start, finish
+    return True
