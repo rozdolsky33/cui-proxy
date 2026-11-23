@@ -170,12 +170,12 @@ def source_binding(source, expected_commit):
     return {"commit": actual, "clean": True}
 
 
-def bind_identity(binary, expected_sha256, binary_source, producer_source, producer_commit):
+def bind_identity(binary, expected_sha256, binary_source, producer_source, producer_commit, *, expected_binary_commit=CANDIDATE_COMMIT):
     require(HEX64.fullmatch(expected_sha256) is not None, "binary_sha256_invalid")
     require(digest(binary) == expected_sha256, "binary_sha256_mismatch")
-    binary_binding = source_binding(binary_source, CANDIDATE_COMMIT)
+    binary_binding = source_binding(binary_source, expected_binary_commit)
     build = read_build_info(binary)
-    require(build.get("vcs.revision") == CANDIDATE_COMMIT and build.get("vcs.modified") == "false",
+    require(build.get("vcs.revision") == expected_binary_commit and build.get("vcs.modified") == "false",
             "embedded_binary_identity_mismatch")
     producer = source_binding(producer_source, producer_commit)
     root = Path(producer_source).resolve(strict=True)
@@ -415,10 +415,10 @@ def cache_hits(env):
     return hits
 
 
-def validate_evidence(report):
+def validate_evidence(report, *, expected_binary_commit=CANDIDATE_COMMIT):
     """Absence of any required proof keeps this functional probe unqualified."""
     identity = report.get("identity", {})
-    require(identity.get("binary_source", {}).get("commit") == CANDIDATE_COMMIT
+    require(identity.get("binary_source", {}).get("commit") == expected_binary_commit
             and identity.get("binary_source", {}).get("clean") is True
             and identity.get("embedded_clean_revision") is True
             and HEX64.fullmatch(identity.get("binary_sha256", ""))
@@ -496,7 +496,7 @@ def operation_id(case):
 
 def run_probe(arguments, report):
     identity = bind_identity(arguments.binary, arguments.binary_sha256, arguments.binary_source,
-                             arguments.producer_source, arguments.producer_commit)
+                             arguments.producer_source, arguments.producer_commit, expected_binary_commit=arguments.binary_commit)
     report["identity"] = identity
     report["seed_binary_sha256"] = digest(arguments.seed_binary)
     manifest = json.loads((Path(arguments.fixtures) / "manifest.json").read_text())
@@ -599,7 +599,7 @@ def run_probe(arguments, report):
                     child_processes_stopped=all(child.poll() is not None for child in env.children))
     require(report.get("cleanup") and all(report["cleanup"].values()), "cleanup_evidence_missing")
     require(bind_identity(arguments.binary, arguments.binary_sha256, arguments.binary_source,
-                          arguments.producer_source, arguments.producer_commit) == identity, "identity_changed")
+                          arguments.producer_source, arguments.producer_commit, expected_binary_commit=arguments.binary_commit) == identity, "identity_changed")
     report["identity_stable"] = True
 
 
@@ -610,6 +610,7 @@ def main(argv=None):
         parser.add_argument("--" + name, required=True)
     for name in TOOL_NAMES:
         parser.add_argument("--" + name)
+    parser.add_argument("--binary-commit", default=CANDIDATE_COMMIT)
     arguments = parser.parse_args(argv)
     report = {"schema_version": 1, "probe": "live_ocr_recovery", "passed": False}
     descriptor = None
@@ -618,7 +619,7 @@ def main(argv=None):
             descriptor = os.open(arguments.report, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
             try:
                 run_probe(arguments, report)
-                validate_evidence(report)
+                validate_evidence(report, expected_binary_commit=arguments.binary_commit)
                 report["passed"] = True
             except BaseException as error:
                 report["failure_code"] = str(error) if isinstance(error, ProbeFailure) else "ocr_recovery_probe_failed"

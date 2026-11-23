@@ -105,7 +105,103 @@ def image_part():
     return {"type": "input_image", "image_url": "data:image/png;base64," + base64.b64encode(png).decode(), "detail": "high"}
 
 
-def upstream_main(directory):
+RESPONSE_PROOF_LIMIT = 256 * 1024
+
+
+def semantic_sha256(value):
+    """Digest the complete decoded JSON echo; no fields are discarded."""
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest()
+
+
+def _proof_pairs(pairs):
+    result = {}
+    for key, value in pairs:
+        require(key not in result, "upstream_response_proof_duplicate")
+        result[key] = value
+    return result
+
+
+def _proof_constant(_value):
+    raise CheckFailure("upstream_response_proof_nonfinite")
+
+
+def _proof_loads(data):
+    return json.loads(data, object_pairs_hook=_proof_pairs, parse_constant=_proof_constant)
+
+
+class UpstreamResponseProof:
+    """Bounded RAM-only witness of actual successful echo-body writes."""
+    def __init__(self, *, max_bytes=RESPONSE_PROOF_LIMIT):
+        require(type(max_bytes) is int and 0 < max_bytes <= RESPONSE_PROOF_LIMIT, "upstream_response_proof_budget")
+        self._limit = max_bytes
+        self._buffer = bytearray()
+        self._closed = False
+
+    @property
+    def buffered_bytes(self):
+        return len(self._buffer)
+
+    def discard(self):
+        self._buffer.clear()
+        self._closed = True
+
+    def record(self, data, written):
+        try:
+            require(not self._closed and type(data) is bytes and type(written) is int
+                    and written == len(data), "upstream_response_proof_partial_write")
+            require(len(self._buffer) + len(data) <= self._limit, "upstream_response_proof_limit")
+            self._buffer.extend(data)
+        except BaseException:
+            self.discard()
+            raise
+
+    def finish(self):
+        try:
+            require(not self._closed and self._buffer, "upstream_response_proof_unavailable")
+            raw = bytes(self._buffer)
+            terminal = False
+            deltas = 0
+            for frame in raw.replace(b"\r\n", b"\n").split(b"\n\n"):
+                if not frame:
+                    continue
+                lines = frame.split(b"\n")
+                data_lines = [line[6:] for line in lines if line.startswith(b"data: ")]
+                event_lines = [line[7:] for line in lines if line.startswith(b"event: ")]
+                require(not terminal and len(data_lines) == 1 and len(event_lines) <= 1
+                        and len(lines) == len(data_lines) + len(event_lines), "upstream_response_proof_frame")
+                event = _proof_loads(data_lines[0])
+                require(type(event) is dict and (not event_lines or event_lines[0].decode() == event.get("type")),
+                        "upstream_response_proof_event")
+                if event.get("type") == "response.completed":
+                    require(set(event) == {"type"}, "upstream_response_proof_terminal")
+                    terminal = True
+                else:
+                    require(set(event) == {"type", "item_id", "output_index", "delta"}
+                            and event["type"] == "response.output_text.delta" and event["item_id"] == "item-output"
+                            and type(event["output_index"]) is int and event["output_index"] == 0
+                            and type(event["delta"]) is str, "upstream_response_proof_delta")
+                    deltas += 1
+            require(terminal and deltas > 0, "upstream_response_proof_terminal")
+            return {"completed": True, "bytes": len(raw), "semantic_sha256": semantic_sha256(decode_stream(raw, strict=True))}
+        finally:
+            self.discard()
+
+
+def _store_response_proof(path, capture, proof):
+    # This updates existing request-capture metadata only. No raw response is
+    # written here or anywhere else; the observer has already cleared its RAM.
+    metadata = dict(capture, response_proof=proof)
+    temporary = path.with_name(path.name + ".proof.tmp")
+    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    try:
+        with os.fdopen(descriptor, "w") as output:
+            json.dump(metadata, output)
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def upstream_main(directory, *, response_proof=False):
     """Separate process: receives only requests, never client oracle state."""
     folder = Path(directory)
 
@@ -133,41 +229,56 @@ def upstream_main(directory):
                 return
             capture = {"body": body, "headers": dict(self.headers)}
             (Path(capture_path)).write_text(json.dumps(capture))
-            fault = meta.get("fault", "")
-            if fault in ("upstream", "non_sse"):
-                self.send_response(503 if fault == "upstream" else 200)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(b'{"result":"controlled"}')
-                return
-            if self.headers.get("X-Workflow-Delay-MS") == "80":
-                time.sleep(0.08)
-            self.send_response(200)
-            self.send_header("Content-Type", "text/event-stream")
-            self.end_headers()
-            if meta.get("shape") == "arguments":
-                payload = body["input"][0]["content"][0]["text"]
-                event = "response.function_call_arguments.delta"
-            else:
-                payload = json.dumps(body["input"], ensure_ascii=False)
-                event = "response.output_text.delta"
-            # Small deterministic chunks exercise split substitutions and JSON escapes.
+            proof = UpstreamResponseProof() if response_proof else None
+
+            def write_body(data):
+                written = self.wfile.write(data)
+                if proof is not None:
+                    proof.record(data, written)
+                return written
+
             try:
-                if fault == "cancel":
-                    for _ in range(300):
-                        data = json.dumps({"type": event, "item_id": "item-output", "output_index": 0, "delta": "x" * 65536})
-                        self.wfile.write(("event: " + event + "\ndata: " + data + "\n\n").encode())
-                        self.wfile.flush()
-                        time.sleep(.02)
+                fault = meta.get("fault", "")
+                if fault in ("upstream", "non_sse"):
+                    self.send_response(503 if fault == "upstream" else 200)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    write_body(b'{"result":"controlled"}')
+                    return
+                if self.headers.get("X-Workflow-Delay-MS") == "80":
+                    time.sleep(0.08)
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream")
+                self.end_headers()
+                if meta.get("shape") == "arguments":
+                    payload = body["input"][0]["content"][0]["text"]
+                    event = "response.function_call_arguments.delta"
                 else:
-                    for i in range(0, len(payload), 7):
-                        data = json.dumps({"type": event, "item_id": "item-output", "output_index": 0, "delta": payload[i:i + 7]})
-                        self.wfile.write(("event: " + event + "\ndata: " + data + "\n\n").encode())
+                    payload = json.dumps(body["input"], ensure_ascii=False)
+                    event = "response.output_text.delta"
+                # Small deterministic chunks exercise split substitutions and JSON escapes.
+                try:
+                    if fault == "cancel":
+                        for _ in range(300):
+                            data = json.dumps({"type": event, "item_id": "item-output", "output_index": 0, "delta": "x" * 65536})
+                            write_body(("event: " + event + "\ndata: " + data + "\n\n").encode())
+                            self.wfile.flush()
+                            time.sleep(.02)
+                    else:
+                        for i in range(0, len(payload), 7):
+                            data = json.dumps({"type": event, "item_id": "item-output", "output_index": 0, "delta": payload[i:i + 7]})
+                            write_body(("event: " + event + "\ndata: " + data + "\n\n").encode())
+                            self.wfile.flush()
+                        write_body(b'event: response.completed\ndata: {"type":"response.completed"}\n\n')
                         self.wfile.flush()
-                    self.wfile.write(b'event: response.completed\ndata: {"type":"response.completed"}\n\n')
+                except (BrokenPipeError, ConnectionResetError):
+                    (Path(cancel_path)).touch()
+                if proof is not None:
                     self.wfile.flush()
-            except (BrokenPipeError, ConnectionResetError):
-                (Path(cancel_path)).touch()
+                    _store_response_proof(capture_path, capture, proof.finish())
+            finally:
+                if proof is not None:
+                    proof.discard()
 
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     server.daemon_threads = True
@@ -191,9 +302,10 @@ def port():
 
 
 class Environment:
-    def __init__(self, binary, profile="sanitize", attachments="extract_text"):
+    def __init__(self, binary, profile="sanitize", attachments="extract_text", *, response_proof=False):
         self.binary, self.profile, self.attachments = binary, profile, attachments
         self.children, self.logs = [], []
+        self.response_proof = response_proof
 
     def spawn(self, args, name, env=None):
         log = open(self.directory / name, "wb")
@@ -208,7 +320,7 @@ class Environment:
         self.captures = self.directory / "captures"
         self.captures.mkdir()
         try:
-            self.spawn([sys.executable, str(Path(__file__).resolve()), "--upstream", str(self.captures)], "upstream.log")
+            self.spawn([sys.executable, str(Path(__file__).resolve()), "--upstream", str(self.captures), *(["--upstream-response-proof"] if self.response_proof else [])], "upstream.log")
             ready = self.captures / "ready.json"
             wait_until(ready.exists, 10, "upstream_startup")
             upstream = json.loads(ready.read_text())["port"]
@@ -309,19 +421,30 @@ class Environment:
         with OPENER.open(self.ui + "/api/metrics", timeout=5) as response:
             return json.load(response)["vault_size"]
 
+    def upstream_response_proof(self, ident):
+        captures = self.capture(ident)
+        if len(captures) != 1:
+            return None
+        try:
+            value = json.loads(captures[0]).get("response_proof")
+        except (ValueError, TypeError, AttributeError):
+            return None
+        return dict(value) if type(value) is dict else None
 
-def decode_stream(data):
+
+def decode_stream(data, *, strict=False):
+    loader = _proof_loads if strict else json.loads
     deltas, terminal = [], False
     for line in data.decode().splitlines():
         if not line.startswith("data: "):
             continue
-        item = json.loads(line[6:])
+        item = loader(line[6:])
         if item.get("type") == "response.completed":
             terminal = True
         elif item.get("type", "").endswith(".delta"):
             deltas.append(item["delta"])
     require(terminal, "missing_terminal_event")
-    return json.loads("".join(deltas))
+    return loader("".join(deltas))
 
 
 def message(value):
@@ -520,9 +643,10 @@ def main():
     parser.add_argument("--binary", type=Path, default=ROOT / "bin/cui-proxy")
     parser.add_argument("--report", type=Path)
     parser.add_argument("--upstream", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--upstream-response-proof", action="store_true")
     args = parser.parse_args()
     if args.upstream:
-        upstream_main(args.upstream)
+        upstream_main(args.upstream, response_proof=args.upstream_response_proof)
         return 0
     report = {"contract_version": VERSION, "generator_version": VERSION, "seed": SEED,
               "scope": "deterministic-correctness", "performance_qualified": False,
