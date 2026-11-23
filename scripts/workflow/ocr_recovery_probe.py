@@ -459,7 +459,7 @@ def validate_evidence(report):
 
 
 def send_raw_case(url, case, timeout=5, max_body_bytes=65536):
-    request = Request(url, data=case["body"],
+    request = Request(api_url(url, "/v1/responses"), data=case["body"],
                       headers=perf.request_headers(case, None), method="POST")
     try:
         response = OPENER.open(request, timeout=timeout)
