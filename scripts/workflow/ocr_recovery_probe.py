@@ -301,7 +301,7 @@ class CleanupGate:
 
 
 def captured_log_summary(directory, handles, children, forbidden_values, failure_directory, evidence,
-                         *, preserve=False):
+                         *, preserve=False, minimum_captures=2):
     """Inspect final captures locally; keep only safe names/counts/hashes in evidence."""
     validated_capture_sources = set()
     root = Path(directory).resolve(strict=True)
@@ -347,7 +347,8 @@ def captured_log_summary(directory, handles, children, forbidden_values, failure
         for _label, _source, raw in files:
             if any(needle in raw for needle in needles):
                 evidence["leaking_files"] += 1
-        require(len(handles) >= 2 and len(files) >= 2, "captured_logs_missing")
+        require(type(minimum_captures) is int and minimum_captures in (1, 2), "captured_log_minimum_invalid")
+        require(len(handles) >= minimum_captures and len(files) >= minimum_captures, "captured_logs_missing")
         require(evidence["shutdown_complete"] and evidence["handles_closed"], "captured_logs_not_final")
         evidence["scan_completed"] = True
         evidence["value_free"] = evidence["leaking_files"] == 0

@@ -76,7 +76,7 @@ def check_preflight(report, pid, version, revision):
     if revision is not None:
         require(report.get("revision") == revision, "preflight_revision")
     policy = report.get("policy", {})
-    require(policy.get("profile") == "controlled" and policy.get("on_error") == "block"
+    require(policy.get("profile") == 'sanitize' and policy.get("on_error") == "block"
             and policy.get("attachments") == "block", "preflight_policy")
 
 
@@ -86,7 +86,7 @@ def _config(path, directory, originals):
     root = Path(directory).resolve()
     require(Path(path).resolve().is_relative_to(root), "configuration_not_private")
     require(all(original.encode() not in raw for original in originals), "original_in_configuration")
-    require(config["policy"]["profile"] == "controlled" and config["policy"]["on_error"] == "block"
+    require(config["policy"]["profile"] == 'sanitize' and config["policy"]["on_error"] == "block"
             and config["policy"]["attachments"] == "block" and config["vault"]["mode"] == "file"
             and config["audit"]["enabled"] is True and config["audit"]["on_error"] == "block", "configuration_policy")
     for listen in (config["listen"], config["ui"]["listen"]):
@@ -96,14 +96,14 @@ def _config(path, directory, originals):
         require(parsed.scheme == "http" and parsed.hostname == "127.0.0.1", "configuration_upstream")
     for path_value in (config["vault"]["file"], config["vault"]["key_file"], config["audit"]["file"]):
         require(Path(path_value).resolve().is_relative_to(root), "configuration_private_path")
-    metadata = {"sha256": archive.sha256(raw), "profile": "controlled", "on_error": "block",
+    metadata = {"sha256": archive.sha256(raw), "profile": 'sanitize', "on_error": "block",
                 "attachments": "block", "vault_mode": "file", "loopback_only": True, "private_paths": True}
     return config, metadata
 
 
 class ReleaseEnvironment(harness.Environment):
     def __init__(self, baseline, originals, report, failure_directory):
-        super().__init__(baseline, profile="controlled", attachments="block", response_proof=True)
+        super().__init__(baseline, profile='sanitize', attachments="block", response_proof=True)
         self.originals = originals
         self.report = report
         self.failure_directory = failure_directory
@@ -166,7 +166,7 @@ class ReleaseEnvironment(harness.Environment):
     def __exit__(self, *error):
         self.temp = recovery.CleanupGate(self.temp, lambda: recovery.captured_log_summary(
             self.directory, self.logs, self.children, self.privacy_values, self.failure_directory,
-            self.log_evidence, preserve=error[0] is not None))
+            self.log_evidence, preserve=error[0] is not None, minimum_captures=1 if error[0] is not None else 2))
         try:
             return super().__exit__(*error)
         finally:
@@ -283,7 +283,7 @@ def validate_evidence(report):
     require(all(report["cleanup"].get(key) is True for key in
                 ("private_environment_removed", "children_stopped", "extracted_directory_removed")), "cleanup_evidence")
     effective = report.get("effective_config", {})
-    require(HEX.fullmatch(effective.get("sha256", "")) and effective.get("profile") == "controlled"
+    require(HEX.fullmatch(effective.get("sha256", "")) and effective.get("profile") == 'sanitize'
             and effective.get("on_error") == "block" and effective.get("attachments") == "block"
             and effective.get("vault_mode") == "file" and effective.get("loopback_only") is True
             and effective.get("private_paths") is True, "effective_configuration_evidence")

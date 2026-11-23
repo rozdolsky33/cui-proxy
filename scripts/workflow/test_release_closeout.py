@@ -61,7 +61,7 @@ class ReleaseCloseoutTests(unittest.TestCase):
 
     def test_running_preflight_pid_version_policy_and_revision_are_required(self):
         report = {"ready": True, "pid": 1234, "version": "0.7.4", "revision": "a" * 40,
-                  "policy": {"profile": "controlled", "attachments": "block", "on_error": "block"}}
+                  "policy": {"profile": 'sanitize', "attachments": "block", "on_error": "block"}}
         closeout.check_preflight(report, 1234, "0.7.4", "a" * 40)
         for change in ({"ready": False}, {"pid": 1235}, {"version": "0.7.3"}, {"revision": "b" * 40},
                        {"policy": {"profile": "controlled", "attachments": "passthrough", "on_error": "block"}}):
@@ -91,10 +91,10 @@ class ReleaseCloseoutTests(unittest.TestCase):
                              "handles_closed": True, "value_free": True, "leaking_files": 0},
                  "cleanup": {"private_environment_removed": True, "children_stopped": True,
                              "extracted_directory_removed": True}}
-        valid["effective_config"] = {"sha256": "f" * 64, "profile": "controlled", "on_error": "block",
+        valid["effective_config"] = {"sha256": "f" * 64, "profile": 'sanitize', "on_error": "block",
                                      "attachments": "block", "vault_mode": "file",
                                      "loopback_only": True, "private_paths": True}
-        valid["effective_config"] = {"sha256": "d" * 64, "profile": "controlled", "on_error": "block",
+        valid["effective_config"] = {"sha256": "d" * 64, "profile": 'sanitize', "on_error": "block",
                                      "attachments": "block", "vault_mode": "file", "loopback_only": True,
                                      "private_paths": True}
         closeout.validate_evidence(valid)
@@ -117,6 +117,41 @@ class ReleaseCloseoutTests(unittest.TestCase):
                 kwargs = {} if expected == recovery.CANDIDATE_COMMIT else {"expected_binary_commit": expected}
                 identity = recovery.bind_identity("unused-binary", "a" * 64, source, source, "e" * 40, **kwargs)
             self.assertEqual(identity["binary_source"]["commit"], expected)
+
+
+    def test_release_uses_supported_sanitize_policy_for_both_binary_versions(self):
+        with patch.object(harness.Environment, "__init__", return_value=None) as initialize:
+            closeout.ReleaseEnvironment("baseline", {"private-value"}, {}, "failure")
+        self.assertEqual(initialize.call_args.kwargs["profile"], "sanitize")
+        ready = {"ready": True, "pid": 1234, "version": "0.7.4",
+                 "revision": "a" * 40, "policy": {"profile": "sanitize",
+                 "attachments": "block", "on_error": "block"}}
+        closeout.check_preflight(ready, 1234, "0.7.4", "a" * 40)
+        ready["policy"]["profile"] = "controlled"
+        with self.assertRaises(ValueError):
+            closeout.check_preflight(ready, 1234, "0.7.4", "a" * 40)
+
+    def test_release_early_failure_scans_one_closed_capture_without_relaxing_default(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary).resolve()
+            captured = directory / "check-config.stderr"
+            handle = captured.open("wb")
+            handle.write(b"configuration rejected")
+            handle.close()
+            with self.assertRaises(recovery.ProbeFailure):
+                recovery.captured_log_summary(directory, [handle], [], {"private-value"},
+                    directory / 'retained-default-failure', {})
+            evidence = {}
+            recovery.captured_log_summary(directory, [handle], [], {"private-value"},
+                directory / 'retained-success-unused', evidence, minimum_captures=1)
+            self.assertTrue(evidence["scan_completed"])
+            self.assertTrue(evidence["shutdown_complete"])
+            self.assertTrue(evidence["handles_closed"])
+            self.assertTrue(evidence["value_free"])
+            captured.write_bytes(b"private-value")
+            with self.assertRaises(recovery.ProbeFailure):
+                recovery.captured_log_summary(directory, [handle], [], {"private-value"},
+                    directory / 'retained-leak-failure', {}, minimum_captures=1)
 
 
 if __name__ == "__main__":

@@ -63,7 +63,7 @@
 - [x] Prepare native sequence statically; reuse reviewed global-lock and final captured-log utilities.
 - [x] After parent stop confirmation, prepare optional generic expected-commit OCR API/CLI with legacy c8 default and regression tests in this new worktree only.
 - [x] Independent static code review cleared Critical/Important findings; no execution was performed.
-- [x] Independent static review cleared Critical/Important findings. Parent retained baseline red (three missing-feature import errors), corrected a test-only macOS path alias, and ran 16 targeted plus 867 full workflow tests (four skips).
+- [x] Independent static review cleared Critical/Important findings. Parent retained baseline red (three missing-feature import errors), corrected a test-only macOS path alias, and ran 16 targeted plus 867 full workflow tests (four skips). Native setup then exposed an unsupported helper profile; two preserved regressions failed before the fix and passed after it. The helper now uses sanitize, and early failures retain one closed capture while successful runs and OCR retain the two-capture minimum. Final verification passed 18 targeted and 869 workflow tests (four skips).
 - [ ] Run the real selected-artifact upgrade/rollback sequence under the global lock.
 
 ### Task 3: Reuse separate backend-delay observation
