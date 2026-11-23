@@ -10,6 +10,7 @@ import subprocess
 
 from performance_campaign import source_identity
 from soak_acceptance import evaluate_completed_soak
+from soak_growth_review import evaluator_module_sha256, load_growth_review
 from soak_campaign_reader import read_completed_campaign, read_report_bytes
 
 
@@ -37,6 +38,7 @@ def main(argv=None):
     parser.add_argument("--root", required=True, type=Path)
     parser.add_argument("--expected-identity", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--growth-review", type=Path)
     args = parser.parse_args(argv)
     if args.output.resolve().is_relative_to(args.root.resolve()):
         print("soak acceptance: output must be outside sealed evidence")
@@ -44,7 +46,9 @@ def main(argv=None):
     try:
         identity, identity_digest = _expected_identity(args.expected_identity, args.root)
         campaign = read_completed_campaign(args.root)
-        result = evaluate_completed_soak(campaign, identity)
+        review = load_growth_review(args.growth_review, args.root) if args.growth_review is not None else None
+        result = (evaluate_completed_soak(campaign, identity) if review is None else
+                  evaluate_completed_soak(campaign, identity, growth_review=review))
         result.update(root_events_sha256=campaign["root_events_sha256"],
                       root_seal_sha256=campaign["root_seal_sha256"],
                       expected_identity_sha256=identity_digest)
@@ -57,6 +61,9 @@ def main(argv=None):
         if result["soak_qualified"] and evaluator_source.get("dirty") is not False:
             result.update(state="incomplete", soak_qualified=False,
                           reason="soak_evaluator_source_dirty")
+        if (args.growth_review is not None and evaluator_source.get("script_sha256", {}).get("soak_growth_review.py")
+                != evaluator_module_sha256()):
+            result.update(state="incomplete", soak_qualified=False, reason="soak_growth_review_evaluator_source")
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
         result.update(state="incomplete", soak_qualified=False,
                       reason="soak_evaluator_source_unavailable")
