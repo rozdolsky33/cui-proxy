@@ -27,7 +27,7 @@ class GrowthReviewCLITests(unittest.TestCase):
                 review_file = fixture.files(directory)
                 args += ["--growth-review", str(review_file)]
             source = {"commit": "e" * 40, "dirty": dirty,
-                      "script_sha256": {"soak_growth_review.py": evaluator_module_sha256()} if module_hash else {}}
+                      "script_sha256": "0" * 64}
 
             def evaluate(campaign, expected, *, growth_review=None):
                 self.assertEqual(campaign, fixture.campaign)
@@ -40,7 +40,7 @@ class GrowthReviewCLITests(unittest.TestCase):
                 return {"state": gate["state"], "soak_qualified": gate["state"] == "pass",
                         "performance_qualified": False, "gates": {"growth_review": gate}}
 
-            with patch("soak_acceptance_cli.read_completed_campaign", return_value=fixture.campaign), \
+            with patch("soak_acceptance_cli.evaluator_module_sha256", return_value=module_hash, side_effect=None if module_hash else ValueError("missing evaluator module provenance")), patch("soak_acceptance_cli.read_completed_campaign", return_value=fixture.campaign), \
                  patch("soak_acceptance_cli.evaluate_completed_soak", side_effect=evaluate), \
                  patch("soak_acceptance_cli.source_identity", return_value=source), redirect_stdout(io.StringIO()):
                 status = main(args)
@@ -51,7 +51,7 @@ class GrowthReviewCLITests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertTrue(output["soak_qualified"])
         self.assertEqual(len(output["gates"]["growth_review"]["review_sha256"]), 64)
-        self.assertIn("soak_growth_review.py", output["evaluator_source"]["script_sha256"])
+        self.assertIn("soak_growth_review.py", output["evaluator_source"]["module_sha256"])
 
     def test_absent_flag_preserves_incomplete_positive_growth(self):
         status, output = self.run_cli(review=False)

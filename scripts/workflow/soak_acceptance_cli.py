@@ -61,9 +61,10 @@ def main(argv=None):
         if result["soak_qualified"] and evaluator_source.get("dirty") is not False:
             result.update(state="incomplete", soak_qualified=False,
                           reason="soak_evaluator_source_dirty")
-        if (args.growth_review is not None and evaluator_source.get("script_sha256", {}).get("soak_growth_review.py")
-                != evaluator_module_sha256()):
-            result.update(state="incomplete", soak_qualified=False, reason="soak_growth_review_evaluator_source")
+        if args.growth_review:
+            evaluator_source["module_sha256"] = {
+                    "soak_growth_review.py": evaluator_module_sha256(evaluator_source["commit"]),
+                }
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
         result.update(state="incomplete", soak_qualified=False,
                       reason="soak_evaluator_source_unavailable")

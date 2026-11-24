@@ -42,8 +42,34 @@ def _digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def evaluator_module_sha256():
-    return _digest(Path(__file__).read_bytes())
+def evaluator_module_sha256(expected_commit=None):
+    path = Path(__file__).absolute()
+    data = path.read_bytes()
+    if expected_commit is not None:
+        import subprocess
+
+        git_root = path.parent
+
+        def git(*args):
+            return subprocess.run(["git", "-C", str(git_root), *args],
+                                  check=True, stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE).stdout
+
+        root = Path(os.fsdecode(git("rev-parse", "--show-toplevel")).strip())
+        git_root = root
+        relative = path.relative_to(root).as_posix()
+        _require(relative == "scripts/workflow/soak_growth_review.py",
+                 "evaluator module is not at its tracked source path")
+        _require(git("rev-parse", "HEAD").decode().strip() == expected_commit,
+                 "evaluator module commit differs from source identity")
+        git("ls-files", "--error-unmatch", "--", relative)
+        _require(not git("status", "--porcelain", "--", relative),
+                 "evaluator module source is not clean")
+        _require(data == git("show", expected_commit + ":" + relative),
+                 "evaluator module bytes differ from committed source")
+        _require(path.read_bytes() == data, "evaluator module changed during capture")
+    return _digest(data)
+
 
 
 def _canonical_digest(value):
@@ -110,13 +136,26 @@ def _investigation_document(data):
 
 def _capture(path, limit, root):
     path = Path(path).absolute()
-    _require(".." not in path.parts and all(not part.is_symlink() for part in (path, *path.parents)), "symlink")
-    _require(not path.resolve().is_relative_to(Path(root).resolve()), "inside_campaign")
-    descriptor = None
+    _require(not path.resolve().is_relative_to(Path(root).resolve()),
+             "review evidence must be external to the campaign")
+    descriptors = []
+    links = []
     try:
-        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        parent = os.open(path.anchor, flags)
+        descriptors.append(parent)
+        for component in path.parts[1:-1]:
+            child = os.open(component, flags, dir_fd=parent)
+            descriptors.append(child)
+            links.append((parent, component, child))
+            parent = child
+        descriptor = os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW,
+                             dir_fd=parent)
+        descriptors.append(descriptor)
+        links.append((parent, path.name, descriptor))
         before = os.fstat(descriptor)
-        _require(stat.S_ISREG(before.st_mode) and 0 < before.st_size <= limit, "file_type_or_size")
+        _require(stat.S_ISREG(before.st_mode) and before.st_size <= limit,
+                 "review evidence is not a bounded regular file")
         chunks = []
         length = 0
         while True:
@@ -125,17 +164,24 @@ def _capture(path, limit, root):
                 break
             chunks.append(chunk)
             length += len(chunk)
-            _require(length <= limit, "file_grew")
+            _require(length <= limit, "review evidence exceeds size limit")
         after = os.fstat(descriptor)
         fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
-        _require(length == before.st_size and all(getattr(before, name) == getattr(after, name) for name in fields),
-                 "file_changed")
+        _require(all(getattr(before, key) == getattr(after, key) for key in fields)
+                 and length == before.st_size, "review evidence changed during capture")
+        for parent, component, child in links:
+            current = os.stat(component, dir_fd=parent, follow_symlinks=False)
+            opened = os.fstat(child)
+            _require(current.st_dev == opened.st_dev and current.st_ino == opened.st_ino
+                     and not stat.S_ISLNK(current.st_mode),
+                     "review evidence path changed during capture")
         return b"".join(chunks)
-    except OSError:
-        raise ValueError("soak_growth_review_file_unavailable") from None
+    except OSError as error:
+        raise ValueError("review evidence cannot be captured safely") from error
     finally:
-        if descriptor is not None:
+        for descriptor in reversed(descriptors):
             os.close(descriptor)
+
 
 
 def load_growth_review(path, root):
