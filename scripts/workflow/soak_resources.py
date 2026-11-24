@@ -2,6 +2,7 @@
 import math
 import time
 import threading
+from soak_resource_series import EPSILON
 
 RUNTIME_FIELDS = ("heap_objects_bytes", "live_heap_bytes", "goroutines", "gc_cycles")
 
@@ -127,6 +128,14 @@ class ResourceMonitor:
         row.update(event="resource", slot=slot, elapsed_s=observed - self.started)
         row["observation_started_s"] = observation_started
         row["observed_s"] = observed
+        # Qualification resource slots are one second. Enforce the same existing
+        # series start bound here, retaining the actual invalid observation.
+        if self.interval == 1 and not -EPSILON <= observation_started - (self.started + slot) < 1 + EPSILON:
+            self.failure = ValueError("resource_series_clock_origin")
+            error_kind = "resource_series_clock_origin"
+            self.stop.set()
+            if self.phase_stop is not None:
+                self.phase_stop.set()
         if error_kind is not None: row["sample_error"] = error_kind
         try:
             self.record(row)
@@ -137,6 +146,10 @@ class ResourceMonitor:
             raise
         self.samples += 1
         return row
+
+    def raise_if_failed(self):
+        if self.failure is not None:
+            raise RuntimeError("resource monitor failed") from self.failure
 
     def __enter__(self):
         self.started = self.clock()

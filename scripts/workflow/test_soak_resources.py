@@ -65,13 +65,13 @@ class ResourceTests(unittest.TestCase):
         rows = []
         measure = Mock(side_effect=OSError("private detail"))
         monitor = resources.ResourceMonitor(measure, rows.append, clock=lambda: 5.2)
-        monitor.started = 0
+        monitor.started = monitor.clock() - 0.25
         row = monitor._take(0)
         self.assertFalse(row["rss_available"])
         self.assertFalse(row["runtime_available"])
         self.assertEqual(row["sample_error"], "OSError")
         self.assertNotIn("private detail", str(rows))
-        self.assertEqual(row["elapsed_s"], 5.2)
+        self.assertEqual(row["elapsed_s"], 0.25)
         self.assertEqual(resources.next_slot(0, 5.2, 1), 1)
 
     def test_record_failure_stops_the_phase_and_remains_visible(self):

@@ -5,6 +5,7 @@ import math
 import os
 from pathlib import Path
 import threading
+import time
 
 MAX_RECORD_BYTES = 131072
 ZERO_HASH = "0" * 64
@@ -25,9 +26,23 @@ def _metadata(value):
         raise ValueError("invalid evidence value")
 
 
+def _cooperative_json(value):
+    encoder = json.JSONEncoder(sort_keys=True, separators=(",", ":"), allow_nan=False)
+    chunks = []
+    since_yield = 0
+    for chunk in encoder.iterencode(value, _one_shot=False):
+        chunks.append(chunk)
+        since_yield += len(chunk)
+        if since_yield >= 64 * 1024:
+            # Report encoding must not starve the concurrent resource observer.
+            time.sleep(0.001)
+            since_yield = 0
+    return "".join(chunks)
+
+
 def _encode(value):
     _metadata(value)
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    return _cooperative_json(value).encode()
 
 
 def _pairs(pairs):
