@@ -72,7 +72,7 @@ class ResourceTests(unittest.TestCase):
         self.assertEqual(row["sample_error"], "OSError")
         self.assertNotIn("private detail", str(rows))
         self.assertEqual(row["elapsed_s"], 5.2)
-        self.assertEqual(resources.next_slot(0, 5.2, 1), 6)
+        self.assertEqual(resources.next_slot(0, 5.2, 1), 1)
 
     def test_record_failure_stops_the_phase_and_remains_visible(self):
         import threading

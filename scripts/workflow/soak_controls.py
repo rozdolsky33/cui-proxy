@@ -4,7 +4,7 @@ import threading
 import time
 
 from soak_lifecycle import lifecycle_step
-from soak_recovery import restart_proxy
+from soak_recovery import RestartNotEligible, restart_proxy
 
 
 def control_times(duration, count=10):
@@ -21,7 +21,7 @@ def _times(values):
 
 
 class ControlledExecutor:
-    def __init__(self, execute, env, reloader, record, *, restart_times, reload_times, clock=time.monotonic, before_restart=lambda: None):
+    def __init__(self, execute, env, reloader, record, *, restart_times, reload_times, clock=time.monotonic, before_restart=lambda: None, image_checkpoint=None):
         self.execute, self.env, self.reloader, self.record = execute, env, reloader, record
         self.restart_times, self.reload_times = _times(restart_times), _times(reload_times)
         self.clock = clock
@@ -34,15 +34,54 @@ class ControlledExecutor:
         self.failed = False
         self.restarts = []
         self.reloads = []
+        self.image_checkpoint = image_checkpoint
+        self.active_categories = {"text": 0, "image": 0, "lifecycle": 0}
+        self.completed_images = 0
+        self.last_stage_checkpoint = None
 
     def _invoke(self, plan, *, admitted=False):
+        category = plan["category"]
         if not admitted:
-            with self.condition: self.active += 1
-        try: return self.execute(plan)
+            with self.condition:
+                self.active += 1
+                self.active_categories[category] += 1
+        try:
+            return self.execute(plan)
         finally:
             with self.condition:
                 self.active -= 1
+                self.active_categories[category] -= 1
+                if category == "image":
+                    self.completed_images += 1
                 self.condition.notify_all()
+
+    def _restart_eligible_locked(self):
+        return (self.active_categories["image"] == 0 and
+                self.active_categories["lifecycle"] == 0 and self.active_categories["text"] > 0)
+
+    def _signal_checkpoint(self):
+        with self.condition:
+            if not self._restart_eligible_locked():
+                raise RestartNotEligible("restart text load no longer eligible")
+            started = self.clock()
+            active = self.env.metrics().get("active_requests")
+            observed = self.clock()
+            if type(active) is not int or active < 0:
+                raise ValueError("restart active request observation invalid")
+            if not self._restart_eligible_locked() or active < self.active_categories["text"]:
+                raise RestartNotEligible("restart text load no longer eligible")
+            if (type(started) not in (int, float) or not math.isfinite(started) or
+                    type(observed) not in (int, float) or not math.isfinite(observed) or observed < started):
+                raise ValueError("restart signal observation clock invalid")
+            stages = self.last_stage_checkpoint
+            if type(stages) is not dict or stages.get("image_records") != stages.get("expected_image_records"):
+                raise ValueError("restart image stage checkpoint invalid")
+            return dict(active_text=self.active_categories["text"], active_images=0,
+                        active_lifecycle=0, active_requests=active, observation_started_s=started,
+                        observed_s=observed, completed_images=self.completed_images,
+                        image_stage_records=stages["image_records"],
+                        expected_image_stage_records=stages["expected_image_records"])
+
 
     def _select(self, plan):
         with self.condition:
@@ -51,11 +90,12 @@ class ControlledExecutor:
             if self.failed: raise ValueError("control executor unavailable")
             if self.changing:
                 self.active += 1
+                self.active_categories[plan["category"]] += 1
                 return None
             elapsed = self.clock() - self.started
             restart_due = len(self.restarts) < len(self.restart_times) and self.restart_times[len(self.restarts)] <= elapsed
             continuation = plan.get("scenario") == "W10" and lifecycle_step(plan)["stage"] == "continue"
-            if restart_due and continuation and self.active > 0:
+            if restart_due and continuation and self.active > 0 and (self.image_checkpoint is None or self._restart_eligible_locked()):
                 self.changing = self.restarting = True
                 return "restart"
             reload_due = len(self.reloads) < len(self.reload_times) and self.reload_times[len(self.reloads)] <= elapsed
@@ -63,6 +103,7 @@ class ControlledExecutor:
                 self.changing = True
                 return "reload"
             self.active += 1
+            self.active_categories[plan["category"]] += 1
             return None
 
     def __call__(self, plan):
@@ -87,7 +128,9 @@ class ControlledExecutor:
                     rows.append(row)
                     return row
                 self.before_restart()
-                evidence = restart_proxy(self.env, index, continuation=continuation)
+                if self.image_checkpoint is not None:
+                    self.last_stage_checkpoint = self.image_checkpoint(self.completed_images)
+                evidence = restart_proxy(self.env, index, continuation=continuation, **({"before_signal": self._signal_checkpoint} if self.image_checkpoint is not None else {}))
                 if len(rows) != 1 or any(evidence.get(key) is not True for key in ("graceful_exit", "ready", "continuation_verified")):
                     raise ValueError("restart continuation evidence missing")
                 row = rows[0]
@@ -104,6 +147,8 @@ class ControlledExecutor:
                 (self.restarts if kind == "restart" else self.reloads).append(event)
             if row is None: row = self._invoke(plan)
             return row
+        except RestartNotEligible:
+            pass
         except BaseException as error:
             with self.condition: self.failed = True
             if began:
@@ -118,6 +163,7 @@ class ControlledExecutor:
             with self.condition:
                 self.changing = self.restarting = False
                 self.condition.notify_all()
+        return self._invoke(plan)
 
     def summary(self):
         with self.condition:
