@@ -1,7 +1,7 @@
 # Daily-use and multi-agent reliability roadmap
 
 **Created:** 2026-11-10
-**Status:** Tasks 01–03 complete; Task 04 in progress. Workload performance targets remain unmeasured.
+**Status:** Tasks 01–07 and 09–10 are integrated, including the historical baseline. Tasks 08, 11 and 12 remain in progress pending fresh qualification and release closeout for the frozen 0.7.4 artifact. Historical measurements do not qualify that executable.
 **First milestone:** Reliable daily use with four concurrent agents on one trusted workstation.
 **Owner:** Project maintainer; record an implementer and reviewer when starting each task.
 
@@ -114,9 +114,9 @@ permission between already authorized tasks.
 | 07 | Fix the largest measured processing cost | P1 | 04, 05 | done |
 | 08 | Bound contention and protect text-workload fairness | P1 | 04, 07 | in progress |
 | 09 | Make repeated attachment processing efficient | P1 | 04, 05, 08 bounds | done |
-| 10 | Verify mapping lifetime and recovery | P1 | 02, 04, 05 | ready |
-| 11 | Run sustained four-agent acceptance and tune | P0 release gate | 06–10 | blocked |
-| 12 | Establish release and regression gates | P0 release gate | 11 | blocked |
+| 10 | Verify mapping lifetime and recovery | P1 | 02, 04, 05 | done |
+| 11 | Run sustained four-agent acceptance and tune | P0 release gate | 06–10 | in progress |
+| 12 | Establish release and regression gates | P0 release gate | 11 | in progress |
 
 Priority is importance, not permission to bypass dependencies. Recommended
 execution order is 01 through 12. Tasks 07 and 09 may close as `not needed`
@@ -433,6 +433,11 @@ Next ready task:
 - **Rollback:** Revert the change and remove the optional `observability` YAML block before starting an older binary.
 - **Next ready task:** 04, concurrent performance baseline.
 
-## Next action
+## Current next action
+
+Qualify the frozen, version-stamped 0.7.4 executable using its full paired soak and 123-job reference campaign, then complete capacity checks and exact-package upgrade/rollback verification. Preserve unchanged thresholds and separate source, artifact, collector and evaluator identities. [Current candidate evidence](../../verification-results/2026-11-23-v074-candidate.md) records completed checks and open gates. Tasks 08, 11 and 12 stay open until their acceptance evidence passes.
+
+## Historical next-action record
+
 
 Task 10 is integrated in PR #44. The [Task 11 regexp preflight](../../verification-results/2026-11-13-task11-regexp-preflight.md) rejected the bounded-search runtime change after mixed-load latency failed acceptance. PR #45 integrated the diagnostic benchmark and rejection evidence. The [checkpoint and workload-stage attribution plan](2026-11-13-task11-stage-attribution.md) has a [short diagnostic](../../verification-results/2026-11-13-task11-stage-attribution.md): body inspection dominates text processing in a steady 10,000-mapping workload, while checkpoints are negligible in that unchanged state. PR #46 integrated this measurement. A changing-request allocation profile points to intermediate JSON string buffers; the [JSON output preflight](2026-11-13-task11-json-encoding.md) has passed its focused allocation and short mixed-load checks: [evidence](../../verification-results/2026-11-13-task11-json-encoding.md) shows 22.8% fewer changing-request allocated bytes and three nonregressing mixed-load pairs. PR #47 integrated it after all regression, review and CI gates passed. The [full-sample fairness latency plan](2026-11-13-task11-latency-qualification.md) now tests the original warmup/count/latency requirements before the sustained soak. Full latency and sustained acceptance remain open. **Task 08** remains open for the original mixed-text latency target; **Task 12** still requires release/regression evidence. Task 09 is integrated in PR #43.

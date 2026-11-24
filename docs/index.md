@@ -16,8 +16,8 @@ hide:
 
 </div>
 
-For supervised text/code use, start with the [v0.7.0 guide](early-trial.md).
-Sustained four-agent performance and live-model task quality remain unqualified;
+The current published patch is v0.7.3. For supervised text/code use, start with the [text-only guide](early-trial.md).
+Version 0.7.4 is a frozen, unreleased candidate. Sustained four-agent performance and live-model task quality remain unqualified;
 see [release readiness](release-readiness.md). Stable distribution is not a performance certification.
 
 ## Find your next step

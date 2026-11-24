@@ -4,9 +4,11 @@ A successful build or healthy dashboard does not establish four-agent performanc
 
 ## Current status
 
-A stable-channel [v0.7.0 text-only release](early-trial.md) is intended for supervised use with attachment blocking enabled in the operator’s configuration. It does not close the outstanding performance or sustained-load gates.
+The current published patch is v0.7.3; the [supervised text-only guide](early-trial.md) retains attachment blocking in the recommended operator configuration. Publication does not close the outstanding performance or sustained-load gates.
 
-The deterministic protocol, attachment policy, restoration, recovery and bounded-admission checks are implemented. Four-client mixed-load performance and the sustained four-hour workload remain open. The decoder optimization is integrated in [PR 57](https://github.com/rozdolsky33/cui-proxy/pull/57). Its corrected-build four-client 1 MiB repetition measured 151.50 ms p95 added first-byte latency against the unchanged 150 ms target. Earlier passing artifacts and native cancellation checks do not close this failure or the outstanding paired soak.
+Version 0.7.4 is a frozen, unreleased candidate. Its [candidate evidence](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/verification-results/2026-11-23-v074-candidate.md) records workflow, real OCR recovery, cancellation and exact-package upgrade/latest-vault rollback checks against its exact executable. Full paired soak and reference campaign acceptance remain pending. Image/PDF support extracts text; it does not preserve model vision semantics.
+
+The deterministic protocol, attachment policy, restoration, recovery and bounded-admission checks are implemented. Four-client mixed-load performance and the sustained workload remain open. The historical decoder optimization in [PR 57](https://github.com/rozdolsky33/cui-proxy/pull/57) measured 151.50 ms p95 added first-byte latency in one corrected-build four-client 1 MiB repetition against the unchanged 150 ms target. Later pacing and streaming fixes in PRs [79](https://github.com/rozdolsky33/cui-proxy/pull/79), [80](https://github.com/rozdolsky33/cui-proxy/pull/80) and [81](https://github.com/rozdolsky33/cui-proxy/pull/81) require fresh qualification. Preserve the historical failure and interrupted runs; measurements of earlier binaries do not qualify the frozen 0.7.4 executable.
 
 | Capability | Evidence and boundary |
 | --- | --- |

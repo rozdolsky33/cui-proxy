@@ -1,6 +1,6 @@
 # cui-proxy
 
-**v0.7.0 text-only release:** see the [v0.7.0 text-only guide](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/early-trial.md). The recommended trial configuration blocks attachments; sustained multi-agent performance remains unqualified.
+**Current published patch: v0.7.3.** See the [supervised text-only guide](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/early-trial.md). The recommended trial configuration blocks attachments. Version 0.7.4 is a frozen, unreleased candidate. Its native attachment checks pass; full four-agent release qualification remains in progress.
 
 **[Read the documentation](https://rozdolsky33.github.io/cui-proxy/)** ·
 [Quick start](https://rozdolsky33.github.io/cui-proxy/quickstart/) ·
