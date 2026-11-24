@@ -20,6 +20,14 @@ def _times(values):
     return result
 
 
+def _request_kind(plan):
+    # These lifecycle cases dispatch ordinary input_text requests, as in
+    # ScenarioExecutor's execute_continuation branch. Keep scheduling metadata intact.
+    if plan["category"] == "lifecycle" and plan["scenario"] in {"W07", "W09", "W10"}:
+        return "text"
+    return plan["category"]
+
+
 class ControlledExecutor:
     def __init__(self, execute, env, reloader, record, *, restart_times, reload_times, clock=time.monotonic, before_restart=lambda: None, image_checkpoint=None):
         self.execute, self.env, self.reloader, self.record = execute, env, reloader, record
@@ -40,7 +48,7 @@ class ControlledExecutor:
         self.last_stage_checkpoint = None
 
     def _invoke(self, plan, *, admitted=False):
-        category = plan["category"]
+        category = _request_kind(plan)
         if not admitted:
             with self.condition:
                 self.active += 1
@@ -76,8 +84,8 @@ class ControlledExecutor:
             stages = self.last_stage_checkpoint
             if type(stages) is not dict or stages.get("image_records") != stages.get("expected_image_records"):
                 raise ValueError("restart image stage checkpoint invalid")
-            return dict(active_text=self.active_categories["text"], active_images=0,
-                        active_lifecycle=0, active_requests=active, observation_started_s=started,
+            return dict(admitted_text_operations=self.active_categories["text"], admitted_image_operations=0,
+                        admitted_other_operations=0, active_requests=active, observation_started_s=started,
                         observed_s=observed, completed_images=self.completed_images,
                         image_stage_records=stages["image_records"],
                         expected_image_stage_records=stages["expected_image_records"])
@@ -90,7 +98,7 @@ class ControlledExecutor:
             if self.failed: raise ValueError("control executor unavailable")
             if self.changing:
                 self.active += 1
-                self.active_categories[plan["category"]] += 1
+                self.active_categories[_request_kind(plan)] += 1
                 return None
             elapsed = self.clock() - self.started
             restart_due = len(self.restarts) < len(self.restart_times) and self.restart_times[len(self.restarts)] <= elapsed
@@ -103,7 +111,7 @@ class ControlledExecutor:
                 self.changing = True
                 return "reload"
             self.active += 1
-            self.active_categories[plan["category"]] += 1
+            self.active_categories[_request_kind(plan)] += 1
             return None
 
     def __call__(self, plan):
