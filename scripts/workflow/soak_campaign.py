@@ -60,6 +60,7 @@ def run_proxy_phases(env,workload,corpus,fixtures,campaign,*,fixed_seconds=7200,
     try:
         with ResourceMonitor(measure_resources(env),record,phase_stop=stop,clock=clock) as resources, StageCollector(env, warm_sessions, record=record, phase_stop=stop, clock=clock) as stages:
             for phase,duration in (("fixed",fixed_seconds),("churn",churn_seconds)):
+                resources.raise_if_failed()
                 executors[phase].mappings=current_mappings
                 record({"type":"phase_start","phase":phase,"horizon_seconds":duration})
                 try:
@@ -68,11 +69,13 @@ def run_proxy_phases(env,workload,corpus,fixtures,campaign,*,fixed_seconds=7200,
                                               drain_seconds=drain_seconds if phase=="churn" else 0)
                 except PhaseFailure as error:
                     campaign.save_report(f"proxy-{phase}-summary.json",error.report)
+                    resources.raise_if_failed()
                     raise
                 final=inspect_vault(env.directory,env.seed_binary,
                                     observation_name=f"campaign-{phase}-final.json")["mappings"]
                 report=finalize_mapping_evidence(report,workload,current_mappings,final)
                 campaign.save_report(f"proxy-{phase}-summary.json",report)
+                resources.raise_if_failed()
                 if report.get("completed") is not True or report["mapping_evidence"]["unmet_requirements"]:
                     raise CampaignModeFailure("campaign_mapping_incomplete")
                 campaign.link_phase(f"proxy-{phase}")
