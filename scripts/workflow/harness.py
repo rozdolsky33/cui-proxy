@@ -159,6 +159,7 @@ class UpstreamResponseProof:
         try:
             require(not self._closed and self._buffer, "upstream_response_proof_unavailable")
             raw = bytes(self._buffer)
+            require(raw.replace(b"\r\n", b"\n").endswith(b"\n\n"), "response_proof_unterminated_frame")
             terminal = False
             deltas = 0
             for frame in raw.replace(b"\r\n", b"\n").split(b"\n\n"):
@@ -212,7 +213,10 @@ def upstream_main(directory, *, response_proof=False):
 
         def do_POST(self):
             raw = self.rfile.read(int(self.headers["Content-Length"]))
-            body = json.loads(raw)
+            body = _proof_loads(raw) if response_proof else json.loads(raw)
+            if response_proof:
+                header_names = [name.lower() for name, _value in self.headers.raw_items()]
+                require(len(header_names) == len(set(header_names)), "response_proof_duplicate_headers")
             meta = body["metadata"]
             ident = meta["harness_id"]
             # Capture names are bounded ASCII tokens, never client-chosen paths.

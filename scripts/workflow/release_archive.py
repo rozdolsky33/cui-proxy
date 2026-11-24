@@ -52,7 +52,9 @@ def _members(data, *, strict):
             expanded = compressed.read(MAX_TOTAL_BYTES + 65537)
         require(len(expanded) <= MAX_TOTAL_BYTES + 65536, "archive_expanded_size")
         with tarfile.open(fileobj=io.BytesIO(expanded), mode="r:") as source:
+            last_member_end = 0
             for member in source:
+                last_member_end = member.offset_data + ((member.size + 511) // 512) * 512
                 path = PurePosixPath(member.name)
                 require(not path.is_absolute() and path.parts and ".." not in path.parts
                         and "\\" not in member.name, "archive_path")
@@ -75,6 +77,8 @@ def _members(data, *, strict):
                 if name == "cui-proxy":
                     require(member.mode & 0o111, "archive_binary_not_executable")
                 found[name] = content
+            tail = expanded[last_member_end:]
+            require(len(tail) >= 1024 and not any(tail), "archive_trailing_content")
     except (tarfile.TarError, OSError, EOFError):
         raise ValueError("release_archive_invalid") from None
     require("cui-proxy" in found and found["cui-proxy"] is not None, "archive_binary_missing")
