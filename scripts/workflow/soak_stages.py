@@ -17,23 +17,41 @@ class SoakStageCollector(StageCollector):
         self.failure = None
         self.previous_success_start = None
         self.last_poll_end = None
+        self.initial_image_records = None
 
     def sample(self):
         with self.sample_lock:
             self._sample()
 
-    def before_restart(self):
+    def _image_record_count(self):
+        return sum("extraction_run" in row.get("stages_ms", {}) for row in self._records.values())
+
+    def before_restart(self, *, expected_image_completions=None, timeout=2):
         with self.sample_lock:
-            previous_errors = self.errors
-            self._sample()
-            if self.failure is not None or self.errors != previous_errors:
-                self.phase_stop.set()
-                raise RuntimeError("restart stage snapshot unavailable") from self.failure
             try:
-                self.record_evidence(dict(event="stage_restart_snapshot",
-                                          observed_s=self.last_poll_end,
-                                          records=len(self._records)))
-            except Exception as error:
+                if (expected_image_completions is not None and
+                        (type(expected_image_completions) is not int or expected_image_completions < 0)):
+                    raise ValueError("restart expected image count invalid")
+                if type(timeout) not in (int, float) or not math.isfinite(timeout) or timeout <= 0:
+                    raise ValueError("restart stage deadline invalid")
+                deadline = self.clock() + timeout
+                while True:
+                    previous_errors = self.errors
+                    self._sample()
+                    if self.failure is not None or self.errors != previous_errors:
+                        raise RuntimeError("restart stage snapshot unavailable")
+                    count = self._image_record_count()
+                    target = (count if expected_image_completions is None else
+                              self.initial_image_records + expected_image_completions)
+                    if count == target:
+                        break
+                    if count > target or self.clock() >= deadline:
+                        raise RuntimeError("restart completed image stage unavailable")
+                    time.sleep(0.005)
+                self.record_evidence(dict(event="stage_restart_snapshot", observed_s=self.clock(),
+                    records=len(self.observed), image_records=count, expected_image_records=target))
+                return dict(image_records=count, expected_image_records=target)
+            except BaseException as error:
                 self.failure = error
                 self.phase_stop.set()
                 raise
@@ -48,6 +66,8 @@ class SoakStageCollector(StageCollector):
                 raise ValueError("invalid stage observation clock")
             errors = self.errors
             super().sample()
+            if self.initial_image_records is None and self.errors == errors:
+                self.initial_image_records = self._image_record_count()
             now = self.clock()
             if type(now) not in (int, float) or not math.isfinite(now) or now < started:
                 raise ValueError("invalid stage observation clock")

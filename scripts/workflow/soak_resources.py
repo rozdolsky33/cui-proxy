@@ -81,7 +81,8 @@ def observe_idle_gc(metrics, *, timeout=300, clock=time.monotonic, sleep=time.sl
 
 
 def next_slot(slot, elapsed, interval):
-    return max(slot + 1, math.floor(elapsed / interval) + 1)
+    # Late polls catch up with a new real observation, retaining its actual bounds.
+    return slot + 1
 
 
 def measure_resources(env):

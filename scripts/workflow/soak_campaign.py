@@ -49,7 +49,7 @@ def run_proxy_phases(env,workload,corpus,fixtures,campaign,*,fixed_seconds=7200,
     deadlines=control_times(control_horizon,control_count) if control_count else []
     controlled=ControlledExecutor(lambda plan:executors[plan["identity"][0]](plan),env,
                                   reloader,record,restart_times=deadlines,
-                                  reload_times=deadlines,clock=clock, before_restart=lambda: stages.before_restart())
+                                  reload_times=deadlines,clock=clock, image_checkpoint=lambda expected: stages.before_restart(expected_image_completions=expected))
     stop=threading.Event()
     reports={}
     current_mappings=initial

@@ -11,7 +11,11 @@ class RecoveryFailure(RuntimeError):
         self.evidence = evidence
 
 
-def restart_proxy(env, index, *, continuation, timeout=30):
+class RestartNotEligible(RuntimeError):
+    """No signal was sent; the original scheduled operation may proceed."""
+
+
+def restart_proxy(env, index, *, continuation, timeout=30, before_signal=None):
     if type(index) is not int or index < 1:
         raise ValueError("soak_restart_index")
     old = env.proxy
@@ -20,7 +24,12 @@ def restart_proxy(env, index, *, continuation, timeout=30):
     before = env.vault_count()
     args = list(old.args)
     started = time.monotonic()
+    checkpoint = before_signal() if before_signal is not None else None
+    if before_signal is not None and type(checkpoint) is not dict:
+        raise ValueError("restart signal checkpoint invalid")
+    signal_started = time.monotonic()
     old.terminate()
+    signal_finished = time.monotonic()
     if old.wait(timeout=timeout) != 0:
         raise RuntimeError("soak_restart_exit")
     env.proxy = env.spawn(args, f"proxy-restart-{index}")
@@ -47,6 +56,7 @@ def restart_proxy(env, index, *, continuation, timeout=30):
         raise RecoveryFailure("soak_restart_vault_loss", before=before if type(before) is int else None,
                               after=after if type(after) is int else None,
                               before_type=type(before).__name__, after_type=type(after).__name__)
-    return {"restart_index": index, "graceful_exit": True, "ready": True,
-            "vault_before": before, "vault_after": after,
-            "elapsed_s": time.monotonic() - started, "continuation_verified": True}
+    result = {'restart_index': index, 'graceful_exit': True, 'ready': True, 'vault_before': before, 'vault_after': after, 'elapsed_s': time.monotonic() - started, 'continuation_verified': True}
+    if before_signal is not None:
+        result.update(signal_checkpoint=checkpoint, signal_started_s=signal_started, signal_finished_s=signal_finished)
+    return result
