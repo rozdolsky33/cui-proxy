@@ -6,9 +6,9 @@ A successful build or healthy dashboard does not establish four-agent performanc
 
 The current published patch is v0.7.3; the [supervised text-only guide](early-trial.md) retains attachment blocking in the recommended operator configuration. Publication does not close the outstanding performance or sustained-load gates.
 
-Version 0.7.4 is a frozen, unreleased candidate. Its [candidate evidence](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/verification-results/2026-11-23-v074-candidate.md) records workflow, real OCR recovery, cancellation and exact-package upgrade/latest-vault rollback checks against its exact executable. Full paired soak and reference campaign acceptance remain pending. Image/PDF support extracts text; it does not preserve model vision semantics.
+Version 0.7.4 is a frozen, unreleased candidate. Its [candidate evidence](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/verification-results/2026-11-23-v074-candidate.md) records workflow, real OCR recovery, cancellation and exact-package upgrade/latest-vault rollback checks against its exact executable. The full paired soak passed all 21 acceptance gates, and all 123 reference jobs passed official scoped verification. The [qualification closeout](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/verification-results/2026-11-27-v074-closeout.md) records the separate results and exploratory capacity limits; independent manual assessment supports the documented four-client technical release scope. Image/PDF support extracts text; it does not preserve model vision semantics.
 
-The deterministic protocol, attachment policy, restoration, recovery and bounded-admission checks are implemented. Four-client mixed-load performance and the sustained workload remain open. The historical decoder optimization in [PR 57](https://github.com/rozdolsky33/cui-proxy/pull/57) measured 151.50 ms p95 added first-byte latency in one corrected-build four-client 1 MiB repetition against the unchanged 150 ms target. Later pacing and streaming fixes in PRs [79](https://github.com/rozdolsky33/cui-proxy/pull/79), [80](https://github.com/rozdolsky33/cui-proxy/pull/80) and [81](https://github.com/rozdolsky33/cui-proxy/pull/81) require fresh qualification. Preserve the historical failure and interrupted runs; measurements of earlier binaries do not qualify the frozen 0.7.4 executable.
+The deterministic protocol, attachment policy, restoration, recovery and bounded-admission checks are implemented. The completed same-executable evidence supports the original four-client technical criteria through the independent manual assessment. The baseline summary retains its unconditional qualification flag; this assessment is separate and does not rewrite that flag. The historical decoder optimization in [PR 57](https://github.com/rozdolsky33/cui-proxy/pull/57) measured 151.50 ms p95 added first-byte latency in one corrected-build four-client 1 MiB repetition against the unchanged 150 ms target. Later pacing and streaming fixes in PRs [79](https://github.com/rozdolsky33/cui-proxy/pull/79), [80](https://github.com/rozdolsky33/cui-proxy/pull/80) and [81](https://github.com/rozdolsky33/cui-proxy/pull/81) require fresh qualification. Preserve the historical failure and interrupted runs; measurements of earlier binaries do not qualify the frozen 0.7.4 executable.
 
 | Capability | Evidence and boundary |
 | --- | --- |
@@ -18,8 +18,8 @@ The deterministic protocol, attachment policy, restoration, recovery and bounded
 | Concurrent histories and delegation | Shared mappings and per-stream restoration state; no arbitrary partial-stream replay contract |
 | File-vault recovery | [Recovery contract](vault-recovery.md); preserve the same vault and key, including during rollback |
 | Saturation and cancellation | [Admission bounds](admission.md); bounded refusal is distinct from normal-workload performance acceptance |
-| Four-agent operating envelope | Unqualified pending all normal-tier fairness, resource and sustained-load gates |
-| Eight/sixteen clients | Exploratory capacity measurements only; no supported-tier expansion |
+| Four-agent operating envelope | Original normal-tier numeric and sustained-load criteria pass; independent manual assessment supports this technical scope |
+| Eight/sixteen clients | Exploratory attempts reached uncached-image admission limits; zero matched proxy/bypass measurements and no supported-tier expansion |
 | Live model task quality | Unmeasured; reversible substitutions do not prove equivalent model reasoning |
 
 ## Evidence required for a release claim
@@ -53,7 +53,9 @@ Publish only safe summaries: versions, rule names/counts, test names, aggregate 
 
 ## Assessment
 
-The repository has stronger correctness and recovery evidence than its initial implementation, including explicit protocol limits and fail-closed validation. Everyday four-agent efficiency remains unproven until the pending measurements pass. No revised numeric rating or production-equivalence claim is justified by unit tests alone. Prioritize the first reproducible failed user-visible criterion; do not replace it with unrelated tuning.
+The frozen candidate has exact-artifact correctness, recovery and sustained-load evidence, plus passing original four-client numeric predicates. Independent manual review found no technical gap in that documented scope. The [closeout record](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/verification-results/2026-11-27-v074-closeout.md) distinguishes this assessment from the baseline summary's unchanged automated flag and preserves negative exploratory measurements.
+
+Live model task quality, production equivalence and eight/sixteen-client support remain unproven. The measured uncached-image admission limit is an operating boundary, not a reason to raise safety budgets or claim successful higher-concurrency performance. No revised numerical rating is assigned.
 
 ## Latest isolated upgrade evidence
 

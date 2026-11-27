@@ -17,7 +17,7 @@ hide:
 </div>
 
 The current published patch is v0.7.3. For supervised text/code use, start with the [text-only guide](early-trial.md).
-Version 0.7.4 is a frozen, unreleased candidate. Sustained four-agent performance and live-model task quality remain unqualified;
+Version 0.7.4 is a frozen, unreleased candidate. Its full soak and scoped 123-job reference verification passed. Independent manual assessment supports the documented four-client technical scope; live-model task quality remains unmeasured;
 see [release readiness](release-readiness.md). Stable distribution is not a performance certification.
 
 ## Find your next step
