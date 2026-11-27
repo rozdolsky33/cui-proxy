@@ -437,7 +437,7 @@ Next ready task:
 
 The original twelve-task engineering roadmap is complete for the documented four-client technical scope, subject to closeout review and required PR checks. The [November 27 closeout](../../verification-results/2026-11-27-v074-closeout.md) records the accepted same-executable soak, scoped full reference matrix, actual numeric predicates, native recovery checks and independent manual assessment. The baseline summary's unconditional flag remains unchanged. All negative eight/sixteen-client attempts and unknown higher-concurrency properties are retained; no support-tier expansion is claimed.
 
-The candidate remains frozen and unreleased. Preserve the exact binary, archive, source, collector and evaluator identities; publication is a separate action. Initial qualitative ratings are reassessed in the closeout using the measured operating envelope, without inventing new numerical scores. This closes the agreed scope rather than adding another optimization campaign.
+[Version 0.7.4](https://github.com/rozdolsky33/cui-proxy/releases/tag/v0.7.4) is published from the frozen source revision and unchanged archives. Preserve the exact binary, archive, source, collector and evaluator identities. Initial qualitative ratings are reassessed in the closeout using the measured operating envelope, without inventing new numerical scores. This closes the agreed scope rather than adding another optimization campaign.
 
 ## Historical next-action record
 
