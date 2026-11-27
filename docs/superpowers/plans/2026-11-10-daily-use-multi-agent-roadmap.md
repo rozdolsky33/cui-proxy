@@ -108,15 +108,15 @@ permission between already authorized tasks.
 | 01 | Define workloads and acceptance contract | P0 | — | done |
 | 02 | Build deterministic workflow harness | P0 | 01 | done |
 | 03 | Add stage timings and safe workload correlation | P0 | 01, 02 | done |
-| 04 | Establish concurrent performance baseline | P0 | 02, 03 | done (baseline not qualified) |
+| 04 | Establish concurrent performance baseline | P0 | 02, 03 | done (current four-client evidence reviewed) |
 | 05 | Verify task semantics and long-session compatibility | P0 | 02 | done |
 | 06 | Improve refusal recovery and dependency preflight | P0 | 03, 05 | done |
 | 07 | Fix the largest measured processing cost | P1 | 04, 05 | done |
-| 08 | Bound contention and protect text-workload fairness | P1 | 04, 07 | in progress |
+| 08 | Bound contention and protect text-workload fairness | P1 | 04, 07 | done |
 | 09 | Make repeated attachment processing efficient | P1 | 04, 05, 08 bounds | done |
 | 10 | Verify mapping lifetime and recovery | P1 | 02, 04, 05 | done |
-| 11 | Run sustained four-agent acceptance and tune | P0 release gate | 06–10 | in progress |
-| 12 | Establish release and regression gates | P0 release gate | 11 | in progress |
+| 11 | Run sustained four-agent acceptance and tune | P0 release gate | 06–10 | done |
+| 12 | Establish release and regression gates | P0 release gate | 11 | done |
 
 Priority is importance, not permission to bypass dependencies. Recommended
 execution order is 01 through 12. Tasks 07 and 09 may close as `not needed`
@@ -273,7 +273,7 @@ designed explicitly. No complete-request bypass cache is assumed safe.
 - [x] Use baseline data to choose bounds for in-flight work, queued work and
       estimated memory. Define behavior at each bound.
 - [x] Ensure cancellation removes queued work and releases resources promptly.
-- [ ] Separate expensive extraction work from lightweight text requests where
+- [x] Separate expensive extraction work from lightweight text requests where
       measurements show interference; prevent starvation.
 - [x] Add per-workload fairness only where identity can be used reliably; do
       not treat client-supplied labels as a security boundary.
@@ -282,7 +282,7 @@ designed explicitly. No complete-request bypass cache is assumed safe.
 unbounded memory/queues. Mixed traffic meets the text fairness target; cancelled
 clients do not consume persistent queue slots. Overload cannot forward originals.
 
-Bounded admission and detector scheduling are implemented; mixed latency acceptance remains open. The [Task 08 measurements](../../verification-results/2026-11-13-task08-admission.md) show pooled added p95 of 125/162/172 ms at 256/768/1024 KiB. Task 09 may proceed after these bounds integrate; retest Task 08 after measured extraction improvements. This sequencing does not waive the 150 ms target.
+Bounded admission and detector scheduling are implemented; current four-client mixed-latency predicates pass in the [qualification closeout](../../verification-results/2026-11-27-v074-closeout.md). The following measurements are historical, not the current candidate qualification: The [Task 08 measurements](../../verification-results/2026-11-13-task08-admission.md) show pooled added p95 of 125/162/172 ms at 256/768/1024 KiB. Task 09 may proceed after these bounds integrate; retest Task 08 after measured extraction improvements. This sequencing does not waive the 150 ms target.
 
 ## Task 09 — Make repeated attachment processing efficient
 
@@ -329,14 +329,14 @@ Recovery and growth acceptance is integrated in [PR #44](https://github.com/rozd
 
 ## Task 11 — Run sustained four-agent acceptance and tune
 
-- [ ] Run four hours of four-client mixed work with fixed-cardinality and
+- [x] Run four hours of four-client mixed work with fixed-cardinality and
       growing-vault phases, realistic history growth and regular tool calls.
-- [ ] Inject cancellations, reloads, missing extraction tools, backend delays
+- [x] Inject cancellations, reloads, missing extraction tools, backend delays
       and controlled restart scenarios; distinguish injected failures from bugs.
-- [ ] Confirm all milestone targets and collect safe evidence for each.
-- [ ] Run 8/16-client stress tests to document the capacity envelope and graceful
+- [x] Confirm all milestone targets and collect safe evidence for each.
+- [x] Run 8/16-client stress tests to document the capacity envelope and graceful
       overload behavior; do not claim support beyond the passing tier.
-- [ ] Fix the highest-impact failing criterion in a focused PR, then rerun
+- [x] Fix the highest-impact failing criterion in a focused PR, then rerun
       affected checks and the acceptance soak when required.
 
 **Acceptance:** All first-milestone gates pass with repeatable evidence. A
@@ -346,16 +346,16 @@ partial pass remains partial; successful unit tests alone do not close this task
 
 Carry forward Task 10 follow-ups: preserve-key/vault guidance for unsupported file formats, and investigate any recurrence of the macOS Python 3.15.2 interruption-cleanup failure using the new value-free exception/errno diagnostic. Its intermittent root cause is unconfirmed; final exact-head CI passed without relaxing cleanup checks.
 
-- [ ] Put a short deterministic workflow suite and stable benchmark comparison
+- [x] Put a short deterministic workflow suite and stable benchmark comparison
       in CI. Use a controlled performance runner or report-only thresholds
       until runner variance is understood; avoid flaky shared-runner gates.
-- [ ] Define when the longer soak runs: scheduled/on demand and before relevant
+- [x] Define when the longer soak runs: scheduled/on demand and before relevant
       releases. Record versions, environment and artifact-retention rules.
-- [ ] Verify packaging, upgrade, running-binary identification, effective
+- [x] Verify packaging, upgrade, running-binary identification, effective
       configuration, dependency preflight and rollback with active histories.
-- [ ] Publish the compatibility matrix and measured four-client operating
+- [x] Publish the compatibility matrix and measured four-client operating
       envelope. Document how to recognize and recover from saturation.
-- [ ] Reassess the original ratings using the collected evidence and prioritize
+- [x] Reassess the original ratings using the collected evidence and prioritize
       the next milestone from remaining user-visible failures.
 
 **Acceptance:** A released version can be tied to its workflow, safety,
@@ -435,7 +435,9 @@ Next ready task:
 
 ## Current next action
 
-Qualify the frozen, version-stamped 0.7.4 executable using its full paired soak and 123-job reference campaign, then complete capacity checks and exact-package upgrade/rollback verification. Preserve unchanged thresholds and separate source, artifact, collector and evaluator identities. [Current candidate evidence](../../verification-results/2026-11-23-v074-candidate.md) records completed checks and open gates. Tasks 08, 11 and 12 stay open until their acceptance evidence passes.
+The original twelve-task engineering roadmap is complete for the documented four-client technical scope, subject to closeout review and required PR checks. The [November 27 closeout](../../verification-results/2026-11-27-v074-closeout.md) records the accepted same-executable soak, scoped full reference matrix, actual numeric predicates, native recovery checks and independent manual assessment. The baseline summary's unconditional flag remains unchanged. All negative eight/sixteen-client attempts and unknown higher-concurrency properties are retained; no support-tier expansion is claimed.
+
+The candidate remains frozen and unreleased. Preserve the exact binary, archive, source, collector and evaluator identities; publication is a separate action. Initial qualitative ratings are reassessed in the closeout using the measured operating envelope, without inventing new numerical scores. This closes the agreed scope rather than adding another optimization campaign.
 
 ## Historical next-action record
 
