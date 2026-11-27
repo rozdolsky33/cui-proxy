@@ -1,6 +1,6 @@
 # cui-proxy
 
-**Current published patch: v0.7.3.** See the [supervised text-only guide](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/early-trial.md). The recommended trial configuration blocks attachments. Version 0.7.4 is a frozen, unreleased candidate. Its native attachment checks, full soak and scoped 123-job reference verification pass; independent manual assessment supports the documented four-client technical scope. See the [qualification closeout](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/verification-results/2026-11-27-v074-closeout.md) for capacity limits.
+**Current published patch: [v0.7.4](https://github.com/rozdolsky33/cui-proxy/releases/tag/v0.7.4).** See the [supervised text-only guide](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/early-trial.md). The recommended trial configuration blocks attachments. Version 0.7.4 publishes the unchanged, qualified frozen artifacts. Its native attachment checks, full soak and scoped 123-job reference verification pass; independent manual assessment supports the documented four-client technical scope. See the [qualification closeout](https://github.com/rozdolsky33/cui-proxy/blob/main/docs/verification-results/2026-11-27-v074-closeout.md) for capacity limits.
 
 **[Read the documentation](https://rozdolsky33.github.io/cui-proxy/)** ·
 [Quick start](https://rozdolsky33.github.io/cui-proxy/quickstart/) ·
